@@ -1,0 +1,1 @@
+ALTER TABLE public.atas ADD COLUMN fase_processo text;

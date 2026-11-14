@@ -68,6 +68,7 @@ export type Database = {
           data_homologacao: string | null
           data_vencimento: string
           dias_alerta: number
+          fase_processo: string | null
           fornecedor: string | null
           id: string
           numero: string
@@ -82,6 +83,7 @@ export type Database = {
           data_homologacao?: string | null
           data_vencimento: string
           dias_alerta?: number
+          fase_processo?: string | null
           fornecedor?: string | null
           id?: string
           numero: string
@@ -96,6 +98,7 @@ export type Database = {
           data_homologacao?: string | null
           data_vencimento?: string
           dias_alerta?: number
+          fase_processo?: string | null
           fornecedor?: string | null
           id?: string
           numero?: string
