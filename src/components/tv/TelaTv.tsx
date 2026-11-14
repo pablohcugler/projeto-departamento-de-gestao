@@ -64,18 +64,18 @@ export function TelaTv() {
   const ate30 = linhas.filter((l) => l.dias >= 0 && l.dias <= 30).length;
 
   return (
-    <div className="dark min-h-screen bg-background p-8 text-foreground">
-      <header className="mb-6 flex items-center justify-between border-b pb-5">
-        <div className="flex items-center gap-4">
-          <img src={brasao.url} alt="Brasão do município" className="h-16 w-16 object-contain" />
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Departamento de Gestão em Saúde</p>
-            <h1 className="font-display text-4xl font-semibold">{cfg?.titulo}</h1>
+    <div className="dark min-h-screen bg-background p-4 text-foreground sm:p-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+        <div className="flex min-w-0 items-center gap-4">
+          <img src={brasao.url} alt="Brasão do município" className="h-12 w-12 shrink-0 object-contain sm:h-16 sm:w-16" />
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground sm:text-sm">Departamento de Gestão em Saúde</p>
+            <h1 className="font-display text-2xl font-semibold sm:text-4xl">{cfg?.titulo}</h1>
           </div>
         </div>
         <div className="text-right">
-          <p className="font-display text-5xl tabular-nums">{agora?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
-          <p className="text-muted-foreground">{agora?.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</p>
+          <p className="font-display text-3xl tabular-nums sm:text-5xl">{agora?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+          <p className="text-sm text-muted-foreground sm:text-base">{agora?.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</p>
         </div>
       </header>
 
@@ -92,19 +92,19 @@ export function TelaTv() {
       ) : (
         <div className="space-y-3">
           {linhas.map((l) => (
-            <div key={l.tipo + l.id} className="flex items-center gap-6 rounded-xl border bg-card px-6 py-4">
-              <div className={`w-36 shrink-0 rounded-lg py-3 text-center ${corDias(l.dias)}`}>
-                <p className="font-display text-4xl font-bold tabular-nums">{Math.abs(l.dias)}</p>
-                <p className="text-xs font-semibold uppercase">{l.dias < 0 ? "dias vencido" : l.dias === 0 ? "vence hoje" : "dias restantes"}</p>
+            <div key={l.tipo + l.id} className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 sm:gap-6 sm:px-6 sm:py-4">
+              <div className={`w-24 shrink-0 rounded-lg py-2 text-center sm:w-36 sm:py-3 ${corDias(l.dias)}`}>
+                <p className="font-display text-2xl font-bold tabular-nums sm:text-4xl">{Math.abs(l.dias)}</p>
+                <p className="text-[10px] font-semibold uppercase sm:text-xs">{l.dias < 0 ? "dias vencido" : l.dias === 0 ? "vence hoje" : "dias restantes"}</p>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm uppercase tracking-wider text-muted-foreground">{l.tipo} nº {l.numero}{l.quem ? ` · ${l.quem}` : ""}</p>
-                <p className="truncate text-2xl font-medium">{l.objeto}</p>
-                {l.fase && <p className="text-base text-primary">Fase: {l.fase}</p>}
+                <p className="text-xs uppercase tracking-wider text-muted-foreground sm:text-sm">{l.tipo} nº {l.numero}{l.quem ? ` · ${l.quem}` : ""}</p>
+                <p className="truncate text-lg font-medium sm:text-2xl">{l.objeto}</p>
+                {l.fase && <p className="text-sm text-primary sm:text-base">Fase: {l.fase}</p>}
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Vencimento</p>
-                <p className="text-2xl tabular-nums">{dataBR(l.venc)}</p>
+              <div className="shrink-0 text-right">
+                <p className="text-xs text-muted-foreground sm:text-sm">Vencimento</p>
+                <p className="text-base tabular-nums sm:text-2xl">{dataBR(l.venc)}</p>
               </div>
             </div>
           ))}
@@ -116,9 +116,9 @@ export function TelaTv() {
 
 function Resumo({ rotulo, valor, classe }: { rotulo: string; valor: number; classe: string }) {
   return (
-    <div className="rounded-xl border bg-card px-6 py-4">
-      <p className="text-muted-foreground">{rotulo}</p>
-      <p className={`font-display text-5xl font-bold ${classe}`}>{valor}</p>
+    <div className="rounded-xl border bg-card px-3 py-3 sm:px-6 sm:py-4">
+      <p className="text-xs text-muted-foreground sm:text-base">{rotulo}</p>
+      <p className={`font-display text-3xl font-bold sm:text-5xl ${classe}`}>{valor}</p>
     </div>
   );
 }
