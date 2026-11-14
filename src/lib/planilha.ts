@@ -1,5 +1,6 @@
 import type { ItemImportado } from "./importacao-ata";
 import { numeroBR } from "./importacao-ata";
+export { numeroBR } from "./importacao-ata";
 
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
