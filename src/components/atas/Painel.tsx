@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
+import { ImportarItens } from "./ImportarItens";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -385,6 +386,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   });
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
+  const [importar, setImportar] = useState(false);
   const [novo, setNovo] = useState({ descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
   const recarregar = () => {
@@ -435,7 +437,11 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
       </div>
 
-      <h3 className="mb-3 text-lg font-semibold">Itens da ata</h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Itens da ata</h3>
+        <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>
+      </div>
+      <ImportarItens ataId={ata.id} aberto={importar} onFechar={() => setImportar(false)} onImportado={recarregar} />
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
