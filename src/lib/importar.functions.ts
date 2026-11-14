@@ -60,9 +60,11 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
           },
         },
       });
-      const out = (res as { output_text?: string }).output_text ??
-        JSON.stringify(res.output?.flatMap((o) => ("content" in o && Array.isArray(o.content) ? o.content : [])).find((c) => c && typeof c === "object" && "text" in c)?.["text" as never] ?? "");
-      const textoJson = typeof out === "string" && out.startsWith('"') ? JSON.parse(out) : out;
+      let textoJson = "";
+      for (const o of res.output ?? []) {
+        if (o.type !== "message") continue;
+        for (const c of o.content) if (c.type === "output_text") textoJson += c.text;
+      }
       const parsed = JSON.parse(textoJson) as { itens: ItemImportado[] };
       return { itens: parsed.itens };
     } catch (e) {
