@@ -158,7 +158,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       </div>
 
       <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editando?.id ? "Editar contrato" : "Novo contrato"}</DialogTitle></DialogHeader>
           {editando && (
             <div className="grid grid-cols-2 gap-3">

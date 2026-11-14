@@ -285,7 +285,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       </main>
 
       <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editando?.id ? "Editar ata" : "Nova ata"}</DialogTitle>
           </DialogHeader>
