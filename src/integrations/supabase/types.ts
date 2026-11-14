@@ -14,7 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ata_itens: {
+        Row: {
+          ata_id: string
+          created_at: string
+          descricao: string
+          id: string
+          preco_total: number | null
+          preco_unitario: number
+          quantidade: number
+          unidade: string
+          user_id: string
+        }
+        Insert: {
+          ata_id: string
+          created_at?: string
+          descricao: string
+          id?: string
+          preco_total?: number | null
+          preco_unitario?: number
+          quantidade?: number
+          unidade?: string
+          user_id?: string
+        }
+        Update: {
+          ata_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          preco_total?: number | null
+          preco_unitario?: number
+          quantidade?: number
+          unidade?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ata_itens_ata_id_fkey"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "atas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atas: {
+        Row: {
+          created_at: string
+          data_homologacao: string | null
+          data_vencimento: string
+          dias_alerta: number
+          fornecedor: string | null
+          id: string
+          numero: string
+          objeto: string
+          observacoes: string | null
+          processo: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_homologacao?: string | null
+          data_vencimento: string
+          dias_alerta?: number
+          fornecedor?: string | null
+          id?: string
+          numero: string
+          objeto: string
+          observacoes?: string | null
+          processo?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          data_homologacao?: string | null
+          data_vencimento?: string
+          dias_alerta?: number
+          fornecedor?: string | null
+          id?: string
+          numero?: string
+          objeto?: string
+          observacoes?: string | null
+          processo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
