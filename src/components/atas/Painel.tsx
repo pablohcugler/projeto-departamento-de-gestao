@@ -65,6 +65,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const [gerirClasses, setGerirClasses] = useState(false);
   const [filtroClasse, setFiltroClasse] = useState<string>("todas");
+  const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
 
   const atasQ = useQuery({
@@ -107,11 +108,12 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       atas.filter(
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
+          (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
           `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [atas, filtroClasse, busca, totaisQ.data],
+    [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
-  const alertas = atas.filter((a) => statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
+  const alertas = atas.filter((a) => a.situacao_cadastro === "Vigentes" && statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
 
   const ataSel = atas.find((a) => a.id === selecionada);
 
@@ -134,6 +136,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       processo_1doc: editando.processo_1doc || null,
       fase_processo: editando.fase_processo || null,
       classificacao_id: editando.classificacao_id || null,
+      situacao_cadastro: editando.situacao_cadastro ?? "Em andamento",
     };
     const { error } = editando.id
       ? await supabase.from("atas").update(payload).eq("id", editando.id)
@@ -245,7 +248,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
                   <Tags className="h-4 w-4" /> Classificações
                 </Button>
-                <Button onClick={() => setEditando({ dias_alerta: 90 })}>
+                <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: "Em andamento" })}>
                   <Plus className="h-4 w-4" /> Nova ata
                 </Button>
               </div>
@@ -253,6 +256,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value as typeof filtroSituacao)}>
+                <option value="todas">Todas as situações</option>
+                <option value="Em andamento">Em andamento</option>
+                <option value="Vigentes">Vigentes</option>
+              </select>
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 value={filtroClasse}
@@ -275,8 +283,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <th className="px-4 py-3 font-medium">Classificação</th>
                     <th className="px-4 py-3 font-medium">Fornecedores</th>
                     <th className="px-4 py-3 font-medium">Vencimento</th>
+                    <th className="px-4 py-3 font-medium">Cadastro</th>
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
-                    <th className="px-4 py-3 font-medium">Situação</th>
+                    <th className="px-4 py-3 font-medium">Situação do vencimento</th>
                     <th className="px-4 py-3 font-medium">Fase do processo</th>
                   </tr>
                 </thead>
@@ -289,16 +298,21 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f?.[a.id]) || "—"}</td>
                       <td className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
-                        <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(a.data_vencimento))}</div>
+                        <div className="text-xs text-muted-foreground">{a.situacao_cadastro === "Vigentes" ? textoDias(diasParaVencer(a.data_vencimento)) : "Sem cálculo enquanto em andamento"}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={a.situacao_cadastro === "Vigentes" ? "rounded-full bg-success/15 px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>
+                          {a.situacao_cadastro}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
-                      <td className="px-4 py-3"><StatusBadge ata={a} /></td>
+                      <td className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
                       <td className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
                     </tr>
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
@@ -320,6 +334,12 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
+              <Campo label="Situação do cadastro">
+                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
+                  <option value="Em andamento">Em andamento</option>
+                  <option value="Vigentes">Vigentes</option>
+                </select>
+              </Campo>
               <Campo label="Classificação">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
