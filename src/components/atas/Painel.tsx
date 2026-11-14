@@ -455,7 +455,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
   const [importar, setImportar] = useState(false);
-  const [novo, setNovo] = useState({ descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
+  const [novo, setNovo] = useState({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
   const recarregar = () => {
     qc.invalidateQueries({ queryKey: ["itens", ata.id] });
@@ -467,6 +467,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
     if (!novo.descricao || !novo.preco_unitario) { toast.error("Informe descrição e preço unitário."); return; }
     const { error } = await supabase.from("ata_itens").insert({
       ata_id: ata.id,
+      codigo_item: novo.codigo_item || null,
+      codigo_produto: novo.codigo_produto || null,
       descricao: novo.descricao,
       fornecedor: novo.fornecedor || null,
       unidade: novo.unidade || "UN",
@@ -474,7 +476,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       preco_unitario: Number(novo.preco_unitario.replace(",", ".")),
     });
     if (error) { toast.error(error.message); return; }
-    setNovo({ descricao: "", fornecedor: novo.fornecedor, unidade: "UN", quantidade: "1", preco_unitario: "" });
+    setNovo({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: novo.fornecedor, unidade: "UN", quantidade: "1", preco_unitario: "" });
     recarregar();
   }
   async function removerItem(i: Item) {
@@ -482,13 +484,16 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
     recarregar();
   }
 
-  const dias = diasParaVencer(ata.data_vencimento);
+  const dias = ata.situacao_cadastro === "Vigentes" ? diasParaVencer(ata.data_vencimento) : null;
   return (
     <div>
       <Button variant="ghost" size="sm" onClick={onVoltar} className="mb-4"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="mb-1 flex items-center gap-2"><StatusBadge ata={ata} />{classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}</div>
+          <div className="mb-1 flex items-center gap-2">
+            {ata.situacao_cadastro === "Vigentes" ? <StatusBadge ata={ata} /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">Em andamento</span>}
+            {classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}
+          </div>
           <h2 className="font-display text-3xl">Ata {ata.numero}</h2>
           <p className="text-muted-foreground">{ata.objeto}</p>
         </div>
@@ -502,12 +507,12 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         <Info rotulo="Processo" valor={`${ata.processo ?? "—"}${ata.fase_processo ? " · " + ata.fase_processo : ""}`} />
         <Info rotulo="Fornecedores" valor={fornecedoresDe(ata, itens.map((i) => i.fornecedor ?? "").filter(Boolean)) || "—"} />
         <Info rotulo="Homologação" valor={dataBR(ata.data_homologacao)} />
-        <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
+        <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${dias === null ? "não computado enquanto em andamento" : textoDias(dias)}`} />
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">Itens da ata</h3>
-        <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>
+        {ata.situacao_cadastro === "Vigentes" && <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>}
       </div>
       <ImportarItens ataId={ata.id} aberto={importar} onFechar={() => setImportar(false)} onImportado={recarregar} />
       <div className="overflow-x-auto rounded-xl border bg-card">
@@ -515,6 +520,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">#</th>
+              <th className="px-4 py-3 font-medium">Cód. item</th>
+              <th className="px-4 py-3 font-medium">Cód. produto</th>
               <th className="px-4 py-3 font-medium">Descrição</th>
               <th className="px-4 py-3 font-medium">Fornecedor</th>
               <th className="px-4 py-3 font-medium">Unid.</th>
@@ -528,6 +535,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
             {itens.map((i, idx) => (
               <tr key={i.id} className="border-t">
                 <td className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
+                <td className="px-4 py-2.5">{i.codigo_item ?? "—"}</td>
+                <td className="px-4 py-2.5">{i.codigo_produto ?? "—"}</td>
                 <td className="px-4 py-2.5">{i.descricao}</td>
                 <td className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
                 <td className="px-4 py-2.5">{i.unidade}</td>
@@ -538,13 +547,15 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
               </tr>
             ))}
             <tr className="border-t bg-muted/50">
-              <td colSpan={6} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
+              <td colSpan={8} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(total)}</td>
               <td />
             </tr>
           </tbody>
         </table>
-        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[1fr_180px_80px_100px_140px_auto]">
+        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[90px_110px_1fr_180px_70px_100px_140px_auto]">
+          <Input placeholder="Cód. item" value={novo.codigo_item} onChange={(e) => setNovo({ ...novo, codigo_item: e.target.value })} />
+          <Input placeholder="Cód. produto" value={novo.codigo_produto} onChange={(e) => setNovo({ ...novo, codigo_produto: e.target.value })} />
           <Input placeholder="Descrição do item" value={novo.descricao} onChange={(e) => setNovo({ ...novo, descricao: e.target.value })} />
           <Input placeholder="Fornecedor" value={novo.fornecedor} onChange={(e) => setNovo({ ...novo, fornecedor: e.target.value })} />
           <Input placeholder="Unid." value={novo.unidade} onChange={(e) => setNovo({ ...novo, unidade: e.target.value })} />
