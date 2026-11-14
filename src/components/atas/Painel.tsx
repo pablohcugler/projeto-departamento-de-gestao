@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { Contratos } from "./Contratos";
+import { NovoUsuario } from "./NovoUsuario";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -33,8 +34,16 @@ export function textoDias(d: number) {
   return `faltam ${d} dia(s)`;
 }
 
-export function Painel({ email }: { email: string }) {
+export function Painel({ email, userId }: { email: string; userId: string }) {
   const qc = useQueryClient();
+  const [novoUsuario, setNovoUsuario] = useState(false);
+  const adminQ = useQuery({
+    queryKey: ["admin", userId],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      return !!data;
+    },
+  });
   const [aba, setAba] = useState<"atas" | "contratos">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
@@ -138,7 +147,12 @@ export function Painel({ email }: { email: string }) {
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden sm:inline">{email}</span>
+            {adminQ.data && (
+              <Button variant="outline" size="sm" onClick={() => setNovoUsuario(true)}>
+                <UserPlus className="h-4 w-4" /> Novo usuário
+              </Button>
+            )}
+            <span className="hidden sm:inline">{email}{adminQ.data ? " · Administrador" : ""}</span>
             <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
               <LogOut className="h-4 w-4" /> Sair
             </Button>
@@ -285,6 +299,7 @@ export function Painel({ email }: { email: string }) {
         </DialogContent>
       </Dialog>
 
+      <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
     </div>
   );
