@@ -6,3 +6,4 @@
 - [x] Login: "Departamento de Gestão em Saúde / Gerenciamento geral do Departamento"
 - [x] Administrador (pablohrogerio@gmail.com) vê e edita tudo; dados compartilhados pela equipe
 - [x] Só o administrador cadastra novos usuários
+- [x] Vários fornecedores por ata (fornecedor por item)

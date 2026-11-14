@@ -19,6 +19,7 @@ export type Database = {
           ata_id: string
           created_at: string
           descricao: string
+          fornecedor: string | null
           id: string
           preco_total: number | null
           preco_unitario: number
@@ -30,6 +31,7 @@ export type Database = {
           ata_id: string
           created_at?: string
           descricao: string
+          fornecedor?: string | null
           id?: string
           preco_total?: number | null
           preco_unitario?: number
@@ -41,6 +43,7 @@ export type Database = {
           ata_id?: string
           created_at?: string
           descricao?: string
+          fornecedor?: string | null
           id?: string
           preco_total?: number | null
           preco_unitario?: number
