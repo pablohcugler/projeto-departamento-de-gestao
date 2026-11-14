@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      anexos: {
+        Row: {
+          caminho: string
+          created_at: string
+          id: string
+          nome: string
+          ref_id: string
+          ref_tipo: string
+          tipo_doc: string
+          user_id: string
+        }
+        Insert: {
+          caminho: string
+          created_at?: string
+          id?: string
+          nome: string
+          ref_id: string
+          ref_tipo: string
+          tipo_doc: string
+          user_id?: string
+        }
+        Update: {
+          caminho?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ref_id?: string
+          ref_tipo?: string
+          tipo_doc?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ata_itens: {
         Row: {
           ata_id: string
@@ -71,10 +104,12 @@ export type Database = {
           fase_processo: string | null
           fornecedor: string | null
           id: string
+          memorando_1doc: string | null
           numero: string
           objeto: string
           observacoes: string | null
           processo: string | null
+          processo_1doc: string | null
           user_id: string
         }
         Insert: {
@@ -86,10 +121,12 @@ export type Database = {
           fase_processo?: string | null
           fornecedor?: string | null
           id?: string
+          memorando_1doc?: string | null
           numero: string
           objeto: string
           observacoes?: string | null
           processo?: string | null
+          processo_1doc?: string | null
           user_id?: string
         }
         Update: {
@@ -101,10 +138,12 @@ export type Database = {
           fase_processo?: string | null
           fornecedor?: string | null
           id?: string
+          memorando_1doc?: string | null
           numero?: string
           objeto?: string
           observacoes?: string | null
           processo?: string | null
+          processo_1doc?: string | null
           user_id?: string
         }
         Relationships: [
@@ -147,9 +186,11 @@ export type Database = {
           data_vencimento: string
           dias_alerta: number
           id: string
+          memorando_1doc: string | null
           numero: string
           objeto: string
           observacoes: string | null
+          processo_1doc: string | null
           user_id: string
           valor: number | null
         }
@@ -161,9 +202,11 @@ export type Database = {
           data_vencimento: string
           dias_alerta?: number
           id?: string
+          memorando_1doc?: string | null
           numero: string
           objeto: string
           observacoes?: string | null
+          processo_1doc?: string | null
           user_id?: string
           valor?: number | null
         }
@@ -175,9 +218,11 @@ export type Database = {
           data_vencimento?: string
           dias_alerta?: number
           id?: string
+          memorando_1doc?: string | null
           numero?: string
           objeto?: string
           observacoes?: string | null
+          processo_1doc?: string | null
           user_id?: string
           valor?: number | null
         }
