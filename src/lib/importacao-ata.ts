@@ -30,7 +30,7 @@ export function extrairItensAtaTexto(texto: string): ItemImportado[] {
   let fornecedor = "";
 
   const fornecedorRe = /Fornecedor:\s*\d+\s*-\s*(.+)$/i;
-  const itemRe = /^\s*(\d{4})\s+(\d{2}\.\d{5})\s+(.*?)\s{2,}([A-ZÀ-ÿ]{1,5})\s+([\d.]+,\d{2,4})\s+([\d.]+,\d{2,4})\s+([\d.]+,\d{2})\s*$/u;
+  const itemRe = /^\s*(\d{4})\s+(\d{2}\.\d{5})\s+(.*?)\s+([A-ZÀ-ÿ]{1,5})\s+([\d.]+,\d{2,4})\s+([\d.]+,\d{2,4})\s+([\d.]+,\d{2})\s*$/u;
 
   for (const linha of linhas) {
     const nomeFornecedor = linha.match(fornecedorRe);
