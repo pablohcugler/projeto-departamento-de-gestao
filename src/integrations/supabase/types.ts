@@ -242,6 +242,24 @@ export type Database = {
           },
         ]
       }
+      feedbacks_sistema: {
+        Row: {
+          id: string; user_id: string; nome_usuario: string; email_usuario: string | null;
+          categoria: string; titulo: string; descricao: string; status: string;
+          resposta_admin: string | null; created_at: string; updated_at: string;
+        }
+        Insert: {
+          id?: string; user_id: string; nome_usuario?: string; email_usuario?: string | null;
+          categoria: string; titulo: string; descricao: string; status?: string;
+          resposta_admin?: string | null; created_at?: string; updated_at?: string;
+        }
+        Update: {
+          id?: string; user_id?: string; nome_usuario?: string; email_usuario?: string | null;
+          categoria?: string; titulo?: string; descricao?: string; status?: string;
+          resposta_admin?: string | null; created_at?: string; updated_at?: string;
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
