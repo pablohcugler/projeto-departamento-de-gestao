@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Bug, CheckCircle2, Clock3, Lightbulb, MessageSquareText, Search, Send, ThumbsUp } from "lucide-react";
+import { CheckCircle2, Clock3, MessageSquareText, Search, Send } from "lucide-react";
 
 type FeedbackStatus = "Novo" | "Em análise" | "Em andamento" | "Concluído" | "Não será implementado";
 type Feedback = {
