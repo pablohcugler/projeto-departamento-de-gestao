@@ -50,6 +50,13 @@
       "when": 1794673646035,
       "tag": "0006_anexos_e_1doc",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794673695965,
+      "tag": "0007_pregao_eletronico",
+      "breakpoints": true
     }
   ]
 }

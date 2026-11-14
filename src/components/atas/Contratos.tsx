@@ -58,6 +58,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       dias_alerta: Number(editando.dias_alerta ?? 90),
       classificacao_id: editando.classificacao_id || null,
       observacoes: editando.observacoes || null,
+      pregao: editando.pregao || null,
       memorando_1doc: editando.memorando_1doc || null,
       processo_1doc: editando.processo_1doc || null,
     };
@@ -176,6 +177,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               <Campo label="Vencimento *"><Input type="date" value={editando.data_vencimento ?? ""} onChange={(e) => setEditando({ ...editando, data_vencimento: e.target.value })} /></Campo>
               <Campo label="Alertar com quantos dias de antecedência?" full><Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} /></Campo>
               <Campo label="Observações" full><Textarea value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
+              <Campo label="Nº do Pregão Eletrônico" full><Input placeholder="Opcional" value={editando.pregao ?? ""} onChange={(e) => setEditando({ ...editando, pregao: e.target.value })} /></Campo>
               <Campo label="Memorando (1Doc)"><Input placeholder="Opcional" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
               <Campo label="Processo Administrativo (1Doc)"><Input placeholder="Opcional" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
               <Campo label="Documentos anexos (opcional)" full><Anexos refTipo="contrato" refId={editando.id} /></Campo>

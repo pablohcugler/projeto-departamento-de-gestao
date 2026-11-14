@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export const TIPOS_DOC = ["Termo de Referência", "Estudo Técnico Preliminar", "Contrato"] as const;
 
-export function Anexos({ refTipo, refId }: { refTipo: "ata" | "contrato"; refId?: string }) {
+export function Anexos({ refTipo, refId }: { refTipo: "ata" | "contrato"; refId?: string | undefined }) {
   const qc = useQueryClient();
   const [enviando, setEnviando] = useState<string | null>(null);
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});

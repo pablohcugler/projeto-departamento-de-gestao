@@ -108,6 +108,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes: string | null
+          pregao: string | null
           processo: string | null
           processo_1doc: string | null
           user_id: string
@@ -125,6 +126,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes?: string | null
+          pregao?: string | null
           processo?: string | null
           processo_1doc?: string | null
           user_id?: string
@@ -142,6 +144,7 @@ export type Database = {
           numero?: string
           objeto?: string
           observacoes?: string | null
+          pregao?: string | null
           processo?: string | null
           processo_1doc?: string | null
           user_id?: string
@@ -190,6 +193,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes: string | null
+          pregao: string | null
           processo_1doc: string | null
           user_id: string
           valor: number | null
@@ -206,6 +210,7 @@ export type Database = {
           numero: string
           objeto: string
           observacoes?: string | null
+          pregao?: string | null
           processo_1doc?: string | null
           user_id?: string
           valor?: number | null
@@ -222,6 +227,7 @@ export type Database = {
           numero?: string
           objeto?: string
           observacoes?: string | null
+          pregao?: string | null
           processo_1doc?: string | null
           user_id?: string
           valor?: number | null

@@ -125,6 +125,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       data_vencimento: editando.data_vencimento,
       dias_alerta: Number(editando.dias_alerta ?? 90),
       observacoes: editando.observacoes || null,
+      pregao: editando.pregao || null,
       memorando_1doc: editando.memorando_1doc || null,
       processo_1doc: editando.processo_1doc || null,
       fase_processo: editando.fase_processo || null,
@@ -317,6 +318,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                 </select>
               </Campo>
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
+              <Campo label="Nº do Pregão Eletrônico" full><Input placeholder="Opcional" value={editando.pregao ?? ""} onChange={(e) => setEditando({ ...editando, pregao: e.target.value })} /></Campo>
               <Campo label="Memorando (1Doc)"><Input placeholder="Opcional" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
               <Campo label="Processo Administrativo (1Doc)"><Input placeholder="Opcional" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
               <Campo label="Documentos anexos (opcional)" full><Anexos refTipo="ata" refId={editando.id} /></Campo>
