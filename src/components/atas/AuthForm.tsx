@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { FileText } from "lucide-react";
 
 export function AuthForm() {
-  const [modo, setModo] = useState<"entrar" | "cadastrar">("entrar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -15,18 +14,8 @@ export function AuthForm() {
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setCarregando(true);
-    if (modo === "entrar") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-      if (error) toast.error("E-mail ou senha inválidos.");
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password: senha,
-        options: { emailRedirectTo: window.location.origin },
-      });
-      if (error) toast.error(error.message);
-      else toast.success("Conta criada! Confirme pelo link enviado ao seu e-mail.");
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (error) toast.error("E-mail ou senha inválidos.");
     setCarregando(false);
   }
 
@@ -52,15 +41,9 @@ export function AuthForm() {
             <Input id="senha" type="password" required minLength={6} value={senha} onChange={(e) => setSenha(e.target.value)} />
           </div>
           <Button type="submit" className="w-full" disabled={carregando}>
-            {modo === "entrar" ? "Entrar" : "Criar conta"}
+            Entrar
           </Button>
-          <button
-            type="button"
-            className="w-full text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => setModo(modo === "entrar" ? "cadastrar" : "entrar")}
-          >
-            {modo === "entrar" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-          </button>
+          <p className="text-center text-xs text-muted-foreground">Novos acessos são liberados pelo administrador.</p>
         </form>
       </div>
     </div>
