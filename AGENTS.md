@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Item import: PDF text is extracted server-side with unpdf (Workers-safe) then structured by the AI gateway in src/lib/importar.functions.ts; spreadsheets are parsed client-side with xlsx (src/lib/planilha.ts).
