@@ -28,7 +28,7 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
   };
   return (
     <>
-      {menuTrigger ? <DropdownMenuItem onSelect={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</DropdownMenuItem> : <Button variant="outline" size="sm" onClick={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</Button>}
+      {menuTrigger ? <DropdownMenuItem onSelect={(event) => { event.preventDefault(); setAberto(true); }}><Monitor className="h-4 w-4" /> Tela da TV</DropdownMenuItem> : <Button variant="outline" size="sm" onClick={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</Button>}
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent>
           <DialogHeader>

@@ -198,7 +198,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </header>
 
       <main className="app-main mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-9">
-        {aba === "contratos" ? (
+        {aba === "feedbacks" ? (
+          <div className="space-y-4">
+            <Button variant="outline" onClick={() => setAba("atas")}>
+              <ArrowLeft className="h-4 w-4" /> Voltar ao painel
+            </Button>
+            <RelatorioFeedbacks />
+          </div>
+        ) : aba === "contratos" ? (
           <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
         ) : ataSel ? (
           <DetalheAta
