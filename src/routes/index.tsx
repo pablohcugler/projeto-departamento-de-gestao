@@ -28,5 +28,5 @@ function Index() {
   }, []);
   if (session === undefined) return <div className="min-h-screen bg-background" />;
   if (!session) return <AuthForm />;
-  return <Painel email={session.user.email ?? ""} userId={session.user.id} />;
+  return <Painel nome={session.user.user_metadata?.nome as string | undefined} userId={session.user.id} />;
 }
