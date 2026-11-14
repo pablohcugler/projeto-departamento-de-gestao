@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
-import brasao from "@/assets/brasao_municipio.png.asset.json";
+import { brasaoMunicipio } from "@/lib/brasao";
 import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
@@ -154,7 +154,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70 shadow-sm">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <img src={brasao.url} alt="Brasão do município" className="h-8 w-8 shrink-0 object-contain sm:h-10 sm:w-10" />
+            <img src={brasaoMunicipio} alt="Brasão do município" className="h-8 w-8 shrink-0 object-contain sm:h-10 sm:w-10" />
             <div className="leading-tight"><span className="block font-display text-base font-semibold tracking-tight sm:text-lg">Departamento de Gestão em Saúde</span><span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Prefeitura Municipal de Cajati</span></div>
             <nav className="flex gap-1 sm:ml-6">
               {(["atas", "contratos"] as const).map((a) => (
