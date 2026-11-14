@@ -48,12 +48,15 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
   const atualizar = (i: number, campo: keyof ItemImportado, v: string) => {
     setItens((atuais) => atuais.map((it, idx) => {
       if (idx !== i) return it;
-      if (campo === "quantidade" || campo === "preco_unitario") {
-        const numero = numeroBR(v);
-        const atualizado = { ...it, [campo]: numero };
-        atualizado.valor_total = atualizado.quantidade * atualizado.preco_unitario;
-        return atualizado;
+      if (campo === "quantidade") {
+        const quantidade = numeroBR(v);
+        return { ...it, quantidade, valor_total: quantidade * it.preco_unitario };
       }
+      if (campo === "preco_unitario") {
+        const preco_unitario = numeroBR(v);
+        return { ...it, preco_unitario, valor_total: it.quantidade * preco_unitario };
+      }
+      if (campo === "valor_total") return { ...it, valor_total: numeroBR(v) };
       return { ...it, [campo]: v };
     }));
   };
