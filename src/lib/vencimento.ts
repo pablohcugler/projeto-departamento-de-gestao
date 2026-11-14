@@ -2,7 +2,7 @@ export type StatusAta = "vencida" | "alerta" | "vigente";
 
 /** Dias entre hoje e a data de vencimento (negativo = já venceu). */
 export function diasParaVencer(dataVencimento: string, hoje: Date = new Date()): number {
-  const [y, m, d] = dataVencimento.split("-").map(Number);
+  const [y = 0, m = 1, d = 1] = dataVencimento.split("-").map(Number);
   const venc = Date.UTC(y, m - 1, d);
   const h = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   return Math.round((venc - h) / 86400000);
