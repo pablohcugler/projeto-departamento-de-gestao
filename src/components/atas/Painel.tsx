@@ -227,7 +227,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">
-              <Input placeholder="Buscar por número, objeto, fornecedor..." className="max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 value={filtroClasse}
@@ -448,7 +448,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">Itens da ata</h3>
         <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>
       </div>
