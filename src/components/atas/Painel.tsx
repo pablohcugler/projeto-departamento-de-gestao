@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, FileText, LogOut, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { Contratos } from "./Contratos";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -21,12 +22,12 @@ const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
   vigente: { rotulo: "Vigente", cls: "bg-success text-success-foreground" },
 };
 
-function StatusBadge({ ata }: { ata: Ata }) {
+export function StatusBadge({ ata }: { ata: { data_vencimento: string; dias_alerta: number } }) {
   const s = statusAta(ata.data_vencimento, ata.dias_alerta);
   return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusInfo[s].cls}`}>{statusInfo[s].rotulo}</span>;
 }
 
-function textoDias(d: number) {
+export function textoDias(d: number) {
   if (d < 0) return `venceu há ${-d} dia(s)`;
   if (d === 0) return "vence hoje";
   return `faltam ${d} dia(s)`;
@@ -34,6 +35,7 @@ function textoDias(d: number) {
 
 export function Painel({ email }: { email: string }) {
   const qc = useQueryClient();
+  const [aba, setAba] = useState<"atas" | "contratos">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const [gerirClasses, setGerirClasses] = useState(false);
@@ -126,7 +128,14 @@ export function Painel({ email }: { email: string }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <FileText className="h-4 w-4" />
             </div>
-            <span className="font-display text-xl">Atas de Registro de Preço</span>
+            <span className="font-display text-xl">Departamento de Gestão em Saúde</span>
+            <nav className="ml-6 flex gap-1">
+              {(["atas", "contratos"] as const).map((a) => (
+                <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} onClick={() => { setAba(a); setSelecionada(null); }}>
+                  {a === "atas" ? "Atas de Registro" : "Contratos"}
+                </Button>
+              ))}
+            </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="hidden sm:inline">{email}</span>
@@ -138,7 +147,9 @@ export function Painel({ email }: { email: string }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        {ataSel ? (
+        {aba === "contratos" ? (
+          <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
+        ) : ataSel ? (
           <DetalheAta
             ata={ataSel}
             classe={nomeClasse(ataSel.classificacao_id)}
@@ -279,7 +290,7 @@ export function Painel({ email }: { email: string }) {
   );
 }
 
-function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
+export function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
   return (
     <div className={`space-y-1.5 ${full ? "col-span-2" : ""}`}>
       <Label>{label}</Label>
