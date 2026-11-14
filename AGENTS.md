@@ -30,3 +30,4 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - Item import: PDF text is extracted server-side with unpdf (Workers-safe) then structured by the AI gateway in src/lib/importar.functions.ts; spreadsheets are parsed client-side with xlsx (src/lib/planilha.ts).
+- Embed the original municipal coat of arms as a shared PNG data URL in src/lib/brasao.ts; this preserves the exact uploaded bytes and includes the image in production bundles without depending on Lovable-specific asset proxy paths on external Worker deployments. Keep the original asset pointer intact.
