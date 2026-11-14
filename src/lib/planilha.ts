@@ -2,7 +2,7 @@ import type { ItemImportado } from "./importacao-ata";
 import { numeroBR } from "./importacao-ata";
 
 const norm = (s: string) =>
-  s.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /** Converte linhas de planilha (com cabeçalho) em itens, reconhecendo nomes comuns de colunas. */
 export function linhasParaItens(linhas: Record<string, unknown>[]): ItemImportado[] {
