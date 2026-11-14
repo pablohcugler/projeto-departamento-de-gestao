@@ -1,6 +1,6 @@
 import type { ItemImportado } from "./importacao-ata";
 import { numeroBR } from "./importacao-ata";
-export { numeroBR } from "./importacao-ata";
+export { numeroBR };
 
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -21,7 +21,7 @@ export function linhasParaItens(linhas: Record<string, unknown>[]): ItemImportad
       return {
         codigo_item: String(get("cd item", "codigo item", "cod item") ?? "").trim(),
         codigo_produto: String(get("cd produto", "codigo produto", "cod produto") ?? "").trim(),
-        descricao: String(get("descricao", "descri", "especificacao", "nome do item", "produto") ?? "").trim(),
+        descricao: String((get("descricao", "descri", "especificacao", "nome do item") || get("produto")) ?? "").trim(),
         fornecedor: String(get("fornecedor", "empresa", "vencedor") ?? "").trim(),
         unidade: String(get("unidade", "unid", "medida") || "UN").trim(),
         quantidade,
