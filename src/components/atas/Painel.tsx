@@ -96,7 +96,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       atas.filter(
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
-          `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+          `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
     [atas, filtroClasse, busca, totaisQ.data],
   );
@@ -249,12 +249,12 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                       <td className="px-4 py-3 font-medium">{a.numero}</td>
                       <td className="px-4 py-3">{a.objeto}</td>
                       <td className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f[a.id]) || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f?.[a.id]) || "—"}</td>
                       <td className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
                         <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(a.data_vencimento))}</div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m[a.id] ?? 0)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
                       <td className="px-4 py-3"><StatusBadge ata={a} /></td>
                     </tr>
                   ))}
