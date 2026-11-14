@@ -132,6 +132,59 @@ export type Database = {
         }
         Relationships: []
       }
+      contratos: {
+        Row: {
+          classificacao_id: string | null
+          contratado: string | null
+          created_at: string
+          data_inicio: string | null
+          data_vencimento: string
+          dias_alerta: number
+          id: string
+          numero: string
+          objeto: string
+          observacoes: string | null
+          user_id: string
+          valor: number | null
+        }
+        Insert: {
+          classificacao_id?: string | null
+          contratado?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          data_vencimento: string
+          dias_alerta?: number
+          id?: string
+          numero: string
+          objeto: string
+          observacoes?: string | null
+          user_id?: string
+          valor?: number | null
+        }
+        Update: {
+          classificacao_id?: string | null
+          contratado?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          data_vencimento?: string
+          dias_alerta?: number
+          id?: string
+          numero?: string
+          objeto?: string
+          observacoes?: string | null
+          user_id?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_classificacao_id_fkey"
+            columns: ["classificacao_id"]
+            isOneToOne: false
+            referencedRelation: "classificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
