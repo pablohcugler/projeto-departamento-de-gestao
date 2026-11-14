@@ -39,7 +39,7 @@ export function AuthForm() {
           </div>
           <div>
             <h1 className="font-display text-2xl text-foreground">Departamento de Gestão em Saúde</h1>
-            <p className="text-sm text-muted-foreground">Gerenciamento geral do Departamento</p>
+            <p className="text-sm text-muted-foreground">Acesso Restrito</p>
           </div>
         </div>
         <form onSubmit={enviar} className="space-y-4 rounded-xl border bg-card p-6 shadow-sm">
