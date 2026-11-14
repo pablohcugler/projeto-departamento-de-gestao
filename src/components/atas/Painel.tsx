@@ -14,6 +14,7 @@ import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
 import { TemaToggle } from "./TemaToggle";
+import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -160,6 +161,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <ConfigTv />
             {adminQ.data && (
               <Button variant="outline" size="sm" onClick={() => setNovoUsuario(true)}>
                 <UserPlus className="h-4 w-4" /> Novo usuário
