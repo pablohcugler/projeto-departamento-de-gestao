@@ -7,3 +7,4 @@
 - [x] Administrador (pablohrogerio@gmail.com) vê e edita tudo; dados compartilhados pela equipe
 - [x] Só o administrador cadastra novos usuários
 - [x] Vários fornecedores por ata (fornecedor por item)
+- [x] Atas ordenadas por vencimento mais próximo; campo de fase do processo

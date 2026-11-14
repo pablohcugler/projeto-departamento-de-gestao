@@ -17,6 +17,8 @@ type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
 type Classe = Tables<"classificacoes">;
 
+const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Concluído"];
+
 const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
   vencida: { rotulo: "Vencida", cls: "bg-destructive text-destructive-foreground" },
   alerta: { rotulo: "Vence em breve", cls: "bg-warning text-warning-foreground" },
@@ -118,6 +120,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       data_vencimento: editando.data_vencimento,
       dias_alerta: Number(editando.dias_alerta ?? 90),
       observacoes: editando.observacoes || null,
+      fase_processo: editando.fase_processo || null,
       classificacao_id: editando.classificacao_id || null,
     };
     const { error } = editando.id
@@ -241,6 +244,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                     <th className="px-4 py-3 font-medium">Vencimento</th>
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
                     <th className="px-4 py-3 font-medium">Situação</th>
+                    <th className="px-4 py-3 font-medium">Fase do processo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,11 +260,12 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
                       <td className="px-4 py-3"><StatusBadge ata={a} /></td>
+                      <td className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
                     </tr>
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
@@ -298,7 +303,13 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
               <Campo label="Alertar com quantos dias de antecedência?" full>
                 <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
               </Campo>
-              <Campo label="Observações" full><Textarea value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
+              <Campo label="Fase do novo processo" full>
+                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
+                  <option value="">—</option>
+                  {FASES.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </Campo>
+              <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
             </div>
           )}
           <DialogFooter>
@@ -418,7 +429,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       </div>
 
       <div className="mb-8 grid gap-3 sm:grid-cols-4">
-        <Info rotulo="Processo" valor={ata.processo ?? "—"} />
+        <Info rotulo="Processo" valor={`${ata.processo ?? "—"}${ata.fase_processo ? " · " + ata.fase_processo : ""}`} />
         <Info rotulo="Fornecedores" valor={fornecedoresDe(ata, itens.map((i) => i.fornecedor ?? "").filter(Boolean)) || "—"} />
         <Info rotulo="Homologação" valor={dataBR(ata.data_homologacao)} />
         <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
