@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, SunMoon } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -18,6 +18,8 @@ import { TemaToggle } from "./TemaToggle";
 import { Saudacao } from "./Saudacao";
 import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
 
 type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
@@ -49,7 +51,7 @@ export function textoDias(d: number) {
 
 export function Painel({ nome, userId }: { nome?: string | null; userId: string }) {
   const qc = useQueryClient();
-  const [novoUsuario, setNovoUsuario] = useState(false);
+  const [novoUsuario, setNovoUsuario] = useState(false);\n  const [feedbackAberto, setFeedbackAberto] = useState(false);
   const adminQ = useQuery({
     queryKey: ["admin", userId],
     queryFn: async () => {
@@ -57,7 +59,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
-  const [aba, setAba] = useState<"atas" | "contratos">("atas");
+  const [aba, setAba] = useState<"atas" | "contratos" | "feedbacks">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const [gerirClasses, setGerirClasses] = useState(false);
@@ -165,18 +167,30 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               ))}
             </nav>
           </div>
-          <div className="app-header-actions flex items-center gap-1.5 text-sm sm:gap-3">
-            <ConfigTv />
-            {adminQ.data && (
-              <Button variant="outline" size="sm" onClick={() => setNovoUsuario(true)}>
-                <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Novo usuário</span>
-              </Button>
-            )}
-            <Saudacao nome={nome} admin={!!adminQ.data} />
+          <div className="app-header-actions flex items-center gap-2 text-sm">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-10 gap-2 rounded-full border border-white/15 px-2.5 text-white hover:bg-white/10" aria-label="Abrir menu do usuário">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-white/15"><CircleUserRound className="h-5 w-5" /></span>
+                  <span className="hidden max-w-[150px] truncate sm:inline">{nome?.trim().split(/\s+/)[0] || "Minha conta"}</span>
+                  <span className="text-xs opacity-70">⌄</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="max-w-[220px] truncate">{nome || "Conta do usuário"}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <ConfigTv menuTrigger />
+                <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
+                {adminQ.data && <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setAba("feedbacks")}><ClipboardList className="h-4 w-4" /> Relatório de feedbacks</DropdownMenuItem>
+                </>}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => supabase.auth.signOut()} className="text-destructive focus:text-destructive"><LogOut className="h-4 w-4" /> Sair do sistema</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <TemaToggle />
-            <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
-              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
-            </Button>
           </div>
         </div>
       </header>
@@ -333,7 +347,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </DialogContent>
       </Dialog>
 
-      <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
+      <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />\n      <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
     </div>
   );
