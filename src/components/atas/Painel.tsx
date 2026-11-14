@@ -151,21 +151,21 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70 shadow-sm">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <img src={brasaoMunicipio} alt="Brasão do município" className="h-8 w-8 shrink-0 object-contain sm:h-10 sm:w-10" />
-            <div className="leading-tight"><span className="block font-display text-base font-semibold tracking-tight sm:text-lg">Departamento de Gestão em Saúde</span><span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Prefeitura Municipal de Cajati</span></div>
-            <nav className="flex gap-1 sm:ml-6">
+    <div className="min-h-screen bg-background app-shell">
+      <header className="app-header sticky top-0 z-30">
+        <div className="app-header-inner mx-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
+          <div className="app-brand flex min-w-0 flex-wrap items-center gap-3">
+            <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
+            <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
+            <nav className="app-nav flex gap-1 sm:ml-6">
               {(["atas", "contratos"] as const).map((a) => (
-                <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} onClick={() => { setAba(a); setSelecionada(null); }}>
+                <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} className={aba === a ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba(a); setSelecionada(null); }}>
                   {a === "atas" ? "Atas de Registro" : "Contratos"}
                 </Button>
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground sm:gap-3">
+          <div className="app-header-actions flex items-center gap-1.5 text-sm sm:gap-3">
             <ConfigTv />
             {adminQ.data && (
               <Button variant="outline" size="sm" onClick={() => setNovoUsuario(true)}>
@@ -181,7 +181,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-8">
+      <main className="app-main mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-9">
         {aba === "contratos" ? (
           <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
         ) : ataSel ? (
@@ -214,8 +214,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="font-display text-3xl">Atas cadastradas</h2>
-                <p className="text-sm text-muted-foreground">{atas.length} ata(s) no total</p>
+                <div className="app-eyebrow">CONTROLE DE REGISTROS</div>
+                <h2 className="app-page-title">Atas de Registro de Preços</h2>
+                <p className="text-sm text-muted-foreground">{atas.length} ata(s) cadastrada(s) no sistema</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
@@ -227,7 +228,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </div>
             </div>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
@@ -242,7 +243,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </select>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border bg-card">
+            <div className="app-table-wrap overflow-x-auto rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted text-left text-muted-foreground">
                   <tr>
