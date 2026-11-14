@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { extrairItensPdf } from "@/lib/importar.functions";
-import { type ItemImportado } from "@/lib/importacao-ata";
+import { type ItemImportado, numeroBR } from "@/lib/importacao-ata";
 import { linhasParaItens } from "@/lib/planilha";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
     setItens((atuais) => atuais.map((it, idx) => {
       if (idx !== i) return it;
       if (campo === "quantidade" || campo === "preco_unitario") {
-        const numero = Number(v.replace(/\./g, "").replace(",", ".")) || 0;
+        const numero = numeroBR(v);
         const atualizado = { ...it, [campo]: numero };
         atualizado.valor_total = atualizado.quantidade * atualizado.preco_unitario;
         return atualizado;
