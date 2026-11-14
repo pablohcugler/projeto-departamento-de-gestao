@@ -155,6 +155,7 @@ export type Database = {
           pregao?: string | null
           processo?: string | null
           processo_1doc?: string | null
+          situacao_cadastro?: string
           user_id?: string
         }
         Relationships: [
