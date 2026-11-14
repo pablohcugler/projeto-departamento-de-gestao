@@ -53,6 +53,8 @@ export type Database = {
           created_at: string
           descricao: string
           fornecedor: string | null
+          codigo_item: string | null
+          codigo_produto: string | null
           id: string
           preco_total: number | null
           preco_unitario: number
@@ -65,6 +67,8 @@ export type Database = {
           created_at?: string
           descricao: string
           fornecedor?: string | null
+          codigo_item?: string | null
+          codigo_produto?: string | null
           id?: string
           preco_total?: number | null
           preco_unitario?: number
@@ -77,6 +81,8 @@ export type Database = {
           created_at?: string
           descricao?: string
           fornecedor?: string | null
+          codigo_item?: string | null
+          codigo_produto?: string | null
           id?: string
           preco_total?: number | null
           preco_unitario?: number
@@ -111,6 +117,7 @@ export type Database = {
           pregao: string | null
           processo: string | null
           processo_1doc: string | null
+          situacao_cadastro: string
           user_id: string
         }
         Insert: {
@@ -129,6 +136,7 @@ export type Database = {
           pregao?: string | null
           processo?: string | null
           processo_1doc?: string | null
+          situacao_cadastro?: string
           user_id?: string
         }
         Update: {
@@ -195,6 +203,7 @@ export type Database = {
           observacoes: string | null
           pregao: string | null
           processo_1doc: string | null
+          situacao_cadastro: string
           user_id: string
           valor: number | null
         }
@@ -212,6 +221,7 @@ export type Database = {
           observacoes?: string | null
           pregao?: string | null
           processo_1doc?: string | null
+          situacao_cadastro?: string
           user_id?: string
           valor?: number | null
         }
