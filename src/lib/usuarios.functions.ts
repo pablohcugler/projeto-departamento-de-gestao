@@ -18,8 +18,7 @@ export const criarUsuario = createServerFn({ method: "POST" })
       email_confirm: true,
     });
     if (error) throw new Error(error.message);
-    if (data.admin) {
-      await supabaseAdmin.from("user_roles").insert({ user_id: criado.user.id, role: "admin" });
-    }
+    const { error: roleErr } = await supabaseAdmin.from("user_roles").insert({ user_id: criado.user.id, role: data.admin ? "admin" : "user" });
+    if (roleErr) throw new Error("Usuário criado, mas falhou ao liberar o acesso à equipe.");
     return { email: criado.user.email };
   });
