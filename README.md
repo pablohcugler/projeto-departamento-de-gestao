@@ -1,6 +1,6 @@
 # Projeto Departamento de Gestão
 
-gostaria de criar um software de interface web, onde eu pudesse cadastar as atas de registro de preço que o municipio homologa, os itens desta ata, preço unitario e total. quando vencem e me alertasse a data proxima de vencimento para abertura de novo processo licitatório
+Sistema criado para gerenciamento de licitações do departamento de gestão.
 
 This project was built with [Lovable](https://lovable.dev).
 
