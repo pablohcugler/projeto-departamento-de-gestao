@@ -15,6 +15,7 @@ import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
 import { TemaToggle } from "./TemaToggle";
+import { Saudacao } from "./Saudacao";
 import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
@@ -46,7 +47,7 @@ export function textoDias(d: number) {
   return `faltam ${d} dia(s)`;
 }
 
-export function Painel({ email, userId }: { email: string; userId: string }) {
+export function Painel({ nome, userId }: { nome?: string | null; userId: string }) {
   const qc = useQueryClient();
   const [novoUsuario, setNovoUsuario] = useState(false);
   const adminQ = useQuery({
@@ -171,7 +172,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                 <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Novo usuário</span>
               </Button>
             )}
-            <span className="hidden sm:inline">{email}{adminQ.data ? " · Administrador" : ""}</span>
+            <Saudacao nome={nome} admin={!!adminQ.data} />
             <TemaToggle />
             <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
               <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
