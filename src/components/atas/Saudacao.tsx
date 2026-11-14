@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { primeiroNome, saudacaoPorHora } from "@/lib/saudacao";
+import { primeiroNome, saudacaoPorHora } from "@/lib/saudacao-utils";
 
 /** "Bom dia, Pablo" no cabeçalho. O nome fica em user_metadata.nome e o próprio usuário pode alterá-lo. */
 export function Saudacao({ nome, admin }: { nome?: string | null; admin: boolean }) {
