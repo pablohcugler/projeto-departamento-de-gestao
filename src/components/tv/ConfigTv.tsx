@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Monitor } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";\nimport { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +14,7 @@ export function urlTv(c: ConfigTvValores) {
   return `/tv?${p.toString()}`;
 }
 
-export function ConfigTv() {
+export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const [c, setC] = useState<ConfigTvValores>(CONFIG_TV_PADRAO);
   useEffect(() => {
@@ -27,7 +27,7 @@ export function ConfigTv() {
   };
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</Button>
+      {menuTrigger ? <DropdownMenuItem onSelect={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</DropdownMenuItem> : <Button variant="outline" size="sm" onClick={() => setAberto(true)}><Monitor className="h-4 w-4" /> Tela da TV</Button>}
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent>
           <DialogHeader>
