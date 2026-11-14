@@ -57,7 +57,7 @@ export function extrairItensAtaTexto(texto: string): ItemImportado[] {
     const complemento = linha.trim();
     if (!complemento || ignorarLinha(complemento) || /^\d+\s+[-–]/.test(complemento)) continue;
     const ultimo = itens[itens.length - 1];
-    if (ultimo && fornecedor) ultimo.descricao = \`\${ultimo.descricao} \${complemento}\`.trim();
+    if (ultimo && fornecedor) ultimo.descricao = (ultimo.descricao + " " + complemento).trim();
   }
 
   return itens.filter((item) => item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario));
