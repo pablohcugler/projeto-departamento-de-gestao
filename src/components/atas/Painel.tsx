@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -52,6 +52,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const qc = useQueryClient();
   const [novoUsuario, setNovoUsuario] = useState(false);
   const [feedbackAberto, setFeedbackAberto] = useState(false);
+  const [relatoriosAberto, setRelatoriosAberto] = useState(false);
   const adminQ = useQuery({
     queryKey: ["admin", userId],
     queryFn: async () => {
@@ -181,6 +182,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <DropdownMenuSeparator />
                 <ConfigTv menuTrigger />
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
@@ -347,6 +349,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </DialogContent>
       </Dialog>
 
+      <Dialog open={relatoriosAberto} onOpenChange={setRelatoriosAberto}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Relatórios</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Estamos trabalhando nesta funcionalidade ainda</p>
+          <DialogFooter>
+            <Button onClick={() => setRelatoriosAberto(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />
       <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
