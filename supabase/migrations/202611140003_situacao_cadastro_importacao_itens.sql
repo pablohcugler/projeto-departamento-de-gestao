@@ -1,9 +1,8 @@
 -- Classificação cadastral de Atas e Contratos e campos de importação de itens.
--- Os cadastros atuais foram informados como dados de teste e serão removidos.
+-- Os registros de teste já foram removidos manualmente antes da publicação.
+-- Esta migração não exclui registros para preservar cadastros futuros.
 BEGIN;
 
-DELETE FROM public.atas;
-DELETE FROM public.contratos;
 
 ALTER TABLE public.atas
   ADD COLUMN IF NOT EXISTS situacao_cadastro text NOT NULL DEFAULT 'Em andamento';
