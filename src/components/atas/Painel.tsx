@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Anexos } from "./Anexos";
 import brasao from "@/assets/brasao_municipio.png.asset.json";
 import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { Contratos } from "./Contratos";
@@ -124,6 +125,8 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       data_vencimento: editando.data_vencimento,
       dias_alerta: Number(editando.dias_alerta ?? 90),
       observacoes: editando.observacoes || null,
+      memorando_1doc: editando.memorando_1doc || null,
+      processo_1doc: editando.processo_1doc || null,
       fase_processo: editando.fase_processo || null,
       classificacao_id: editando.classificacao_id || null,
     };
@@ -314,6 +317,9 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                 </select>
               </Campo>
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
+              <Campo label="Memorando (1Doc)"><Input placeholder="Opcional" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
+              <Campo label="Processo Administrativo (1Doc)"><Input placeholder="Opcional" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
+              <Campo label="Documentos anexos (opcional)" full><Anexos refTipo="ata" refId={editando.id} /></Campo>
             </div>
           )}
           <DialogFooter>
