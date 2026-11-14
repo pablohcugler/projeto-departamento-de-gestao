@@ -9,3 +9,4 @@
 - [x] Vários fornecedores por ata (fornecedor por item)
 - [x] Atas ordenadas por vencimento mais próximo; campo de fase do processo
 - [x] Importar itens da ata por PDF (IA) ou planilha
+- [x] Brasão do município no topo e login

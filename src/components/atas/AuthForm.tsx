@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import brasao from "@/assets/brasao_municipio.png.asset.json";
 import { FileText } from "lucide-react";
 
 export function AuthForm() {
@@ -23,9 +24,7 @@ export function AuthForm() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <FileText className="h-5 w-5" />
-          </div>
+          <img src={brasao.url} alt="Brasão do município" className="h-16 w-16 object-contain" />
           <div>
             <h1 className="font-display text-2xl text-foreground">Departamento de Gestão em Saúde</h1>
             <p className="text-sm text-muted-foreground">Acesso Restrito</p>
