@@ -22,9 +22,9 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
     try { const s = localStorage.getItem("config-tv"); if (s) setC({ ...CONFIG_TV_PADRAO, ...JSON.parse(s) }); } catch { /* ignore */ }
   }, []);
   const abrir = () => {
-    localStorage.setItem("config-tv", JSON.stringify(c));
-    window.open(urlTv(c), "_blank");
-    setAberto(false);
+    try { localStorage.setItem("config-tv", JSON.stringify(c)); } catch { /* ignore */ }
+    // Navegação na própria aba evita bloqueio de pop-up e fechamento imediato da janela.
+    window.location.assign(urlTv(c));
   };
   return (
     <>
@@ -33,7 +33,7 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Tela da TV</DialogTitle>
-            <DialogDescription>Escolha o que aparece na tela. Ela abre em outra aba, se atualiza sozinha e pode ficar em tela cheia (tecla F11).</DialogDescription>
+            <DialogDescription>Escolha o que aparece no painel. Ao continuar, o sistema abrirá a tela de TV nesta mesma aba. Use F11 para tela cheia.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Título da tela</Label><Input value={c.titulo} onChange={(e) => setC({ ...c, titulo: e.target.value })} /></div>
@@ -42,7 +42,7 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={c.contratos} onCheckedChange={(v) => setC({ ...c, contratos: !!v })} /> Contratos</label>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={c.vencidas} onCheckedChange={(v) => setC({ ...c, vencidas: !!v })} /> Incluir os já vencidos</label>
           </div>
-          <DialogFooter><Button onClick={abrir} disabled={!c.atas && !c.contratos}><Monitor className="h-4 w-4" /> Abrir tela</Button></DialogFooter>
+          <DialogFooter><Button onClick={abrir} disabled={!c.atas && !c.contratos}><Monitor className="h-4 w-4" /> Exibir painel da TV</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </>
