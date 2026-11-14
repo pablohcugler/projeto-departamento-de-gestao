@@ -42,9 +42,12 @@ export function TelaTv() {
     queryFn: async () => {
       const linhas: Linha[] = [];
       if (cfg!.atas) {
-        const { data, error } = await supabase.from("atas").select("id,numero,objeto,fornecedor,data_vencimento,fase_processo");
+        const { data, error } = await supabase.from("atas").select("id,numero,objeto,fornecedor,data_vencimento,fase_processo,situacao_cadastro");
         if (error) throw error;
-        for (const a of data ?? []) linhas.push({ id: a.id, tipo: "Ata", numero: a.numero, objeto: a.objeto, quem: a.fornecedor ?? "", venc: a.data_vencimento, dias: diasParaVencer(a.data_vencimento), fase: a.fase_processo });
+        for (const a of data ?? []) {
+          if (a.situacao_cadastro !== "Vigentes") continue;
+          linhas.push({ id: a.id, tipo: "Ata", numero: a.numero, objeto: a.objeto, quem: a.fornecedor ?? "", venc: a.data_vencimento, dias: diasParaVencer(a.data_vencimento), fase: a.fase_processo });
+        }
       }
       if (cfg!.contratos) {
         const { data, error } = await supabase.from("contratos").select("id,numero,objeto,contratado,data_vencimento");
