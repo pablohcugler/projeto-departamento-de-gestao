@@ -152,11 +152,11 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70 shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <img src={brasao.url} alt="Brasão do município" className="h-10 w-10 object-contain" />
-            <div className="leading-tight"><span className="block font-display text-lg font-semibold tracking-tight">Departamento de Gestão em Saúde</span><span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Prefeitura Municipal de Cajati</span></div>
-            <nav className="ml-6 flex gap-1">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <img src={brasao.url} alt="Brasão do município" className="h-8 w-8 shrink-0 object-contain sm:h-10 sm:w-10" />
+            <div className="leading-tight"><span className="block font-display text-base font-semibold tracking-tight sm:text-lg">Departamento de Gestão em Saúde</span><span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Prefeitura Municipal de Cajati</span></div>
+            <nav className="flex gap-1 sm:ml-6">
               {(["atas", "contratos"] as const).map((a) => (
                 <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} onClick={() => { setAba(a); setSelecionada(null); }}>
                   {a === "atas" ? "Atas de Registro" : "Contratos"}
@@ -164,23 +164,23 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground sm:gap-3">
             <ConfigTv />
             {adminQ.data && (
               <Button variant="outline" size="sm" onClick={() => setNovoUsuario(true)}>
-                <UserPlus className="h-4 w-4" /> Novo usuário
+                <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Novo usuário</span>
               </Button>
             )}
             <span className="hidden sm:inline">{email}{adminQ.data ? " · Administrador" : ""}</span>
             <TemaToggle />
             <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
-              <LogOut className="h-4 w-4" /> Sair
+              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-8">
         {aba === "contratos" ? (
           <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
         ) : ataSel ? (
@@ -291,7 +291,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
             <DialogTitle>{editando?.id ? "Editar ata" : "Nova ata"}</DialogTitle>
           </DialogHeader>
           {editando && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
@@ -339,7 +339,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
 
 export function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
   return (
-    <div className={`space-y-1.5 ${full ? "col-span-2" : ""}`}>
+    <div className={`space-y-1.5 ${full ? "sm:col-span-2" : ""}`}>
       <Label>{label}</Label>
       {children}
     </div>

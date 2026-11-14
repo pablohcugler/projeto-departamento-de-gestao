@@ -107,7 +107,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Input placeholder="Buscar por número, objeto, contratado..." className="max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
           <option value="todas">Todas as classificações</option>
           {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -162,7 +162,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editando?.id ? "Editar contrato" : "Novo contrato"}</DialogTitle></DialogHeader>
           {editando && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo label="Nº do contrato *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Valor (R$)"><Input inputMode="decimal" value={editando.valor ?? ""} onChange={(e) => setEditando({ ...editando, valor: e.target.value as unknown as number })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
