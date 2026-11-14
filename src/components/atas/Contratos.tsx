@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
-import { AlertTriangle, Pencil, Plus, Tags, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock3, FileText, Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { brl, dataBR, diasParaVencer, statusAta } from "@/lib/vencimento";
 import { Campo, StatusBadge, textoDias } from "./Painel";
 
@@ -20,6 +20,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("todas");
+  const [situacao, setSituacao] = useState<"todas" | "vigente" | "alerta" | "vencida">("todas");
 
   const q = useQuery({
     queryKey: ["contratos"],
@@ -36,11 +37,17 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       lista.filter(
         (c) =>
           (filtro === "todas" || (filtro === "sem" ? !c.classificacao_id : c.classificacao_id === filtro)) &&
+          (situacao === "todas" || statusAta(c.data_vencimento, c.dias_alerta) === situacao) &&
           `${c.numero} ${c.objeto} ${c.contratado ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [lista, filtro, busca],
+    [lista, filtro, situacao, busca],
   );
   const alertas = lista.filter((c) => statusAta(c.data_vencimento, c.dias_alerta) !== "vigente");
+  const resumo = lista.reduce((acc, c) => {
+    acc[statusAta(c.data_vencimento, c.dias_alerta)] += 1;
+    acc.valor += Number(c.valor ?? 0);
+    return acc;
+  }, { vigente: 0, alerta: 0, vencida: 0, valor: 0 });
 
   async function salvar() {
     if (!editando?.numero || !editando.objeto || !editando.data_vencimento) {
@@ -95,16 +102,39 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </section>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-3xl">Contratos</h2>
-          <p className="text-sm text-muted-foreground">{lista.length} contrato(s) no total</p>
+          <p className="text-sm text-muted-foreground">Acompanhamento de vigência, valores e responsabilidades contratuais</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onGerirClasses}><Tags className="h-4 w-4" /> Classificações</Button>
           <Button onClick={() => setEditando({ dias_alerta: 90 })}><Plus className="h-4 w-4" /> Novo contrato</Button>
         </div>
       </div>
+
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos contratos">
+        <button onClick={() => setSituacao("todas")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 ${situacao === "todas" ? "border-primary ring-1 ring-primary/20" : ""}`}>
+          <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Total de contratos</span><FileText className="h-4 w-4" /></div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.length}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Valor cadastrado: {brl(resumo.valor)}</div>
+        </button>
+        <button onClick={() => setSituacao("vigente")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-success/60 ${situacao === "vigente" ? "border-success ring-1 ring-success/20" : ""}`}>
+          <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Vigentes</span><CheckCircle2 className="h-4 w-4 text-success" /></div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums">{resumo.vigente}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Dentro do prazo de vigência</div>
+        </button>
+        <button onClick={() => setSituacao("alerta")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-warning ${situacao === "alerta" ? "border-warning ring-1 ring-warning/20" : ""}`}>
+          <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Próximos do vencimento</span><Clock3 className="h-4 w-4 text-warning" /></div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums">{resumo.alerta}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Exigem acompanhamento</div>
+        </button>
+        <button onClick={() => setSituacao("vencida")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-destructive ${situacao === "vencida" ? "border-destructive ring-1 ring-destructive/20" : ""}`}>
+          <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Vencidos</span><CalendarClock className="h-4 w-4 text-destructive" /></div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums">{resumo.vencida}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Requerem providência administrativa</div>
+        </button>
+      </section>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -115,7 +145,11 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>{filtrados.length} de {lista.length} contrato(s)</span>
+        {situacao !== "todas" && <button className="font-medium text-primary hover:underline" onClick={() => setSituacao("todas")}>Limpar filtro de situação</button>}
+      </div>
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
@@ -152,7 +186,9 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               );
             })}
             {filtrados.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">{q.isLoading ? "Carregando..." : "Nenhum contrato encontrado. Clique em “Novo contrato” para começar."}</td></tr>
+              <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                {q.isLoading ? "Carregando contratos..." : q.isError ? "Não foi possível carregar os contratos. Atualize a página e tente novamente." : "Nenhum contrato corresponde aos filtros selecionados."}
+              </td></tr>
             )}
           </tbody>
         </table>
