@@ -13,6 +13,7 @@ import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, P
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
+import { TemaToggle } from "./TemaToggle";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -145,11 +146,11 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
+      <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70 shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <img src={brasao.url} alt="Brasão do município" className="h-10 w-10 object-contain" />
-            <span className="font-display text-xl">Departamento de Gestão em Saúde</span>
+            <div className="leading-tight"><span className="block font-display text-lg font-semibold tracking-tight">Departamento de Gestão em Saúde</span><span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Prefeitura Municipal de Cajati</span></div>
             <nav className="ml-6 flex gap-1">
               {(["atas", "contratos"] as const).map((a) => (
                 <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} onClick={() => { setAba(a); setSelecionada(null); }}>
@@ -165,6 +166,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
               </Button>
             )}
             <span className="hidden sm:inline">{email}{adminQ.data ? " · Administrador" : ""}</span>
+            <TemaToggle />
             <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
               <LogOut className="h-4 w-4" /> Sair
             </Button>
