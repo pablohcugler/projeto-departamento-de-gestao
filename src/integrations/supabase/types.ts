@@ -240,6 +240,7 @@ export type Database = {
           observacoes?: string | null
           pregao?: string | null
           processo_1doc?: string | null
+          situacao_cadastro?: string
           user_id?: string
           valor?: number | null
         }
