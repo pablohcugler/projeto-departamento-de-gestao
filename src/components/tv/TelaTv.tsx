@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import brasao from "@/assets/brasao_municipio.png.asset.json";
+import { brasaoMunicipio } from "@/lib/brasao";
 import { dataBR, diasParaVencer } from "@/lib/vencimento";
 import { CONFIG_TV_PADRAO, type ConfigTvValores } from "./ConfigTv";
 
@@ -67,7 +67,7 @@ export function TelaTv() {
     <div className="dark min-h-screen bg-background p-4 text-foreground sm:p-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-5">
         <div className="flex min-w-0 items-center gap-4">
-          <img src={brasao.url} alt="Brasão do município" className="h-12 w-12 shrink-0 object-contain sm:h-16 sm:w-16" />
+          <img src={brasaoMunicipio} alt="Brasão do município" className="h-12 w-12 shrink-0 object-contain sm:h-16 sm:w-16" />
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground sm:text-sm">Departamento de Gestão em Saúde</p>
             <h1 className="font-display text-2xl font-semibold sm:text-4xl">{cfg?.titulo}</h1>
