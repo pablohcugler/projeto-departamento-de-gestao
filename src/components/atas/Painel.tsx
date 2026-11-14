@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, FileText, LogOut, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
+import { Contratos } from "./Contratos";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -21,12 +22,12 @@ const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
   vigente: { rotulo: "Vigente", cls: "bg-success text-success-foreground" },
 };
 
-function StatusBadge({ ata }: { ata: Ata }) {
+export function StatusBadge({ ata }: { ata: { data_vencimento: string; dias_alerta: number } }) {
   const s = statusAta(ata.data_vencimento, ata.dias_alerta);
   return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusInfo[s].cls}`}>{statusInfo[s].rotulo}</span>;
 }
 
-function textoDias(d: number) {
+export function textoDias(d: number) {
   if (d < 0) return `venceu há ${-d} dia(s)`;
   if (d === 0) return "vence hoje";
   return `faltam ${d} dia(s)`;
@@ -34,6 +35,7 @@ function textoDias(d: number) {
 
 export function Painel({ email }: { email: string }) {
   const qc = useQueryClient();
+  const [aba, setAba] = useState<"atas" | "contratos">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const [gerirClasses, setGerirClasses] = useState(false);
@@ -103,7 +105,7 @@ export function Painel({ email }: { email: string }) {
     const { error } = editando.id
       ? await supabase.from("atas").update(payload).eq("id", editando.id)
       : await supabase.from("atas").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Ata salva.");
     setEditando(null);
     qc.invalidateQueries({ queryKey: ["atas"] });
@@ -112,7 +114,7 @@ export function Painel({ email }: { email: string }) {
   async function excluirAta(id: string) {
     if (!confirm("Excluir esta ata e todos os seus itens?")) return;
     const { error } = await supabase.from("atas").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setSelecionada(null);
     qc.invalidateQueries({ queryKey: ["atas"] });
     qc.invalidateQueries({ queryKey: ["totais"] });
@@ -126,7 +128,14 @@ export function Painel({ email }: { email: string }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <FileText className="h-4 w-4" />
             </div>
-            <span className="font-display text-xl">Atas de Registro de Preço</span>
+            <span className="font-display text-xl">Departamento de Gestão em Saúde</span>
+            <nav className="ml-6 flex gap-1">
+              {(["atas", "contratos"] as const).map((a) => (
+                <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} onClick={() => { setAba(a); setSelecionada(null); }}>
+                  {a === "atas" ? "Atas de Registro" : "Contratos"}
+                </Button>
+              ))}
+            </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="hidden sm:inline">{email}</span>
@@ -138,7 +147,9 @@ export function Painel({ email }: { email: string }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        {ataSel ? (
+        {aba === "contratos" ? (
+          <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
+        ) : ataSel ? (
           <DetalheAta
             ata={ataSel}
             classe={nomeClasse(ataSel.classificacao_id)}
@@ -279,7 +290,7 @@ export function Painel({ email }: { email: string }) {
   );
 }
 
-function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
+export function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
   return (
     <div className={`space-y-1.5 ${full ? "col-span-2" : ""}`}>
       <Label>{label}</Label>
@@ -295,7 +306,7 @@ function GerirClasses({ aberto, onFechar, classes }: { aberto: boolean; onFechar
     e.preventDefault();
     if (!nome.trim()) return;
     const { error } = await supabase.from("classificacoes").insert({ nome: nome.trim() });
-    if (error) return toast.error(error.code === "23505" ? "Essa classificação já existe." : error.message);
+    if (error) { toast.error(error.code === "23505" ? "Essa classificação já existe." : error.message); return; }
     setNome("");
     qc.invalidateQueries({ queryKey: ["classificacoes"] });
   }
@@ -327,7 +338,7 @@ function GerirClasses({ aberto, onFechar, classes }: { aberto: boolean; onFechar
   );
 }
 
-function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; classe?: string; onVoltar: () => void; onEditar: () => void; onExcluir: () => void }) {
+function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; classe?: string | undefined; onVoltar: () => void; onEditar: () => void; onExcluir: () => void }) {
   const qc = useQueryClient();
   const itensQ = useQuery({
     queryKey: ["itens", ata.id],
@@ -348,7 +359,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!novo.descricao || !novo.preco_unitario) return toast.error("Informe descrição e preço unitário.");
+    if (!novo.descricao || !novo.preco_unitario) { toast.error("Informe descrição e preço unitário."); return; }
     const { error } = await supabase.from("ata_itens").insert({
       ata_id: ata.id,
       descricao: novo.descricao,
@@ -356,7 +367,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       quantidade: Number(novo.quantidade.replace(",", ".")),
       preco_unitario: Number(novo.preco_unitario.replace(",", ".")),
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNovo({ descricao: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
     recarregar();
   }

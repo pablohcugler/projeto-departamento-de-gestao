@@ -8,10 +8,10 @@ import { Painel } from "@/components/atas/Painel";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Atas de Registro de Preço — Controle de Vencimentos" },
-      { name: "description", content: "Cadastre atas de registro de preço, itens e valores, e receba alertas de vencimento." },
-      { property: "og:title", content: "Atas de Registro de Preço — Controle de Vencimentos" },
-      { property: "og:description", content: "Cadastre atas de registro de preço, itens e valores, e receba alertas de vencimento." },
+      { title: "Departamento de Gestão em Saúde" },
+      { name: "description", content: "Gerenciamento geral do Departamento: atas de registro de preço e contratos com alertas de vencimento." },
+      { property: "og:title", content: "Departamento de Gestão em Saúde" },
+      { property: "og:description", content: "Gerenciamento geral do Departamento: atas de registro de preço e contratos com alertas de vencimento." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
