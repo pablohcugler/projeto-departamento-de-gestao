@@ -105,7 +105,7 @@ export function Painel({ email }: { email: string }) {
     const { error } = editando.id
       ? await supabase.from("atas").update(payload).eq("id", editando.id)
       : await supabase.from("atas").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Ata salva.");
     setEditando(null);
     qc.invalidateQueries({ queryKey: ["atas"] });
@@ -114,7 +114,7 @@ export function Painel({ email }: { email: string }) {
   async function excluirAta(id: string) {
     if (!confirm("Excluir esta ata e todos os seus itens?")) return;
     const { error } = await supabase.from("atas").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setSelecionada(null);
     qc.invalidateQueries({ queryKey: ["atas"] });
     qc.invalidateQueries({ queryKey: ["totais"] });
@@ -306,7 +306,7 @@ function GerirClasses({ aberto, onFechar, classes }: { aberto: boolean; onFechar
     e.preventDefault();
     if (!nome.trim()) return;
     const { error } = await supabase.from("classificacoes").insert({ nome: nome.trim() });
-    if (error) return toast.error(error.code === "23505" ? "Essa classificação já existe." : error.message);
+    if (error) { toast.error(error.code === "23505" ? "Essa classificação já existe." : error.message); return; }
     setNome("");
     qc.invalidateQueries({ queryKey: ["classificacoes"] });
   }
@@ -338,7 +338,7 @@ function GerirClasses({ aberto, onFechar, classes }: { aberto: boolean; onFechar
   );
 }
 
-function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; classe?: string; onVoltar: () => void; onEditar: () => void; onExcluir: () => void }) {
+function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; classe?: string | undefined; onVoltar: () => void; onEditar: () => void; onExcluir: () => void }) {
   const qc = useQueryClient();
   const itensQ = useQuery({
     queryKey: ["itens", ata.id],
@@ -359,7 +359,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!novo.descricao || !novo.preco_unitario) return toast.error("Informe descrição e preço unitário.");
+    if (!novo.descricao || !novo.preco_unitario) { toast.error("Informe descrição e preço unitário."); return; }
     const { error } = await supabase.from("ata_itens").insert({
       ata_id: ata.id,
       descricao: novo.descricao,
@@ -367,7 +367,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       quantidade: Number(novo.quantidade.replace(",", ".")),
       preco_unitario: Number(novo.preco_unitario.replace(",", ".")),
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNovo({ descricao: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
     recarregar();
   }

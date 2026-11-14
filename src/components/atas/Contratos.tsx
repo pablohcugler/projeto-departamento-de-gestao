@@ -61,7 +61,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
     const { error } = editando.id
       ? await supabase.from("contratos").update(payload).eq("id", editando.id)
       : await supabase.from("contratos").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Contrato salvo.");
     setEditando(null);
     qc.invalidateQueries({ queryKey: ["contratos"] });
