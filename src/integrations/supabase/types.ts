@@ -60,6 +60,7 @@ export type Database = {
       }
       atas: {
         Row: {
+          classificacao_id: string | null
           created_at: string
           data_homologacao: string | null
           data_vencimento: string
@@ -73,6 +74,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          classificacao_id?: string | null
           created_at?: string
           data_homologacao?: string | null
           data_vencimento: string
@@ -86,6 +88,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          classificacao_id?: string | null
           created_at?: string
           data_homologacao?: string | null
           data_vencimento?: string
@@ -96,6 +99,35 @@ export type Database = {
           objeto?: string
           observacoes?: string | null
           processo?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atas_classificacao_id_fkey"
+            columns: ["classificacao_id"]
+            isOneToOne: false
+            referencedRelation: "classificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
           user_id?: string
         }
         Relationships: []
