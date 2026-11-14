@@ -1,0 +1,1 @@
+ALTER TABLE public.ata_itens ADD COLUMN fornecedor text;
