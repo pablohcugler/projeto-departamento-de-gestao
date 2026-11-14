@@ -28,6 +28,11 @@ export function StatusBadge({ ata }: { ata: { data_vencimento: string; dias_aler
   return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusInfo[s].cls}`}>{statusInfo[s].rotulo}</span>;
 }
 
+function fornecedoresDe(a: { fornecedor: string | null }, dosItens: string[] = []) {
+  const todos = [...(a.fornecedor ? a.fornecedor.split(",").map((x) => x.trim()).filter(Boolean) : []), ...dosItens];
+  return [...new Set(todos)].join(", ");
+}
+
 export function textoDias(d: number) {
   if (d < 0) return `venceu há ${-d} dia(s)`;
   if (d === 0) return "vence hoje";
@@ -70,11 +75,15 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
   const totaisQ = useQuery({
     queryKey: ["totais"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("ata_itens").select("ata_id, preco_total");
+      const { data, error } = await supabase.from("ata_itens").select("ata_id, preco_total, fornecedor");
       if (error) throw error;
       const m: Record<string, number> = {};
-      data.forEach((i) => (m[i.ata_id] = (m[i.ata_id] ?? 0) + Number(i.preco_total ?? 0)));
-      return m;
+      const f: Record<string, string[]> = {};
+      data.forEach((i) => {
+        m[i.ata_id] = (m[i.ata_id] ?? 0) + Number(i.preco_total ?? 0);
+        if (i.fornecedor && !(f[i.ata_id] ??= []).includes(i.fornecedor)) f[i.ata_id]!.push(i.fornecedor);
+      });
+      return { m, f };
     },
   });
 
@@ -87,9 +96,9 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
       atas.filter(
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
-          `${a.numero} ${a.objeto} ${a.fornecedor ?? ""} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+          `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [atas, filtroClasse, busca],
+    [atas, filtroClasse, busca, totaisQ.data],
   );
   const alertas = atas.filter((a) => statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
 
@@ -228,7 +237,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                     <th className="px-4 py-3 font-medium">Nº Ata</th>
                     <th className="px-4 py-3 font-medium">Objeto</th>
                     <th className="px-4 py-3 font-medium">Classificação</th>
-                    <th className="px-4 py-3 font-medium">Fornecedor</th>
+                    <th className="px-4 py-3 font-medium">Fornecedores</th>
                     <th className="px-4 py-3 font-medium">Vencimento</th>
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
                     <th className="px-4 py-3 font-medium">Situação</th>
@@ -240,12 +249,12 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                       <td className="px-4 py-3 font-medium">{a.numero}</td>
                       <td className="px-4 py-3">{a.objeto}</td>
                       <td className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{a.fornecedor ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f[a.id]) || "—"}</td>
                       <td className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
                         <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(a.data_vencimento))}</div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.[a.id] ?? 0)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m[a.id] ?? 0)}</td>
                       <td className="px-4 py-3"><StatusBadge ata={a} /></td>
                     </tr>
                   ))}
@@ -283,7 +292,7 @@ export function Painel({ email, userId }: { email: string; userId: string }) {
                   {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </Campo>
-              <Campo label="Fornecedor"><Input value={editando.fornecedor ?? ""} onChange={(e) => setEditando({ ...editando, fornecedor: e.target.value })} /></Campo>
+              <Campo label="Fornecedores (separe por vírgula)"><Input value={editando.fornecedor ?? ""} onChange={(e) => setEditando({ ...editando, fornecedor: e.target.value })} /></Campo>
               <Campo label="Data de homologação"><Input type="date" value={editando.data_homologacao ?? ""} onChange={(e) => setEditando({ ...editando, data_homologacao: e.target.value })} /></Campo>
               <Campo label="Data de vencimento *"><Input type="date" value={editando.data_vencimento ?? ""} onChange={(e) => setEditando({ ...editando, data_vencimento: e.target.value })} /></Campo>
               <Campo label="Alertar com quantos dias de antecedência?" full>
@@ -365,7 +374,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   });
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
-  const [novo, setNovo] = useState({ descricao: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
+  const [novo, setNovo] = useState({ descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
   const recarregar = () => {
     qc.invalidateQueries({ queryKey: ["itens", ata.id] });
@@ -378,12 +387,13 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
     const { error } = await supabase.from("ata_itens").insert({
       ata_id: ata.id,
       descricao: novo.descricao,
+      fornecedor: novo.fornecedor || null,
       unidade: novo.unidade || "UN",
       quantidade: Number(novo.quantidade.replace(",", ".")),
       preco_unitario: Number(novo.preco_unitario.replace(",", ".")),
     });
     if (error) { toast.error(error.message); return; }
-    setNovo({ descricao: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
+    setNovo({ descricao: "", fornecedor: novo.fornecedor, unidade: "UN", quantidade: "1", preco_unitario: "" });
     recarregar();
   }
   async function removerItem(i: Item) {
@@ -409,7 +419,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
 
       <div className="mb-8 grid gap-3 sm:grid-cols-4">
         <Info rotulo="Processo" valor={ata.processo ?? "—"} />
-        <Info rotulo="Fornecedor" valor={ata.fornecedor ?? "—"} />
+        <Info rotulo="Fornecedores" valor={fornecedoresDe(ata, itens.map((i) => i.fornecedor ?? "").filter(Boolean)) || "—"} />
         <Info rotulo="Homologação" valor={dataBR(ata.data_homologacao)} />
         <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
       </div>
@@ -421,6 +431,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
             <tr>
               <th className="px-4 py-3 font-medium">#</th>
               <th className="px-4 py-3 font-medium">Descrição</th>
+              <th className="px-4 py-3 font-medium">Fornecedor</th>
               <th className="px-4 py-3 font-medium">Unid.</th>
               <th className="px-4 py-3 text-right font-medium">Qtd.</th>
               <th className="px-4 py-3 text-right font-medium">Preço unitário</th>
@@ -433,6 +444,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
               <tr key={i.id} className="border-t">
                 <td className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
                 <td className="px-4 py-2.5">{i.descricao}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
                 <td className="px-4 py-2.5">{i.unidade}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{brl(Number(i.preco_unitario))}</td>
@@ -441,14 +453,15 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
               </tr>
             ))}
             <tr className="border-t bg-muted/50">
-              <td colSpan={5} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
+              <td colSpan={6} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(total)}</td>
               <td />
             </tr>
           </tbody>
         </table>
-        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[1fr_80px_100px_140px_auto]">
+        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[1fr_180px_80px_100px_140px_auto]">
           <Input placeholder="Descrição do item" value={novo.descricao} onChange={(e) => setNovo({ ...novo, descricao: e.target.value })} />
+          <Input placeholder="Fornecedor" value={novo.fornecedor} onChange={(e) => setNovo({ ...novo, fornecedor: e.target.value })} />
           <Input placeholder="Unid." value={novo.unidade} onChange={(e) => setNovo({ ...novo, unidade: e.target.value })} />
           <Input placeholder="Qtd." inputMode="decimal" value={novo.quantidade} onChange={(e) => setNovo({ ...novo, quantidade: e.target.value })} />
           <Input placeholder="Preço unit. (R$)" inputMode="decimal" value={novo.preco_unitario} onChange={(e) => setNovo({ ...novo, preco_unitario: e.target.value })} />
