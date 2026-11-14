@@ -50,7 +50,8 @@ export function textoDias(d: number) {
 
 export function Painel({ nome, userId }: { nome?: string | null; userId: string }) {
   const qc = useQueryClient();
-  const [novoUsuario, setNovoUsuario] = useState(false);\n  const [feedbackAberto, setFeedbackAberto] = useState(false);
+  const [novoUsuario, setNovoUsuario] = useState(false);
+  const [feedbackAberto, setFeedbackAberto] = useState(false);
   const adminQ = useQuery({
     queryKey: ["admin", userId],
     queryFn: async () => {
@@ -346,7 +347,8 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </DialogContent>
       </Dialog>
 
-      <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />\n      <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
+      <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />
+      <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
     </div>
   );
