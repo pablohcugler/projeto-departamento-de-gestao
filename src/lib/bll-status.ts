@@ -20,34 +20,27 @@ export function normalizarBll(valor: string): string {
 }
 
 function decodificarHtml(valor: string): string {
+  const entidades: Record<string, string> = {
+    nbsp: " ", amp: "&", quot: '"', apos: "'", lt: "<", gt: ">",
+    aacute: "á", Aacute: "Á", atilde: "ã", Atilde: "Ã",
+    acirc: "â", Acirc: "Â", agrave: "à", Agrave: "À",
+    eacute: "é", Eacute: "É", ecirc: "ê", Ecirc: "Ê",
+    iacute: "í", Iacute: "Í", oacute: "ó", Oacute: "Ó",
+    otilde: "õ", Otilde: "Õ", ocirc: "ô", Ocirc: "Ô",
+    uacute: "ú", Uacute: "Ú", ccedil: "ç", Ccedil: "Ç",
+    ordm: "º", ordf: "ª",
+  };
+
   return valor
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<\/(?:div|p|span|li|a)>/gi, " ")
+    .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, " ")
+    .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<br\\s*\\/?>/gi, " ")
+    .replace(/<\\/(?:div|p|span|li|a)>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&aacute;/gi, "á").replace(/&Aacute;/g, "Á")
-    .replace(/&atilde;/gi, "ã").replace(/&Atilde;/g, "Ã")
-    .replace(/&acirc;/gi, "â").replace(/&Acirc;/g, "Â")
-    .replace(/&agrave;/gi, "à").replace(/&Agrave;/g, "À")
-    .replace(/&eacute;/gi, "é").replace(/&Eacute;/g, "É")
-    .replace(/&ecirc;/gi, "ê").replace(/&Ecirc;/g, "Ê")
-    .replace(/&iacute;/gi, "í").replace(/&Iacute;/g, "Í")
-    .replace(/&oacute;/gi, "ó").replace(/&Oacute;/g, "Ó")
-    .replace(/&otilde;/gi, "õ").replace(/&Otilde;/g, "Õ")
-    .replace(/&ocirc;/gi, "ô").replace(/&Ocirc;/g, "Ô")
-    .replace(/&uacute;/gi, "ú").replace(/&Uacute;/g, "Ú")
-    .replace(/&ccedil;/gi, "ç").replace(/&Ccedil;/g, "Ç")
-    .replace(/&ordm;/gi, "º").replace(/&ordf;/gi, "ª")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&([A-Za-z]+);/g, (entity, name: string) => entidades[name] ?? entity)
+    .replace(/&#(\\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/\s+/g, " ")
+    .replace(/\\s+/g, " ")
     .trim();
 }
 
