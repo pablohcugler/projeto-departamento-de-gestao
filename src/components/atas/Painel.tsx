@@ -20,7 +20,6 @@ import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
-import { consultarStatusBll } from "@/lib/bll.functions";
 
 type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
@@ -80,7 +79,10 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     },
   });
 
-  const consultarBll = useServerFn(consultarStatusBll);
+  // A consulta automatizada da listagem pública da BLL foi desativada:
+  // o portal está retornando CAPTCHA/anti-bot às requisições do servidor.
+  // O status deve ser confirmado manualmente até a BLL fornecer acesso oficial
+  // por Web Service/API para o órgão.
   const editaisParaConsultaBll = useMemo(
     () =>
       (atasQ.data ?? [])
@@ -93,30 +95,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         .map((ata) => ({ ataId: ata.id, numeroEdital: ata.numero_edital_bll!.trim() })),
     [atasQ.data],
   );
-  const bllStatusQ = useQuery({
-    queryKey: ["bll-status", editaisParaConsultaBll.map((p) => p.ataId + ":" + p.numeroEdital)],
-    queryFn: async () => {
-      let watchdog: ReturnType<typeof setTimeout> | undefined;
-      try {
-        return await Promise.race([
-          consultarBll({ data: { processos: editaisParaConsultaBll } }),
-          new Promise<never>((_, reject) => {
-            watchdog = setTimeout(
-              () => reject(new Error("A consulta da BLL ultrapassou 45 segundos. Verifique o acesso à BLL e tente novamente.")),
-              45_000,
-            );
-          }),
-        ]);
-      } finally {
-        if (watchdog) clearTimeout(watchdog);
-      }
-    },
-    enabled: editaisParaConsultaBll.length > 0 && filtroSituacao !== "Vigentes",
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 15 * 60 * 1000,
-    refetchIntervalInBackground: false,
-    retry: false,
-  });
   const classesQ = useQuery({
     queryKey: ["classificacoes"],
     queryFn: async () => {
@@ -341,9 +319,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
               {filtroSituacao !== "Vigentes" && editaisParaConsultaBll.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => void bllStatusQ.refetch()} disabled={bllStatusQ.isFetching}>
-                  {bllStatusQ.isFetching ? "Consultando BLL..." : "Atualizar status BLL"}
-                </Button>
+                <span className="inline-flex items-center rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+                  Consulta automática da BLL temporariamente indisponível
+                </span>
               )}
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
@@ -394,42 +372,15 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       {filtroSituacao !== "Vigentes" && (
                         <td data-label="Status BLL" className="px-4 py-3">
                           {a.situacao_cadastro !== "Em andamento" || a.fase_processo !== "Publicado" ? "—" : !a.numero_edital_bll ? "Edital não informado" : (
-                            (() => {
-                              const resultado = bllStatusQ.data?.resultados.find((r) => r.ataId === a.id);
-                              if (resultado?.localizado && resultado.fase) {
-                                return (
-                                  <div className="min-w-40">
-                                    <span className="inline-flex rounded-full bg-accent px-2.5 py-1 text-xs font-medium">{resultado.fase}</span>
-                                    <div className="mt-1 text-[10px] text-muted-foreground">
-                                      {bllStatusQ.data?.consultadoEm ? new Date(bllStatusQ.data.consultadoEm).toLocaleString("pt-BR") : "Consultado agora"} · {bllStatusQ.data?.paginasConsultadas ?? 6} páginas
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              if (bllStatusQ.isError) {
-                                const erro = bllStatusQ.error instanceof Error ? bllStatusQ.error.message : "Falha inesperada na consulta.";
-                                return (
-                                  <div className="min-w-52 max-w-72 whitespace-normal text-xs text-destructive" title={erro}>
-                                    <div className="font-semibold">BLL indisponível</div>
-                                    <div className="mt-1 break-words">{erro}</div>
-                                    <button type="button" className="mt-1 underline" onClick={() => void bllStatusQ.refetch()}>
-                                      Tentar novamente
-                                    </button>
-                                  </div>
-                                );
-                              }
-                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando páginas da BLL...</span>;
-                              if (bllStatusQ.data?.paginasDisponiveis === 0) return <span className="text-xs text-destructive" title={bllStatusQ.data.aviso}>BLL não respondeu</span>;
-                              return (
-                                <div className="text-xs text-muted-foreground" title={resultado?.mensagem ?? bllStatusQ.data?.aviso}>
-                                  Não localizado em {bllStatusQ.data?.paginasDisponiveis ?? 0}/{bllStatusQ.data?.paginasConsultadas ?? 6} páginas
-                                  {bllStatusQ.data?.paginasComFalha ? " · consulta parcial" : ""}
-                                </div>
-                              );
-                            })()
+                            <div className="min-w-40 whitespace-normal text-xs">
+                              <span className="font-medium text-warning-foreground">Conferência manual necessária</span>
+                              <div className="mt-1 text-muted-foreground">
+                                Nº {a.numero_edital_bll}. A BLL bloqueou a consulta automática; nenhum status foi confirmado.
+                              </div>
+                            </div>
                           )}
                           {a.situacao_cadastro === "Em andamento" && a.fase_processo === "Publicado" && (
-                            <a className="mt-1 inline-block text-[10px] text-primary underline" href="https://bllcompras.com/Process/ProcessSearchPublic?param1=0" target="_blank" rel="noreferrer">Abrir BLL</a>
+                            <a className="mt-1 inline-block text-[10px] text-primary underline" href={`https://bllcompras.com/Process/ProcessSearchPublic?param1=0`} target="_blank" rel="noreferrer">Abrir BLL para conferir</a>
                           )}
                         </td>
                       )}
