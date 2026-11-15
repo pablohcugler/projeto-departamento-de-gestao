@@ -31,23 +31,23 @@ export function Contratos({ classes, onGerirClasses, filtroSituacao }: { classes
     },
   });
   const lista = q.data ?? [];
+  const contratosPorSituacao = lista.filter(
+    (contrato) => filtroSituacao === "todas" || contrato.situacao_cadastro === filtroSituacao,
+  );
   const nomeClasse = (id: string | null) => classes.find((c) => c.id === id)?.nome;
   const filtrados = useMemo(
     () =>
-      lista.filter(
+      contratosPorSituacao.filter(
         (c) =>
           (filtro === "todas" || (filtro === "sem" ? !c.classificacao_id : c.classificacao_id === filtro)) &&
           (filtroSituacao === "todas" || c.situacao_cadastro === filtroSituacao) &&
           (situacao === "todas" || statusAta(c.data_vencimento, c.dias_alerta) === situacao) &&
           `${c.numero} ${c.objeto} ${c.contratado ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [lista, filtro, filtroSituacao, situacao, busca],
+    [contratosPorSituacao, filtro, situacao, busca],
   );
-  const alertas = lista.filter((c) =>
-    (filtroSituacao === "todas" || c.situacao_cadastro === filtroSituacao) &&
-    statusAta(c.data_vencimento, c.dias_alerta) !== "vigente",
-  );
-  const resumo = lista.reduce((acc, c) => {
+  const alertas = contratosPorSituacao.filter((c) => statusAta(c.data_vencimento, c.dias_alerta) !== "vigente");
+  const resumo = contratosPorSituacao.reduce((acc, c) => {
     acc[statusAta(c.data_vencimento, c.dias_alerta)] += 1;
     acc.valor += Number(c.valor ?? 0);
     return acc;
@@ -151,7 +151,7 @@ export function Contratos({ classes, onGerirClasses, filtroSituacao }: { classes
       </div>
 
       <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>{filtrados.length} de {lista.length} contrato(s)</span>
+        <span>{filtrados.length} contrato(s) exibido(s) nesta situação</span>
         {situacao !== "todas" && <button className="font-medium text-primary hover:underline" onClick={() => setSituacao("todas")}>Limpar filtro de situação</button>}
       </div>
       <div className="app-responsive-table overflow-x-auto rounded-xl border bg-card shadow-sm">
