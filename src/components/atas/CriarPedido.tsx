@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Printer } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, FileText, FileUp, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,9 +35,10 @@ function dataBR(valor: string) {
 }
 
 function escaparHtml(valor: string) {
-  return valor.replace(/[&<>"']/g, (c) => ({
+  const entidades: Record<string, string> = {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c] ?? c);
+  };
+  return valor.replace(/[&<>"']/g, (c) => entidades[c] ?? c);
 }
 
 export function CriarPedido({
@@ -154,13 +155,19 @@ export function CriarPedido({
       const linhasLidas = resposta.itens.map((item, indice): LinhaPedido => {
         const codigoItem = chaveCodigo(item.codigo_item);
         const codigoProduto = chaveCodigo(item.codigo_produto);
+        const descricao = chaveCodigo(item.descricao);
         const fornecedor = chaveCodigo(item.fornecedor);
-        const candidatos = itensAta.filter((existente) => {
-          const mesmoCodigoItem = codigoItem && chaveCodigo(existente.codigo_item) === codigoItem;
-          const mesmoCodigoProduto = codigoProduto && chaveCodigo(existente.codigo_produto) === codigoProduto;
-          const mesmoFornecedor = !fornecedor || !existente.fornecedor || chaveCodigo(existente.fornecedor) === fornecedor;
-          return Boolean((mesmoCodigoItem || mesmoCodigoProduto) && mesmoFornecedor && !usados.has(existente.id));
-        });
+        const mesmoFornecedor = (existente: ItemAta) =>
+          !fornecedor || !existente.fornecedor || chaveCodigo(existente.fornecedor) === fornecedor;
+        let candidatos = codigoItem
+          ? itensAta.filter((existente) => chaveCodigo(existente.codigo_item) === codigoItem && mesmoFornecedor(existente) && !usados.has(existente.id))
+          : [];
+        if (candidatos.length !== 1 && codigoProduto) {
+          candidatos = itensAta.filter((existente) => chaveCodigo(existente.codigo_produto) === codigoProduto && mesmoFornecedor(existente) && !usados.has(existente.id));
+        }
+        if (candidatos.length !== 1 && descricao) {
+          candidatos = itensAta.filter((existente) => chaveCodigo(existente.descricao) === descricao && mesmoFornecedor(existente) && !usados.has(existente.id));
+        }
         const correspondencia = candidatos.length === 1 ? candidatos[0] : undefined;
         if (correspondencia) usados.add(correspondencia.id);
 
@@ -182,6 +189,11 @@ export function CriarPedido({
       const saldosParaAtualizar = linhasLidas
         .filter((linha) => linha.ataItemId)
         .map((linha) => ({ item_id: linha.ataItemId!, saldo: linha.quantidade }));
+      if (saldosParaAtualizar.length === 0) {
+        toast.error("Nenhum item do PDF foi vinculado aos itens cadastrados nesta ata. Confira se selecionou a ata correta e se os códigos/descrições dos itens estão cadastrados antes de continuar.");
+        setNomeArquivo("");
+        return;
+      }
       if (saldosParaAtualizar.length > 0) {
         const { error: erroSaldo } = await supabase.rpc("atualizar_saldos_ata", {
           p_ata_id: ataId,
