@@ -281,7 +281,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <th className="px-4 py-3 font-medium">Nº Ata</th>
                     <th className="px-4 py-3 font-medium">Objeto</th>
                     <th className="px-4 py-3 font-medium">Classificação</th>
-                    <th className="px-4 py-3 font-medium">Fornecedores</th>
                     <th className="px-4 py-3 font-medium">Vencimento</th>
                     <th className="px-4 py-3 font-medium">Cadastro</th>
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
@@ -295,7 +294,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       <td className="px-4 py-3 font-medium">{a.numero}</td>
                       <td className="px-4 py-3">{a.objeto}</td>
                       <td className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f?.[a.id]) || "—"}</td>
                       <td className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
                         <div className="text-xs text-muted-foreground">{a.situacao_cadastro === "Vigentes" ? textoDias(diasParaVencer(a.data_vencimento)) : "Sem cálculo enquanto em andamento"}</div>
@@ -312,7 +310,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
