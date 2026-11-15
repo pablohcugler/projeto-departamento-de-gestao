@@ -207,3 +207,25 @@ export function extrairDataRelatorioUltimaPagina(paginas: TextoPdfPosicionado[][
   const ultimaPagina = paginas[paginas.length - 1] ?? [];
   return extrairDataRelatorioTexto(reconstruirLinhasPdf([ultimaPagina]).join("\n"));
 }
+
+
+/**
+ * Localiza o cabeçalho PDF no início do arquivo.
+ * Alguns geradores incluem bytes antes de %PDF-, desde que o cabeçalho
+ * esteja nos primeiros 1.024 bytes.
+ */
+export function localizarCabecalhoPdf(bytes: Uint8Array): number {
+  const assinatura = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+  const limite = Math.min(bytes.length - assinatura.length, 1024);
+  for (let inicio = 0; inicio <= limite; inicio += 1) {
+    let corresponde = true;
+    for (let indice = 0; indice < assinatura.length; indice += 1) {
+      if (bytes[inicio + indice] !== assinatura[indice]) {
+        corresponde = false;
+        break;
+      }
+    }
+    if (corresponde) return inicio;
+  }
+  return -1;
+}
