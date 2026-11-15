@@ -14,6 +14,7 @@ import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, P
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
+import { CriarPedido } from "./CriarPedido";
 import { TemaToggle } from "./TemaToggle";
 import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
@@ -63,6 +64,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [aba, setAba] = useState<"atas" | "contratos" | "feedbacks">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
+  const [pedidoAberto, setPedidoAberto] = useState(false);
   const [gerirClasses, setGerirClasses] = useState(false);
   const [filtroClasse, setFiltroClasse] = useState<string>("todas");
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
@@ -305,7 +307,12 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <h2 className="app-page-title">Atas de Registro de Preços</h2>
                 <p className="text-sm text-muted-foreground">{filtradas.length} ata(s) exibida(s) nesta situação · {atas.length} cadastrada(s) no sistema</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {filtroSituacao === "Vigentes" && (
+                  <Button variant="outline" onClick={() => setPedidoAberto(true)} disabled={atas.every((ata) => ata.situacao_cadastro !== "Vigentes")}>
+                    <FileText className="h-4 w-4" /> Criar Pedido
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
                   <Tags className="h-4 w-4" /> Classificações
                 </Button>
@@ -474,6 +481,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />
       <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
+      <CriarPedido aberto={pedidoAberto} onFechar={() => setPedidoAberto(false)} atas={atas.filter((ata) => ata.situacao_cadastro === "Vigentes")} />
     </div>
   );
 }
@@ -619,7 +627,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
               <th className="px-4 py-3 font-medium">Descrição</th>
               <th className="px-4 py-3 font-medium">Fornecedor</th>
               <th className="px-4 py-3 font-medium">Unid.</th>
-              <th className="px-4 py-3 text-right font-medium">Qtd.</th>
+              <th className="px-4 py-3 text-right font-medium">Qtd. contratada</th>
+              <th className="px-4 py-3 text-right font-medium">Saldo disponível</th>
               <th className="px-4 py-3 text-right font-medium">Preço unitário</th>
               <th className="px-4 py-3 text-right font-medium">Preço total</th>
               <th />
@@ -644,14 +653,22 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
                 </td>
                 <td data-label="Fornecedor" className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
                 <td data-label="Unidade" className="px-4 py-2.5">{i.unidade}</td>
-                <td data-label="Quantidade" className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
+                <td data-label="Qtd. contratada" className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
+                <td data-label="Saldo disponível" className="px-4 py-2.5 text-right tabular-nums">
+                  {i.saldo_disponivel === null ? "Não atualizado" : (
+                    <>
+                      {Number(i.saldo_disponivel).toLocaleString("pt-BR")}
+                      <div className="text-[10px] text-muted-foreground">{i.saldo_atualizado_em ? dataBR(i.saldo_atualizado_em) : ""}</div>
+                    </>
+                  )}
+                </td>
                 <td data-label="Preço unitário" className="px-4 py-2.5 text-right tabular-nums">{brl(Number(i.preco_unitario))}</td>
                 <td data-label="Preço total" className="px-4 py-2.5 text-right font-medium tabular-nums">{brl(Number(i.preco_total))}</td>
                 <td data-label="Ações" className="px-2"><Button variant="ghost" size="icon" aria-label="Remover item" onClick={() => removerItem(i)}><Trash2 className="h-4 w-4" /></Button></td>
               </tr>
             ))}
             <tr className="app-table-total border-t bg-muted/50">
-              <td colSpan={8} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
+              <td colSpan={9} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(total)}</td>
               <td />
             </tr>
