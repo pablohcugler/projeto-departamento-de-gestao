@@ -3,6 +3,7 @@ import {
   extrairDataRelatorioTexto,
   extrairDataRelatorioUltimaPagina,
   extrairItensAtaTexto,
+  localizarCabecalhoPdf,
   numeroBR,
   reconstruirLinhasPdf,
 } from "./importacao-ata";
@@ -111,4 +112,10 @@ describe("leitura do relatório de saldo da ata", () => {
     expect(extrairDataRelatorioUltimaPagina(paginas)).toBe("2026-11-15");
   });
 
+
+  it("localiza cabeçalho PDF no início ou após metadados do gerador", () => {
+    expect(localizarCabecalhoPdf(new TextEncoder().encode("%PDF-1.7\\n"))).toBe(0);
+    expect(localizarCabecalhoPdf(new TextEncoder().encode("prefixo\\n%PDF-1.7\\n"))).toBe(8);
+    expect(localizarCabecalhoPdf(new TextEncoder().encode("arquivo sem cabeçalho"))).toBe(-1);
+  });
 });
