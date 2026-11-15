@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuthForWorker } from "@/integrations/supabase/auth-middleware-worker";
 import { forwardSupabaseAccessToken } from "@/integrations/supabase/auth-client-middleware";
-import { dataAtualSaoPaulo, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, reconstruirLinhasPdf, type ItemImportado } from "@/lib/importacao-ata";
+import { dataAtualSaoPaulo, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, localizarCabecalhoPdf, reconstruirLinhasPdf, type ItemImportado } from "@/lib/importacao-ata";
 
 export type { ItemImportado } from "@/lib/importacao-ata";
 
@@ -19,11 +19,17 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
       const { extractTextItems, getDocumentProxy } = await import("unpdf");
       etapa = "decodificação do arquivo";
       const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
-      if (bytes.length < 5 || new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-") {
-        return { itens: [], erro: "O arquivo enviado não parece ser um PDF válido. Selecione o relatório PDF original." };
+      const inicioPdf = localizarCabecalhoPdf(bytes);
+      if (inicioPdf < 0) {
+        const prefixo = Array.from(bytes.subarray(0, 12), (valor) => valor.toString(16).padStart(2, "0")).join(" ");
+        return {
+          itens: [],
+          erro: `O conteúdo recebido não contém o cabeçalho de um PDF nos primeiros 1.024 bytes. Verifique se selecionou o PDF original (arquivo recebido: ${bytes.length.toLocaleString("pt-BR")} bytes; início: ${prefixo || "vazio"}).`,
+        };
       }
       etapa = "abertura do documento";
-      const pdf = await getDocumentProxy(bytes, { maxImageSize: 16_777_216 });
+      const bytesPdf = inicioPdf === 0 ? bytes : bytes.subarray(inicioPdf);
+      const pdf = await getDocumentProxy(bytesPdf, { maxImageSize: 16_777_216 });
       if (pdf.numPages > 100) {
         return { itens: [], erro: "O PDF possui mais de 100 páginas. Divida o documento e tente novamente." };
       }
