@@ -59,6 +59,8 @@ export type Database = {
           preco_total: number | null
           preco_unitario: number
           quantidade: number
+          saldo_disponivel: number | null
+          saldo_atualizado_em: string | null
           unidade: string
           user_id: string
         }
@@ -73,6 +75,10 @@ export type Database = {
           preco_total?: number | null
           preco_unitario?: number
           quantidade?: number
+          saldo_disponivel?: number | null
+          saldo_atualizado_em?: string | null
+          saldo_disponivel?: number | null
+          saldo_atualizado_em?: string | null
           unidade?: string
           user_id?: string
         }
@@ -306,6 +312,10 @@ export type Database = {
         Returns: boolean
       }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
+      atualizar_saldos_ata: {
+        Args: { p_ata_id: string; p_data_relatorio: string; p_saldos: Json }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "user"
