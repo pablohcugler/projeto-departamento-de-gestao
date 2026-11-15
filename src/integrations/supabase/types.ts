@@ -77,8 +77,6 @@ export type Database = {
           quantidade?: number
           saldo_disponivel?: number | null
           saldo_atualizado_em?: string | null
-          saldo_disponivel?: number | null
-          saldo_atualizado_em?: string | null
           unidade?: string
           user_id?: string
         }
@@ -93,6 +91,8 @@ export type Database = {
           preco_total?: number | null
           preco_unitario?: number
           quantidade?: number
+          saldo_disponivel?: number | null
+          saldo_atualizado_em?: string | null
           unidade?: string
           user_id?: string
         }
