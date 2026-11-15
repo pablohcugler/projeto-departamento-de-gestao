@@ -65,6 +65,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const [gerirClasses, setGerirClasses] = useState(false);
   const [filtroClasse, setFiltroClasse] = useState<string>("todas");
+  const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
 
   const atasQ = useQuery({
@@ -107,11 +108,12 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       atas.filter(
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
+          (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
           `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [atas, filtroClasse, busca, totaisQ.data],
+    [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
-  const alertas = atas.filter((a) => statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
+  const alertas = atas.filter((a) => a.situacao_cadastro === "Vigentes" && statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
 
   const ataSel = atas.find((a) => a.id === selecionada);
 
@@ -134,6 +136,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       processo_1doc: editando.processo_1doc || null,
       fase_processo: editando.fase_processo || null,
       classificacao_id: editando.classificacao_id || null,
+      situacao_cadastro: editando.situacao_cadastro ?? "Em andamento",
     };
     const { error } = editando.id
       ? await supabase.from("atas").update(payload).eq("id", editando.id)
@@ -245,7 +248,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
                   <Tags className="h-4 w-4" /> Classificações
                 </Button>
-                <Button onClick={() => setEditando({ dias_alerta: 90 })}>
+                <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: "Em andamento" })}>
                   <Plus className="h-4 w-4" /> Nova ata
                 </Button>
               </div>
@@ -253,6 +256,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value as typeof filtroSituacao)}>
+                <option value="todas">Todas as situações</option>
+                <option value="Em andamento">Em andamento</option>
+                <option value="Vigentes">Vigentes</option>
+              </select>
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 value={filtroClasse}
@@ -275,8 +283,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <th className="px-4 py-3 font-medium">Classificação</th>
                     <th className="px-4 py-3 font-medium">Fornecedores</th>
                     <th className="px-4 py-3 font-medium">Vencimento</th>
+                    <th className="px-4 py-3 font-medium">Cadastro</th>
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
-                    <th className="px-4 py-3 font-medium">Situação</th>
+                    <th className="px-4 py-3 font-medium">Situação do vencimento</th>
                     <th className="px-4 py-3 font-medium">Fase do processo</th>
                   </tr>
                 </thead>
@@ -289,16 +298,21 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       <td className="px-4 py-3 text-muted-foreground">{fornecedoresDe(a, totaisQ.data?.f?.[a.id]) || "—"}</td>
                       <td className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
-                        <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(a.data_vencimento))}</div>
+                        <div className="text-xs text-muted-foreground">{a.situacao_cadastro === "Vigentes" ? textoDias(diasParaVencer(a.data_vencimento)) : "Sem cálculo enquanto em andamento"}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={a.situacao_cadastro === "Vigentes" ? "rounded-full bg-success/15 px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>
+                          {a.situacao_cadastro}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
-                      <td className="px-4 py-3"><StatusBadge ata={a} /></td>
+                      <td className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
                       <td className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
                     </tr>
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
@@ -320,6 +334,12 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
+              <Campo label="Situação do cadastro">
+                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
+                  <option value="Em andamento">Em andamento</option>
+                  <option value="Vigentes">Vigentes</option>
+                </select>
+              </Campo>
               <Campo label="Classificação">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
@@ -435,7 +455,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
   const [importar, setImportar] = useState(false);
-  const [novo, setNovo] = useState({ descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
+  const [novo, setNovo] = useState({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
   const recarregar = () => {
     qc.invalidateQueries({ queryKey: ["itens", ata.id] });
@@ -447,6 +467,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
     if (!novo.descricao || !novo.preco_unitario) { toast.error("Informe descrição e preço unitário."); return; }
     const { error } = await supabase.from("ata_itens").insert({
       ata_id: ata.id,
+      codigo_item: novo.codigo_item || null,
+      codigo_produto: novo.codigo_produto || null,
       descricao: novo.descricao,
       fornecedor: novo.fornecedor || null,
       unidade: novo.unidade || "UN",
@@ -454,7 +476,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       preco_unitario: Number(novo.preco_unitario.replace(",", ".")),
     });
     if (error) { toast.error(error.message); return; }
-    setNovo({ descricao: "", fornecedor: novo.fornecedor, unidade: "UN", quantidade: "1", preco_unitario: "" });
+    setNovo({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: novo.fornecedor, unidade: "UN", quantidade: "1", preco_unitario: "" });
     recarregar();
   }
   async function removerItem(i: Item) {
@@ -462,13 +484,16 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
     recarregar();
   }
 
-  const dias = diasParaVencer(ata.data_vencimento);
+  const dias = ata.situacao_cadastro === "Vigentes" ? diasParaVencer(ata.data_vencimento) : null;
   return (
     <div>
       <Button variant="ghost" size="sm" onClick={onVoltar} className="mb-4"><ArrowLeft className="h-4 w-4" /> Voltar</Button>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="mb-1 flex items-center gap-2"><StatusBadge ata={ata} />{classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}</div>
+          <div className="mb-1 flex items-center gap-2">
+            {ata.situacao_cadastro === "Vigentes" ? <StatusBadge ata={ata} /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">Em andamento</span>}
+            {classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}
+          </div>
           <h2 className="font-display text-3xl">Ata {ata.numero}</h2>
           <p className="text-muted-foreground">{ata.objeto}</p>
         </div>
@@ -482,12 +507,12 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         <Info rotulo="Processo" valor={`${ata.processo ?? "—"}${ata.fase_processo ? " · " + ata.fase_processo : ""}`} />
         <Info rotulo="Fornecedores" valor={fornecedoresDe(ata, itens.map((i) => i.fornecedor ?? "").filter(Boolean)) || "—"} />
         <Info rotulo="Homologação" valor={dataBR(ata.data_homologacao)} />
-        <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${textoDias(dias)}`} />
+        <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${dias === null ? "não computado enquanto em andamento" : textoDias(dias)}`} />
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">Itens da ata</h3>
-        <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>
+        {ata.situacao_cadastro === "Vigentes" && <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>}
       </div>
       <ImportarItens ataId={ata.id} aberto={importar} onFechar={() => setImportar(false)} onImportado={recarregar} />
       <div className="overflow-x-auto rounded-xl border bg-card">
@@ -495,6 +520,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">#</th>
+              <th className="px-4 py-3 font-medium">Cód. item</th>
+              <th className="px-4 py-3 font-medium">Cód. produto</th>
               <th className="px-4 py-3 font-medium">Descrição</th>
               <th className="px-4 py-3 font-medium">Fornecedor</th>
               <th className="px-4 py-3 font-medium">Unid.</th>
@@ -508,6 +535,8 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
             {itens.map((i, idx) => (
               <tr key={i.id} className="border-t">
                 <td className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
+                <td className="px-4 py-2.5">{i.codigo_item ?? "—"}</td>
+                <td className="px-4 py-2.5">{i.codigo_produto ?? "—"}</td>
                 <td className="px-4 py-2.5">{i.descricao}</td>
                 <td className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
                 <td className="px-4 py-2.5">{i.unidade}</td>
@@ -518,13 +547,15 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
               </tr>
             ))}
             <tr className="border-t bg-muted/50">
-              <td colSpan={6} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
+              <td colSpan={8} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(total)}</td>
               <td />
             </tr>
           </tbody>
         </table>
-        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[1fr_180px_80px_100px_140px_auto]">
+        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[90px_110px_1fr_180px_70px_100px_140px_auto]">
+          <Input placeholder="Cód. item" value={novo.codigo_item} onChange={(e) => setNovo({ ...novo, codigo_item: e.target.value })} />
+          <Input placeholder="Cód. produto" value={novo.codigo_produto} onChange={(e) => setNovo({ ...novo, codigo_produto: e.target.value })} />
           <Input placeholder="Descrição do item" value={novo.descricao} onChange={(e) => setNovo({ ...novo, descricao: e.target.value })} />
           <Input placeholder="Fornecedor" value={novo.fornecedor} onChange={(e) => setNovo({ ...novo, fornecedor: e.target.value })} />
           <Input placeholder="Unid." value={novo.unidade} onChange={(e) => setNovo({ ...novo, unidade: e.target.value })} />

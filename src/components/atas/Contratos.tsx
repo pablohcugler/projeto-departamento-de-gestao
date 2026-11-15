@@ -20,6 +20,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("todas");
+  const [filtroCadastro, setFiltroCadastro] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [situacao, setSituacao] = useState<"todas" | "vigente" | "alerta" | "vencida">("todas");
 
   const q = useQuery({
@@ -37,10 +38,11 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       lista.filter(
         (c) =>
           (filtro === "todas" || (filtro === "sem" ? !c.classificacao_id : c.classificacao_id === filtro)) &&
+          (filtroCadastro === "todas" || c.situacao_cadastro === filtroCadastro) &&
           (situacao === "todas" || statusAta(c.data_vencimento, c.dias_alerta) === situacao) &&
           `${c.numero} ${c.objeto} ${c.contratado ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [lista, filtro, situacao, busca],
+    [lista, filtro, filtroCadastro, situacao, busca],
   );
   const alertas = lista.filter((c) => statusAta(c.data_vencimento, c.dias_alerta) !== "vigente");
   const resumo = lista.reduce((acc, c) => {
@@ -68,6 +70,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       pregao: editando.pregao || null,
       memorando_1doc: editando.memorando_1doc || null,
       processo_1doc: editando.processo_1doc || null,
+      situacao_cadastro: editando.situacao_cadastro ?? "Em andamento",
     };
     const { error } = editando.id
       ? await supabase.from("contratos").update(payload).eq("id", editando.id)
@@ -109,7 +112,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onGerirClasses}><Tags className="h-4 w-4" /> Classificações</Button>
-          <Button onClick={() => setEditando({ dias_alerta: 90 })}><Plus className="h-4 w-4" /> Novo contrato</Button>
+          <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: "Em andamento" })}><Plus className="h-4 w-4" /> Novo contrato</Button>
         </div>
       </div>
 
@@ -138,6 +141,11 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroCadastro} onChange={(e) => setFiltroCadastro(e.target.value as typeof filtroCadastro)}>
+          <option value="todas">Todas as situações</option>
+          <option value="Em andamento">Em andamento</option>
+          <option value="Vigentes">Vigentes</option>
+        </select>
         <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
           <option value="todas">Todas as classificações</option>
           {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -159,7 +167,8 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               <th className="px-4 py-3 font-medium">Contratado</th>
               <th className="px-4 py-3 text-right font-medium">Valor</th>
               <th className="px-4 py-3 font-medium">Vencimento</th>
-              <th className="px-4 py-3 font-medium">Situação</th>
+              <th className="px-4 py-3 font-medium">Cadastro</th>
+              <th className="px-4 py-3 font-medium">Situação do vencimento</th>
               <th />
             </tr>
           </thead>
@@ -177,6 +186,9 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
                     {dataBR(c.data_vencimento)}
                     <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(c.data_vencimento))}</div>
                   </td>
+                  <td className="px-4 py-3">
+                    <span className={c.situacao_cadastro === "Vigentes" ? "rounded-full bg-success/15 px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>{c.situacao_cadastro}</span>
+                  </td>
                   <td className="px-4 py-3"><StatusBadge ata={c} /></td>
                   <td className="whitespace-nowrap px-2">
                     <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => setEditando(c)}><Pencil className="h-4 w-4" /></Button>
@@ -186,7 +198,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               );
             })}
             {filtrados.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+              <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                 {q.isLoading ? "Carregando contratos..." : q.isError ? "Não foi possível carregar os contratos. Atualize a página e tente novamente." : "Nenhum contrato corresponde aos filtros selecionados."}
               </td></tr>
             )}
@@ -203,6 +215,12 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               <Campo label="Valor (R$)"><Input inputMode="decimal" value={editando.valor ?? ""} onChange={(e) => setEditando({ ...editando, valor: e.target.value as unknown as number })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
               <Campo label="Contratado"><Input value={editando.contratado ?? ""} onChange={(e) => setEditando({ ...editando, contratado: e.target.value })} /></Campo>
+              <Campo label="Situação do cadastro">
+                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
+                  <option value="Em andamento">Em andamento</option>
+                  <option value="Vigentes">Vigentes</option>
+                </select>
+              </Campo>
               <Campo label="Classificação">
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.classificacao_id ?? ""} onChange={(e) => setEditando({ ...editando, classificacao_id: e.target.value || null })}>
                   <option value="">Sem classificação</option>
