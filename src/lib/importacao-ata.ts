@@ -205,5 +205,5 @@ export function dataAtualSaoPaulo(agora = new Date()): string {
 /** Lê a data exclusivamente da última página, como solicitado para o pedido. */
 export function extrairDataRelatorioUltimaPagina(paginas: TextoPdfPosicionado[][]): string | null {
   const ultimaPagina = paginas[paginas.length - 1] ?? [];
-  return extrairDataRelatorioTexto(reconstruirLinhasPdf([ultimaPagina]).join("\\n"));
+  return extrairDataRelatorioTexto(reconstruirLinhasPdf([ultimaPagina]).join("\n"));
 }
