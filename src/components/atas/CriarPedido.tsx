@@ -126,6 +126,10 @@ export function CriarPedido({
       toast.error("Para conferir o saldo, envie o relatório em PDF.");
       return;
     }
+    if (arquivo.size === 0) {
+      toast.error("O arquivo selecionado está vazio (0 bytes). Baixe/salve o PDF completo no computador e selecione-o novamente.");
+      return;
+    }
     if (arquivo.size > 10 * 1024 * 1024) {
       toast.error("O PDF ultrapassa o limite de 10 MB.");
       return;
@@ -134,12 +138,36 @@ export function CriarPedido({
     setNomeArquivo(arquivo.name);
     setLinhas([]);
     try {
-      const bytes = new Uint8Array(await arquivo.arrayBuffer());
+      // FileReader fornece leitura compatível também com arquivos selecionados
+      // em pastas sincronizadas ou disponibilizados sob demanda pelo sistema.
+      const bytes = await new Promise<Uint8Array>((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onload = () => {
+          if (!(leitor.result instanceof ArrayBuffer)) {
+            reject(new Error("O navegador não retornou os dados binários do PDF."));
+            return;
+          }
+          resolve(new Uint8Array(leitor.result));
+        };
+        leitor.onerror = () => reject(new Error("O navegador não conseguiu ler o arquivo selecionado."));
+        leitor.onabort = () => reject(new Error("A leitura do arquivo foi cancelada."));
+        leitor.readAsArrayBuffer(arquivo);
+      });
+      if (bytes.length === 0) {
+        throw new Error(`O navegador leu 0 bytes do arquivo "${arquivo.name}". Baixe o PDF para o computador antes de anexá-lo.`);
+      }
+      if (bytes.length !== arquivo.size) {
+        throw new Error(`Leitura incompleta: o arquivo tem ${arquivo.size.toLocaleString("pt-BR")} bytes, mas o navegador conseguiu ler ${bytes.length.toLocaleString("pt-BR")} bytes. Baixe o PDF localmente e tente novamente.`);
+      }
       let binario = "";
       for (let i = 0; i < bytes.length; i += 0x8000) {
         binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       }
-      const resposta = await extrairPdf({ data: { base64: btoa(binario), exigirDataAtual: true } });
+      const base64 = btoa(binario);
+      if (!base64) {
+        throw new Error("Não foi possível converter o PDF para envio. Selecione uma cópia salva localmente.");
+      }
+      const resposta = await extrairPdf({ data: { base64, exigirDataAtual: true } });
       if (resposta.erro) {
         toast.error(resposta.erro);
         setNomeArquivo("");
