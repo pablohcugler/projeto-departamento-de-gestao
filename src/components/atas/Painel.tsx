@@ -132,7 +132,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       numero: editando.numero,
       processo: editando.processo || null,
       objeto: editando.objeto,
-      fornecedor: editando.fornecedor || null,
       data_homologacao: editando.data_homologacao || null,
       data_vencimento: editando.data_vencimento,
       dias_alerta: Number(editando.dias_alerta ?? 90),
@@ -380,7 +379,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </Campo>
-              <Campo label="Fornecedores (separe por vírgula)"><Input value={editando.fornecedor ?? ""} onChange={(e) => setEditando({ ...editando, fornecedor: e.target.value })} /></Campo>
               <Campo label="Data de homologação"><Input type="date" value={editando.data_homologacao ?? ""} onChange={(e) => setEditando({ ...editando, data_homologacao: e.target.value })} /></Campo>
               <Campo label="Data de vencimento *"><Input type="date" value={editando.data_vencimento ?? ""} onChange={(e) => setEditando({ ...editando, data_vencimento: e.target.value })} /></Campo>
               <Campo label="Alertar com quantos dias de antecedência?" full>
@@ -488,13 +486,11 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   });
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
-  const fornecedoresDaAta = [
-    ...((ata.fornecedor ?? "").split(",")),
-    ...itens.map((item) => item.fornecedor ?? ""),
-  ];
+  // A contagem considera somente fornecedores dos itens vinculados a esta Ata.
+  // O campo legado ata.fornecedor não é mais utilizado no cálculo.
   const fornecedoresContados = new Set(
-    fornecedoresDaAta
-      .map((nome) => nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
+    itens
+      .map((item) => (item.fornecedor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
       .filter(Boolean),
   ).size;
   const [importar, setImportar] = useState(false);
