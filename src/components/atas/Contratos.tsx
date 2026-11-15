@@ -139,7 +139,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </button>
       </section>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="app-toolbar mb-4 flex flex-wrap gap-2">
         <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroCadastro} onChange={(e) => setFiltroCadastro(e.target.value as typeof filtroCadastro)}>
           <option value="todas">Todas as situações</option>
