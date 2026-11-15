@@ -21,7 +21,10 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
     setLendo(true);
     setItens([]);
     try {
-      if (f.name.toLowerCase().endsWith(".pdf")) {
+      if (f.size > 10 * 1024 * 1024) {
+        throw new Error("O arquivo excede o limite de 10 MB. Comprima o PDF ou envie uma planilha.");
+      }
+      if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
         const buf = new Uint8Array(await f.arrayBuffer());
         let bin = "";
         for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -38,8 +41,9 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
         setItens(lista);
       }
     } catch (e) {
-      console.error(e);
-      toast.error("Não foi possível ler o arquivo.");
+      console.error("Falha na importação do arquivo:", e);
+      const detalhe = e instanceof Error ? e.message : "Erro inesperado durante a leitura.";
+      toast.error(detalhe.length > 180 ? detalhe.slice(0, 177) + "..." : detalhe);
     } finally {
       setLendo(false);
     }
