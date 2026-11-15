@@ -120,7 +120,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     statusAta(a.data_vencimento, a.dias_alerta) !== "vigente",
   );
 
-  const novaAtaVigente = !!editando && !editando.id && editando.situacao_cadastro === "Vigentes";
+  // Em Atas Vigentes, os campos de situação, fase e observações do novo processo
+  // não fazem parte do formulário, tanto na criação quanto na edição.
+  const ataVigente = !!editando && editando.situacao_cadastro === "Vigentes";
   const ataSel = atas.find((a) => a.id === selecionada);
 
   async function salvarAta() {
@@ -361,7 +363,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
-              {!novaAtaVigente && (
+              {!ataVigente && (
               <Campo label="Situação do cadastro">
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
                   <option value="Em andamento">Em andamento</option>
@@ -384,7 +386,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Alertar com quantos dias de antecedência?" full>
                 <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
               </Campo>
-              {!novaAtaVigente && (
+              {!ataVigente && (
               <Campo label="Fase do novo processo" full>
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
                   <option value="">—</option>
@@ -392,7 +394,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 </select>
               </Campo>
               )}
-              {!novaAtaVigente && (
+              {!ataVigente && (
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
               )}
               <Campo label="Nº do Pregão Eletrônico" full><Input placeholder="Opcional" value={editando.pregao ?? ""} onChange={(e) => setEditando({ ...editando, pregao: e.target.value })} /></Campo>
