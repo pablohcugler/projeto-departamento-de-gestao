@@ -66,6 +66,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [gerirClasses, setGerirClasses] = useState(false);
   const [filtroClasse, setFiltroClasse] = useState<string>("todas");
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
+  const [filtroSituacaoContratos, setFiltroSituacaoContratos] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
 
   const atasQ = useQuery({
@@ -113,7 +114,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       ),
     [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
-  const alertas = atas.filter((a) => a.situacao_cadastro === "Vigentes" && statusAta(a.data_vencimento, a.dias_alerta) !== "vigente");
+  const alertas = atas.filter((a) =>
+    (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
+    a.situacao_cadastro === "Vigentes" &&
+    statusAta(a.data_vencimento, a.dias_alerta) !== "vigente",
+  );
 
   const ataSel = atas.find((a) => a.id === selecionada);
 
@@ -160,17 +165,46 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     <div className="min-h-screen bg-background app-shell">
       <header className="app-header sticky top-0 z-30">
         <div className="app-header-inner mx-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
-          <div className="app-brand flex min-w-0 flex-wrap items-center gap-3">
+          <div className="app-brand flex min-w-0 items-center gap-3">
             <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
             <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
-            <nav className="app-nav hidden gap-1 sm:ml-6 md:flex">
-              {(["atas", "contratos"] as const).map((a) => (
-                <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} className={aba === a ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba(a); setSelecionada(null); }}>
-                  {a === "atas" ? "Atas de Registro" : "Contratos"}
-                </Button>
-              ))}
-            </nav>
           </div>
+          <nav className="app-nav flex gap-1" aria-label="Navegação por situação">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant={aba === "atas" ? "secondary" : "ghost"} className={aba === "atas" ? "app-nav-active" : "app-nav-item"}>
+                  Atas de Registro <span className="ml-1 text-xs opacity-70">⌄</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuLabel>Exibir Atas de Registro</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
+                  {filtroSituacao === "Vigentes" ? "✓ " : ""}Vigentes
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
+                  {filtroSituacao === "Em andamento" ? "✓ " : ""}Em andamento
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant={aba === "contratos" ? "secondary" : "ghost"} className={aba === "contratos" ? "app-nav-active" : "app-nav-item"}>
+                  Contratos <span className="ml-1 text-xs opacity-70">⌄</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuLabel>Exibir Contratos</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Vigentes"); setBusca(""); }}>
+                  {filtroSituacaoContratos === "Vigentes" ? "✓ " : ""}Vigentes
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Em andamento"); setBusca(""); }}>
+                  {filtroSituacaoContratos === "Em andamento" ? "✓ " : ""}Em andamento
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </nav>
           <div className="app-header-actions flex items-center gap-2 text-sm">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -209,7 +243,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <RelatorioFeedbacks />
           </div>
         ) : aba === "contratos" ? (
-          <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} />
+          <Contratos classes={classes} onGerirClasses={() => setGerirClasses(true)} filtroSituacao={filtroSituacaoContratos} />
         ) : ataSel ? (
           <DetalheAta
             ata={ataSel}
@@ -256,11 +290,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
-              <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value as typeof filtroSituacao)}>
-                <option value="todas">Todas as situações</option>
-                <option value="Em andamento">Em andamento</option>
-                <option value="Vigentes">Vigentes</option>
-              </select>
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 value={filtroClasse}
@@ -321,17 +350,6 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </>
         )}
       </main>
-
-      <nav className="app-mobile-nav" aria-label="Navegação principal">
-        <button type="button" className={aba === "atas" ? "app-mobile-nav-active" : ""} aria-current={aba === "atas" ? "page" : undefined} onClick={() => { setAba("atas"); setSelecionada(null); }}>
-          <FileText className="h-5 w-5" />
-          <span>Atas de Registro</span>
-        </button>
-        <button type="button" className={aba === "contratos" ? "app-mobile-nav-active" : ""} aria-current={aba === "contratos" ? "page" : undefined} onClick={() => { setAba("contratos"); setSelecionada(null); }}>
-          <ClipboardList className="h-5 w-5" />
-          <span>Contratos</span>
-        </button>
-      </nav>
 
       <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
