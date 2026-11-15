@@ -155,3 +155,55 @@ export function extrairItensAtaTexto(texto: string): ItemImportado[] {
 
   return itens.filter((item) => item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario));
 }
+
+
+const MESES_PT: Record<string, number> = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
+function dataIso(ano: number, mes: number, dia: number): string | null {
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+  if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) return null;
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+/** Extrai a data de emissão do rodapé da última página do relatório. */
+export function extrairDataRelatorioTexto(texto: string): string | null {
+  const datas: Array<{ indice: number; valor: string }> = [];
+  const extenso = /\b(\d{1,2})\s+de\s+([\p{L}çãõáéíóúâêô]+)\s+de\s+(\d{4})\b/giu;
+  for (const m of texto.matchAll(extenso)) {
+    const dia = Number(m[1]);
+    const mesNome = (m[2] ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    const mes = MESES_PT[mesNome];
+    const ano = Number(m[3]);
+    const valor = mes ? dataIso(ano, mes, dia) : null;
+    if (valor) datas.push({ indice: m.index ?? 0, valor });
+  }
+
+  const numerica = /\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})\b/g;
+  for (const m of texto.matchAll(numerica)) {
+    const valor = dataIso(Number(m[3]), Number(m[2]), Number(m[1]));
+    if (valor) datas.push({ indice: m.index ?? 0, valor });
+  }
+
+  return datas.sort((a, b) => a.indice - b.indice).at(-1)?.valor ?? null;
+}
+
+/** Data corrente no fuso oficial do Município (America/Sao_Paulo). */
+export function dataAtualSaoPaulo(agora = new Date()): string {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(agora);
+  const valor = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? "";
+  return `${valor("year")}-${valor("month")}-${valor("day")}`;
+}
+
+/** Lê a data exclusivamente da última página, como solicitado para o pedido. */
+export function extrairDataRelatorioUltimaPagina(paginas: TextoPdfPosicionado[][]): string | null {
+  const ultimaPagina = paginas[paginas.length - 1] ?? [];
+  return extrairDataRelatorioTexto(reconstruirLinhasPdf([ultimaPagina]).join("\\n"));
+}
