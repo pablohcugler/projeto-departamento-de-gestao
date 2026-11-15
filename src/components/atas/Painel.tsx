@@ -163,7 +163,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           <div className="app-brand flex min-w-0 flex-wrap items-center gap-3">
             <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
             <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
-            <nav className="app-nav flex gap-1 sm:ml-6">
+            <nav className="app-nav hidden gap-1 sm:ml-6 md:flex">
               {(["atas", "contratos"] as const).map((a) => (
                 <Button key={a} size="sm" variant={aba === a ? "secondary" : "ghost"} className={aba === a ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba(a); setSelecionada(null); }}>
                   {a === "atas" ? "Atas de Registro" : "Contratos"}
@@ -200,7 +200,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </div>
       </header>
 
-      <main className="app-main mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-9">
+      <main className="app-main mx-auto w-full max-w-none py-6 sm:py-9">
         {aba === "feedbacks" ? (
           <div className="space-y-4">
             <Button variant="outline" onClick={() => setAba("atas")}>
@@ -274,7 +274,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </select>
             </div>
 
-            <div className="app-table-wrap overflow-x-auto rounded-xl border bg-card">
+            <div className="app-table-wrap app-responsive-table overflow-x-auto rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted text-left text-muted-foreground">
                   <tr>
@@ -291,21 +291,21 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <tbody>
                   {filtradas.map((a) => (
                     <tr key={a.id} className="cursor-pointer border-t hover:bg-accent/50" onClick={() => setSelecionada(a.id)}>
-                      <td className="px-4 py-3 font-medium">{a.numero}</td>
-                      <td className="px-4 py-3">{a.objeto}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
-                      <td className="px-4 py-3">
+                      <td data-label="Nº Ata" className="px-4 py-3 font-medium">{a.numero}</td>
+                      <td data-label="Objeto" className="px-4 py-3">{a.objeto}</td>
+                      <td data-label="Classificação" className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
+                      <td data-label="Vencimento" className="px-4 py-3">
                         {dataBR(a.data_vencimento)}
                         <div className="text-xs text-muted-foreground">{a.situacao_cadastro === "Vigentes" ? textoDias(diasParaVencer(a.data_vencimento)) : "Sem cálculo enquanto em andamento"}</div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td data-label="Cadastro" className="px-4 py-3">
                         <span className={a.situacao_cadastro === "Vigentes" ? "rounded-full bg-success/15 px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>
                           {a.situacao_cadastro}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
-                      <td className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
-                      <td className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
+                      <td data-label="Valor total" className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
+                      <td data-label="Situação do vencimento" className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
+                      <td data-label="Fase do processo" className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
                     </tr>
                   ))}
                   {filtradas.length === 0 && (
@@ -321,6 +321,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </>
         )}
       </main>
+
+      <nav className="app-mobile-nav" aria-label="Navegação principal">
+        <button type="button" className={aba === "atas" ? "app-mobile-nav-active" : ""} aria-current={aba === "atas" ? "page" : undefined} onClick={() => { setAba("atas"); setSelecionada(null); }}>
+          <FileText className="h-5 w-5" />
+          <span>Atas de Registro</span>
+        </button>
+        <button type="button" className={aba === "contratos" ? "app-mobile-nav-active" : ""} aria-current={aba === "contratos" ? "page" : undefined} onClick={() => { setAba("contratos"); setSelecionada(null); }}>
+          <ClipboardList className="h-5 w-5" />
+          <span>Contratos</span>
+        </button>
+      </nav>
 
       <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -524,7 +535,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         {ata.situacao_cadastro === "Vigentes" && <Button variant="outline" onClick={() => setImportar(true)}><FileUp className="h-4 w-4" /> Importar itens (PDF ou planilha)</Button>}
       </div>
       <ImportarItens ataId={ata.id} aberto={importar} onFechar={() => setImportar(false)} onImportado={recarregar} />
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="app-responsive-table overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
@@ -543,26 +554,26 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
           <tbody>
             {itens.map((i, idx) => (
               <tr key={i.id} className="border-t">
-                <td className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
-                <td className="px-4 py-2.5">{i.codigo_item ?? "—"}</td>
-                <td className="px-4 py-2.5">{i.codigo_produto ?? "—"}</td>
-                <td className="px-4 py-2.5">{i.descricao}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
-                <td className="px-4 py-2.5">{i.unidade}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{brl(Number(i.preco_unitario))}</td>
-                <td className="px-4 py-2.5 text-right font-medium tabular-nums">{brl(Number(i.preco_total))}</td>
-                <td className="px-2"><Button variant="ghost" size="icon" aria-label="Remover item" onClick={() => removerItem(i)}><Trash2 className="h-4 w-4" /></Button></td>
+                <td data-label="#" className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
+                <td data-label="Cód. item" className="px-4 py-2.5">{i.codigo_item ?? "—"}</td>
+                <td data-label="Cód. produto" className="px-4 py-2.5">{i.codigo_produto ?? "—"}</td>
+                <td data-label="Descrição" className="px-4 py-2.5">{i.descricao}</td>
+                <td data-label="Fornecedor" className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
+                <td data-label="Unidade" className="px-4 py-2.5">{i.unidade}</td>
+                <td data-label="Quantidade" className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
+                <td data-label="Preço unitário" className="px-4 py-2.5 text-right tabular-nums">{brl(Number(i.preco_unitario))}</td>
+                <td data-label="Preço total" className="px-4 py-2.5 text-right font-medium tabular-nums">{brl(Number(i.preco_total))}</td>
+                <td data-label="Ações" className="px-2"><Button variant="ghost" size="icon" aria-label="Remover item" onClick={() => removerItem(i)}><Trash2 className="h-4 w-4" /></Button></td>
               </tr>
             ))}
-            <tr className="border-t bg-muted/50">
+            <tr className="app-table-total border-t bg-muted/50">
               <td colSpan={8} className="px-4 py-3 text-right font-semibold">Valor total da ata</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(total)}</td>
               <td />
             </tr>
           </tbody>
         </table>
-        <form onSubmit={addItem} className="grid gap-2 border-t p-4 sm:grid-cols-[90px_110px_1fr_180px_70px_100px_140px_auto]">
+        <form onSubmit={addItem} className="app-item-form grid gap-2 border-t p-4 sm:grid-cols-[90px_110px_1fr_180px_70px_100px_140px_auto]">
           <Input placeholder="Cód. item" value={novo.codigo_item} onChange={(e) => setNovo({ ...novo, codigo_item: e.target.value })} />
           <Input placeholder="Cód. produto" value={novo.codigo_produto} onChange={(e) => setNovo({ ...novo, codigo_produto: e.target.value })} />
           <Input placeholder="Descrição do item" value={novo.descricao} onChange={(e) => setNovo({ ...novo, descricao: e.target.value })} />
