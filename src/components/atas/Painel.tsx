@@ -458,7 +458,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   ];
   const fornecedoresContados = new Set(
     fornecedoresDaAta
-      .map((nome) => nome.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
+      .map((nome) => nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
       .filter(Boolean),
   ).size;
   const [importar, setImportar] = useState(false);
