@@ -41,8 +41,6 @@ export const consultarStatusBll = createServerFn({ method: "POST" })
           Referer: "https://bllcompras.com/",
         },
         redirect: "follow",
-        cache: "no-store",
-        signal: AbortSignal.timeout(12_000),
       });
 
       if (!response.ok) {
