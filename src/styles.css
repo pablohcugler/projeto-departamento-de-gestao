@@ -656,3 +656,31 @@ main section.rounded-xl { border-radius: 14px; }
     grid-template-columns: minmax(5.5rem, 31%) minmax(0, 1fr);
   }
 }
+
+
+/* Compacta somente a apresentação da descrição; o conteúdo integral permanece salvo. */
+.app-item-description {
+  display: -webkit-box;
+  width: 100%;
+  max-width: 44rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.app-item-description:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+@media (max-width: 767px) {
+  .app-item-description {
+    max-width: none;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+}
