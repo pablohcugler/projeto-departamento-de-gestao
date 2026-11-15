@@ -79,9 +79,7 @@ export function extrairStatusBllHtml(
     const chaveNumero = normalizarBll(numero);
     if (!chaveNumero || !fase) continue;
 
-    const correspondencias = [...pedidos.entries()].filter(([chave]) =>
-      chaveNumero === chave || normalizarBll(numero).includes(chave),
-    );
+    const correspondencias = [...pedidos.entries()].filter(([chave]) => chaveNumero === chave);
     for (const [chave] of correspondencias) {
       if (!encontrados.has(chave)) encontrados.set(chave, fase);
     }
