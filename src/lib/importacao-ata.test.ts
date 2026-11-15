@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extrairDataRelatorioTexto,
+  extrairDataRelatorioUltimaPagina,
   extrairItensAtaTexto,
   numeroBR,
   reconstruirLinhasPdf,
@@ -96,6 +97,18 @@ describe("leitura do relatório de saldo da ata", () => {
   it("não aceita datas impossíveis ou ausentes", () => {
     expect(extrairDataRelatorioTexto("Cajati, 32 de Novembro de 2026.")).toBeNull();
     expect(extrairDataRelatorioTexto("sem data no rodapé")).toBeNull();
+  });
+
+
+  it("usa somente a data que está na última página do PDF", () => {
+    const linha = (y: number, str: string) => ({
+      str, x: 30, y, width: str.length * 4, height: 8, fontSize: 8,
+    });
+    const paginas = [
+      [linha(20, "CAJATI, 14 de Novembro de 2026.")],
+      [linha(20, "CAJATI, 15 de Novembro de 2026.")],
+    ];
+    expect(extrairDataRelatorioUltimaPagina(paginas)).toBe("2026-11-15");
   });
 
 });
