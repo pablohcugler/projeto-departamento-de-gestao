@@ -8,8 +8,8 @@ export type { ItemImportado } from "@/lib/importacao-ata";
 export const extrairItensPdf = createServerFn({ method: "POST" })
   .middleware([forwardSupabaseAccessToken, requireSupabaseAuthForWorker])
   .inputValidator((input: { base64: string; exigirDataAtual?: boolean }) => {
-    if (typeof input?.base64 !== "string" || input.base64.length > 15_000_000) {
-      throw new Error("Arquivo inválido ou muito grande (máx. ~10 MB).");
+    if (typeof input?.base64 !== "string" || input.base64.length === 0 || input.base64.length > 15_000_000) {
+      throw new Error("Arquivo PDF vazio, inválido ou muito grande (máx. ~10 MB).");
     }
     return input;
   })
