@@ -46,7 +46,7 @@ export function TelaTv() {
         if (error) throw error;
         for (const a of data ?? []) {
           if (a.situacao_cadastro !== "Vigentes") continue;
-          linhas.push({ id: a.id, tipo: "Ata", numero: a.numero, objeto: a.objeto, quem: a.fornecedor ?? "", venc: a.data_vencimento, dias: diasParaVencer(a.data_vencimento), fase: a.fase_processo });
+          linhas.push({ id: a.id, tipo: "Ata", numero: a.numero ?? "Em andamento", objeto: a.objeto, quem: a.fornecedor ?? "", venc: a.data_vencimento, dias: diasParaVencer(a.data_vencimento), fase: a.fase_processo });
         }
       }
       if (cfg!.contratos) {

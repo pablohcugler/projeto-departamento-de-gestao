@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -19,12 +20,13 @@ import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
+import { consultarStatusBll } from "@/lib/bll.functions";
 
 type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
 type Classe = Tables<"classificacoes">;
 
-const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Concluído"];
+const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Publicado", "Concluído"];
 
 const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
   vencida: { rotulo: "Vencida", cls: "bg-destructive text-destructive-foreground" },
@@ -77,6 +79,28 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return data;
     },
   });
+
+  const consultarBll = useServerFn(consultarStatusBll);
+  const editaisParaConsultaBll = useMemo(
+    () =>
+      (atasQ.data ?? [])
+        .filter(
+          (ata) =>
+            ata.situacao_cadastro === "Em andamento" &&
+            ata.fase_processo === "Publicado" &&
+            !!ata.numero_edital_bll?.trim(),
+        )
+        .map((ata) => ({ ataId: ata.id, numeroEdital: ata.numero_edital_bll!.trim() })),
+    [atasQ.data],
+  );
+  const bllStatusQ = useQuery({
+    queryKey: ["bll-status", editaisParaConsultaBll.map((p) => p.ataId + ":" + p.numeroEdital)],
+    queryFn: () => consultarBll({ data: { processos: editaisParaConsultaBll } }),
+    enabled: editaisParaConsultaBll.length > 0 && filtroSituacao !== "Vigentes",
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+    refetchIntervalInBackground: false,
+  });
   const classesQ = useQuery({
     queryKey: ["classificacoes"],
     queryFn: async () => {
@@ -110,7 +134,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
           (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
-          `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+          `${a.numero ?? ""} ${a.numero_edital_bll ?? ""} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
     [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
@@ -120,19 +144,27 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     statusAta(a.data_vencimento, a.dias_alerta) !== "vigente",
   );
 
-  // Em Atas Vigentes, os campos de situação, fase e observações do novo processo
-  // não fazem parte do formulário, tanto na criação quanto na edição.
+  // O formulário muda conforme o módulo selecionado no menu superior.
+  // Atas em andamento ainda não possuem número de Ata, processo licitatório ou alerta de vencimento.
   const ataVigente = !!editando && editando.situacao_cadastro === "Vigentes";
+  const ataEmAndamento = !!editando && editando.situacao_cadastro !== "Vigentes";
   const ataSel = atas.find((a) => a.id === selecionada);
 
   async function salvarAta() {
-    if (!editando?.numero || !editando.objeto || !editando.data_vencimento) {
-      toast.error("Preencha número, objeto e data de vencimento.");
+    if ((!ataEmAndamento && !editando?.numero?.trim()) || !editando?.objeto?.trim() || !editando.data_vencimento) {
+      toast.error(ataEmAndamento
+        ? "Preencha o objeto e a data de vencimento."
+        : "Preencha o número da Ata, o objeto e a data de vencimento.");
+      return;
+    }
+    if (ataEmAndamento && editando.fase_processo === "Publicado" && !editando.numero_edital_bll?.trim()) {
+      toast.error("Informe o número do edital publicado na BLL.");
       return;
     }
     const payload = {
-      numero: editando.numero,
+      numero: editando.numero?.trim() || null,
       processo: editando.processo || null,
+      numero_edital_bll: editando.numero_edital_bll?.trim() || null,
       objeto: editando.objeto,
       data_homologacao: editando.data_homologacao || null,
       data_vencimento: editando.data_vencimento,
@@ -292,6 +324,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
+              {filtroSituacao !== "Vigentes" && editaisParaConsultaBll.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => void bllStatusQ.refetch()} disabled={bllStatusQ.isFetching}>
+                  {bllStatusQ.isFetching ? "Consultando BLL..." : "Atualizar status BLL"}
+                </Button>
+              )}
               <select
                 className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 value={filtroClasse}
@@ -317,12 +354,13 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
                     <th className="px-4 py-3 font-medium">Situação do vencimento</th>
                     <th className="px-4 py-3 font-medium">Fase do processo</th>
+                    {filtroSituacao !== "Vigentes" && <th className="px-4 py-3 font-medium">Status BLL</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {filtradas.map((a) => (
                     <tr key={a.id} className="cursor-pointer border-t hover:bg-accent/50" onClick={() => setSelecionada(a.id)}>
-                      <td data-label="Nº Ata" className="px-4 py-3 font-medium">{a.numero}</td>
+                      <td data-label="Nº Ata" className="px-4 py-3 font-medium">{a.numero ?? "Em andamento"}</td>
                       <td data-label="Objeto" className="px-4 py-3">{a.objeto}</td>
                       <td data-label="Classificação" className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
                       <td data-label="Vencimento" className="px-4 py-3">
@@ -337,11 +375,36 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       <td data-label="Valor total" className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
                       <td data-label="Situação do vencimento" className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
                       <td data-label="Fase do processo" className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
+                      {filtroSituacao !== "Vigentes" && (
+                        <td data-label="Status BLL" className="px-4 py-3">
+                          {a.situacao_cadastro !== "Em andamento" || a.fase_processo !== "Publicado" ? "—" : !a.numero_edital_bll ? "Edital não informado" : (
+                            (() => {
+                              const resultado = bllStatusQ.data?.resultados.find((r) => r.ataId === a.id);
+                              if (resultado?.localizado && resultado.fase) {
+                                return (
+                                  <div className="min-w-40">
+                                    <span className="inline-flex rounded-full bg-accent px-2.5 py-1 text-xs font-medium">{resultado.fase}</span>
+                                    <div className="mt-1 text-[10px] text-muted-foreground">
+                                      {bllStatusQ.data?.consultadoEm ? new Date(bllStatusQ.data.consultadoEm).toLocaleString("pt-BR") : "Consultado agora"} · {bllStatusQ.data?.paginasConsultadas ?? 6} páginas
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando BLL...</span>;
+                              if (bllStatusQ.isError) return <span className="text-xs text-destructive">Consulta indisponível</span>;
+                              return <span className="text-xs text-muted-foreground">Não localizado nas páginas consultadas</span>;
+                            })()
+                          )}
+                          {a.situacao_cadastro === "Em andamento" && a.fase_processo === "Publicado" && (
+                            <a className="mt-1 inline-block text-[10px] text-primary underline" href="https://bllcompras.com/Process/ProcessSearchPublic?param1=0" target="_blank" rel="noreferrer">Abrir BLL</a>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={filtroSituacao !== "Vigentes" ? 9 : 8} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
@@ -360,17 +423,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </DialogHeader>
           {editando && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
-              <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
+              {!ataEmAndamento && <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>}
+              {!ataEmAndamento && <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>}
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
-              {!ataVigente && (
-              <Campo label="Situação do cadastro">
-                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
-                  <option value="Em andamento">Em andamento</option>
-                  <option value="Vigentes">Vigentes</option>
-                </select>
-              </Campo>
-              )}
               <Campo label="Classificação">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
@@ -383,9 +438,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </Campo>
               <Campo label="Data de homologação"><Input type="date" value={editando.data_homologacao ?? ""} onChange={(e) => setEditando({ ...editando, data_homologacao: e.target.value })} /></Campo>
               <Campo label="Data de vencimento *"><Input type="date" value={editando.data_vencimento ?? ""} onChange={(e) => setEditando({ ...editando, data_vencimento: e.target.value })} /></Campo>
-              <Campo label="Alertar com quantos dias de antecedência?" full>
-                <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
-              </Campo>
+              {!ataEmAndamento && (
+                <Campo label="Alertar com quantos dias de antecedência?" full>
+                  <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
+                </Campo>
+              )}
               {!ataVigente && (
               <Campo label="Fase do novo processo" full>
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
@@ -393,6 +450,16 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   {FASES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
               </Campo>
+              )}
+              {ataEmAndamento && editando.fase_processo === "Publicado" && (
+                <Campo label="Nº do edital na BLL *" full>
+                  <Input
+                    placeholder="Ex.: PE096/2026CJ"
+                    value={editando.numero_edital_bll ?? ""}
+                    onChange={(e) => setEditando({ ...editando, numero_edital_bll: e.target.value })}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Promotor fixo: MUNICIPIO DE CAJATI. O número será utilizado para consultar a situação pública na BLL.</p>
+                </Campo>
               )}
               {!ataVigente && (
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
@@ -536,7 +603,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
             {ata.situacao_cadastro === "Vigentes" ? <StatusBadge ata={ata} /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">Em andamento</span>}
             {classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}
           </div>
-          <h2 className="font-display text-3xl">Ata {ata.numero}</h2>
+          <h2 className="font-display text-3xl">{ata.numero ? `Ata ${ata.numero}` : "Ata em andamento"}</h2>
           <p className="text-muted-foreground">{ata.objeto}</p>
         </div>
         <div className="flex gap-2">
