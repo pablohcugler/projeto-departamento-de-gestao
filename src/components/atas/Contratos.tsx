@@ -15,12 +15,11 @@ import { Campo, StatusBadge, textoDias } from "./Painel";
 type Contrato = Tables<"contratos">;
 type Classe = Tables<"classificacoes">;
 
-export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGerirClasses: () => void }) {
+export function Contratos({ classes, onGerirClasses, filtroSituacao }: { classes: Classe[]; onGerirClasses: () => void; filtroSituacao: "todas" | "Em andamento" | "Vigentes" }) {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("todas");
-  const [filtroCadastro, setFiltroCadastro] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [situacao, setSituacao] = useState<"todas" | "vigente" | "alerta" | "vencida">("todas");
 
   const q = useQuery({
@@ -32,20 +31,23 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
     },
   });
   const lista = q.data ?? [];
+  const contratosPorSituacao = lista.filter(
+    (contrato) => filtroSituacao === "todas" || contrato.situacao_cadastro === filtroSituacao,
+  );
   const nomeClasse = (id: string | null) => classes.find((c) => c.id === id)?.nome;
   const filtrados = useMemo(
     () =>
-      lista.filter(
+      contratosPorSituacao.filter(
         (c) =>
           (filtro === "todas" || (filtro === "sem" ? !c.classificacao_id : c.classificacao_id === filtro)) &&
-          (filtroCadastro === "todas" || c.situacao_cadastro === filtroCadastro) &&
+          (filtroSituacao === "todas" || c.situacao_cadastro === filtroSituacao) &&
           (situacao === "todas" || statusAta(c.data_vencimento, c.dias_alerta) === situacao) &&
           `${c.numero} ${c.objeto} ${c.contratado ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
-    [lista, filtro, filtroCadastro, situacao, busca],
+    [contratosPorSituacao, filtro, situacao, busca],
   );
-  const alertas = lista.filter((c) => statusAta(c.data_vencimento, c.dias_alerta) !== "vigente");
-  const resumo = lista.reduce((acc, c) => {
+  const alertas = contratosPorSituacao.filter((c) => statusAta(c.data_vencimento, c.dias_alerta) !== "vigente");
+  const resumo = contratosPorSituacao.reduce((acc, c) => {
     acc[statusAta(c.data_vencimento, c.dias_alerta)] += 1;
     acc.valor += Number(c.valor ?? 0);
     return acc;
@@ -141,11 +143,6 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
 
       <div className="app-toolbar mb-4 flex flex-wrap gap-2">
         <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
-        <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroCadastro} onChange={(e) => setFiltroCadastro(e.target.value as typeof filtroCadastro)}>
-          <option value="todas">Todas as situações</option>
-          <option value="Em andamento">Em andamento</option>
-          <option value="Vigentes">Vigentes</option>
-        </select>
         <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
           <option value="todas">Todas as classificações</option>
           {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -154,7 +151,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
       </div>
 
       <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>{filtrados.length} de {lista.length} contrato(s)</span>
+        <span>{filtrados.length} contrato(s) exibido(s) nesta situação</span>
         {situacao !== "todas" && <button className="font-medium text-primary hover:underline" onClick={() => setSituacao("todas")}>Limpar filtro de situação</button>}
       </div>
       <div className="app-responsive-table overflow-x-auto rounded-xl border bg-card shadow-sm">
