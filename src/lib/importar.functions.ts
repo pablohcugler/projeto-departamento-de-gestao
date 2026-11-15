@@ -14,9 +14,15 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }): Promise<{ itens: ItemImportado[]; erro?: string; dataRelatorio?: string }> => {
+    let etapa = "carregamento do leitor PDF";
     try {
       const { extractTextItems, getDocumentProxy } = await import("unpdf");
+      etapa = "decodificação do arquivo";
       const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+      if (bytes.length < 5 || new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-") {
+        return { itens: [], erro: "O arquivo enviado não parece ser um PDF válido. Selecione o relatório PDF original." };
+      }
+      etapa = "abertura do documento";
       const pdf = await getDocumentProxy(bytes, { maxImageSize: 16_777_216 });
       if (pdf.numPages > 100) {
         return { itens: [], erro: "O PDF possui mais de 100 páginas. Divida o documento e tente novamente." };
@@ -25,8 +31,13 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
       // O PDF do JL Soft posiciona os campos em colunas independentes.
       // extractText() concatena fragmentos e pode perder os espaços entre as colunas.
       // extractTextItems() preserva X/Y e permite reconstruir as linhas visuais.
+      etapa = "extração do texto e das tabelas";
       const { items: paginas } = await extractTextItems(pdf);
       const texto = reconstruirLinhasPdf(paginas).join("\n");
+      if (!paginas.length || paginas.every((pagina) => pagina.length === 0)) {
+        return { itens: [], erro: "O PDF abriu, mas não contém texto selecionável. Gere o relatório novamente em PDF pesquisável, não como imagem digitalizada." };
+      }
+      etapa = "leitura da data na última página";
       const dataRelatorio = extrairDataRelatorioUltimaPagina(paginas);
       if (data.exigirDataAtual) {
         if (!dataRelatorio) {
@@ -43,6 +54,7 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
         return { itens: [], erro: "Não encontrei texto legível neste PDF. Se for um documento escaneado, envie uma planilha Excel ou CSV." };
       }
 
+      etapa = "identificação dos itens e saldos";
       const itens = extrairItensAtaTexto(texto);
       if (itens.length === 0) {
         return {
@@ -52,7 +64,13 @@ export const extrairItensPdf = createServerFn({ method: "POST" })
       }
       return { itens, ...(dataRelatorio ? { dataRelatorio } : {}) };
     } catch (e) {
-      console.error("extrairItensPdf", e);
-      return { itens: [], erro: "Não foi possível ler o PDF. Tente novamente ou utilize uma planilha Excel/CSV." };
+      const detalhe = e instanceof Error
+        ? `${e.name}: ${e.message}`
+        : String(e);
+      console.error("extrairItensPdf - etapa:", etapa, "- erro:", detalhe, e);
+      return {
+        itens: [],
+        erro: `Falha na etapa "${etapa}": ${detalhe.slice(0, 240)}. Confira o PDF e tente novamente.`,
+      };
     }
   });
