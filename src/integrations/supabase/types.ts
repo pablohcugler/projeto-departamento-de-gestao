@@ -111,7 +111,7 @@ export type Database = {
           fornecedor: string | null
           id: string
           memorando_1doc: string | null
-          numero?: string | null | null | null
+          numero: string | null
           objeto: string
           observacoes: string | null
           pregao: string | null
@@ -130,7 +130,7 @@ export type Database = {
           fornecedor?: string | null
           id?: string
           memorando_1doc?: string | null
-          numero: string
+          numero?: string | null
           objeto: string
           observacoes?: string | null
           pregao?: string | null
@@ -149,7 +149,7 @@ export type Database = {
           fornecedor?: string | null
           id?: string
           memorando_1doc?: string | null
-          numero?: string
+          numero?: string | null
           objeto?: string
           observacoes?: string | null
           pregao?: string | null
