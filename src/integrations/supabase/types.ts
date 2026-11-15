@@ -112,6 +112,7 @@ export type Database = {
           id: string
           memorando_1doc: string | null
           numero: string | null
+          numero_edital_bll: string | null
           objeto: string
           observacoes: string | null
           pregao: string | null
@@ -131,6 +132,7 @@ export type Database = {
           id?: string
           memorando_1doc?: string | null
           numero?: string | null
+          numero_edital_bll?: string | null
           objeto: string
           observacoes?: string | null
           pregao?: string | null
@@ -150,6 +152,7 @@ export type Database = {
           id?: string
           memorando_1doc?: string | null
           numero?: string | null
+          numero_edital_bll?: string | null
           objeto?: string
           observacoes?: string | null
           pregao?: string | null
