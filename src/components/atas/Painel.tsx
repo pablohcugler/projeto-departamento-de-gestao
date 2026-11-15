@@ -120,6 +120,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     statusAta(a.data_vencimento, a.dias_alerta) !== "vigente",
   );
 
+  const novaAtaVigente = !!editando && !editando.id && editando.situacao_cadastro === "Vigentes";
   const ataSel = atas.find((a) => a.id === selecionada);
 
   async function salvarAta() {
@@ -282,7 +283,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
                   <Tags className="h-4 w-4" /> Classificações
                 </Button>
-                <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: "Em andamento" })}>
+                <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: filtroSituacao === "todas" ? "Em andamento" : filtroSituacao })}>
                   <Plus className="h-4 w-4" /> Nova ata
                 </Button>
               </div>
@@ -361,12 +362,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
               <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
+              {!novaAtaVigente && (
               <Campo label="Situação do cadastro">
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
                   <option value="Em andamento">Em andamento</option>
                   <option value="Vigentes">Vigentes</option>
                 </select>
               </Campo>
+              )}
               <Campo label="Classificação">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
@@ -383,13 +386,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Alertar com quantos dias de antecedência?" full>
                 <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
               </Campo>
+              {!novaAtaVigente && (
               <Campo label="Fase do novo processo" full>
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
                   <option value="">—</option>
                   {FASES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
               </Campo>
+              )}
+              {!novaAtaVigente && (
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
+              )}
               <Campo label="Nº do Pregão Eletrônico" full><Input placeholder="Opcional" value={editando.pregao ?? ""} onChange={(e) => setEditando({ ...editando, pregao: e.target.value })} /></Campo>
               <Campo label="Memorando (1Doc)"><Input placeholder="Opcional" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
               <Campo label="Processo Administrativo (1Doc)"><Input placeholder="Opcional" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
