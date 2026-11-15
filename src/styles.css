@@ -612,3 +612,47 @@ main section.rounded-xl { border-radius: 14px; }
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+@media (max-width: 767px) {
+  .app-import-preview.app-responsive-table {
+    max-height: 55vh;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  .app-import-preview.app-responsive-table tbody tr {
+    padding-block: 2px;
+  }
+  .app-import-preview.app-responsive-table tbody td {
+    grid-template-columns: minmax(6.2rem, 30%) minmax(0, 1fr);
+  }
+  .app-import-preview.app-responsive-table tbody td[data-label="Ações"] {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .app-main .mb-6.flex.flex-wrap.items-start.justify-between > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .app-main .app-contract-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .app-main .app-contract-summary > button {
+    min-width: 0;
+    padding: 12px;
+  }
+  .app-main .app-contract-summary > button > div:first-child {
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+  }
+  .app-main .app-contract-summary > button > div:last-child {
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 390px) {
+  .app-import-preview.app-responsive-table tbody td {
+    grid-template-columns: minmax(5.5rem, 31%) minmax(0, 1fr);
+  }
+}
