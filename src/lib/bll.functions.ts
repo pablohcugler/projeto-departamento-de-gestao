@@ -41,6 +41,8 @@ export const consultarStatusBll = createServerFn({ method: "POST" })
           Referer: "https://bllcompras.com/",
         },
         redirect: "follow",
+        cache: "no-store",
+        signal: AbortSignal.timeout(12_000),
       });
 
       if (!response.ok) {
@@ -48,8 +50,11 @@ export const consultarStatusBll = createServerFn({ method: "POST" })
       }
 
       const html = await response.text();
-      if (html.length < 1000 || /access denied|captcha|temporarily blocked/i.test(html)) {
+      if (html.length < 1000 || /access denied|captcha|temporarily blocked|acesso negado/i.test(html)) {
         throw new Error("A consulta pública da BLL não disponibilizou a listagem de processos.");
+      }
+      if (!/<tr\b[^>]*>/i.test(html)) {
+        throw new Error("A BLL carregou a página, mas não disponibilizou a tabela de processos para leitura automática.");
       }
 
       const resultados = extrairStatusBllHtml(html, data.processos);
