@@ -222,6 +222,7 @@ export function CriarPedido({
       setNomeArquivo("");
     } finally {
       setLendoPdf(false);
+      if (inputArquivo.current) inputArquivo.current.value = "";
     }
   }
 
@@ -322,7 +323,14 @@ export function CriarPedido({
             <p className="text-sm">Selecione a ata de registro de preços que será utilizada para montar o pedido.</p>
             <label className="block space-y-1.5 text-sm font-medium">
               Ata vigente
-              <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-normal" value={ataId} onChange={(e) => setAtaId(e.target.value)}>
+              <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-normal" value={ataId} onChange={(e) => {
+                setAtaId(e.target.value);
+                setItensAta([]);
+                setLinhas([]);
+                setDataRelatorio("");
+                setNomeArquivo("");
+                setJustificativa("");
+              }}>
                 <option value="">Selecione uma ata...</option>
                 {atas.map((ata) => <option key={ata.id} value={ata.id}>Ata {ata.numero || "—"} · {ata.objeto}</option>)}
               </select>
