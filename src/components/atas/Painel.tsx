@@ -473,6 +473,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
       .filter(Boolean),
   ).size;
   const [importar, setImportar] = useState(false);
+  const [descricaoCompleta, setDescricaoCompleta] = useState<string | null>(null);
   const [novo, setNovo] = useState({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
   const recarregar = () => {
@@ -557,7 +558,17 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
                 <td data-label="#" className="px-4 py-2.5 text-muted-foreground">{idx + 1}</td>
                 <td data-label="Cód. item" className="px-4 py-2.5">{i.codigo_item ?? "—"}</td>
                 <td data-label="Cód. produto" className="px-4 py-2.5">{i.codigo_produto ?? "—"}</td>
-                <td data-label="Descrição" className="px-4 py-2.5">{i.descricao}</td>
+                <td data-label="Descrição" className="px-4 py-2.5">
+                  <button
+                    type="button"
+                    className="app-item-description"
+                    title="Clique para visualizar a descrição completa"
+                    aria-label={`Visualizar descrição completa do item ${i.codigo_item ?? idx + 1}`}
+                    onClick={() => setDescricaoCompleta(i.descricao)}
+                  >
+                    {i.descricao}
+                  </button>
+                </td>
                 <td data-label="Fornecedor" className="px-4 py-2.5 text-muted-foreground">{i.fornecedor ?? "—"}</td>
                 <td data-label="Unidade" className="px-4 py-2.5">{i.unidade}</td>
                 <td data-label="Quantidade" className="px-4 py-2.5 text-right tabular-nums">{Number(i.quantidade).toLocaleString("pt-BR")}</td>
@@ -584,6 +595,19 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
           <Button type="submit"><Plus className="h-4 w-4" /> Item</Button>
         </form>
       </div>
+      <Dialog open={descricaoCompleta !== null} onOpenChange={(aberto) => !aberto && setDescricaoCompleta(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Descrição completa do item</DialogTitle>
+          </DialogHeader>
+          <p className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed">
+            {descricaoCompleta}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDescricaoCompleta(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {ata.observacoes && <p className="mt-6 whitespace-pre-wrap text-sm text-muted-foreground">{ata.observacoes}</p>}
     </div>
   );
