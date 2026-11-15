@@ -117,7 +117,7 @@ export function RelatorioFeedbacks() {
       <div className="rounded-xl border bg-card p-4"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> Novos / em análise</div><div className="mt-2 text-2xl font-semibold tabular-nums">{novos + emAndamento}</div></div>
       <div className="rounded-xl border bg-card p-4"><div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Finalizados</div><div className="mt-2 text-2xl font-semibold tabular-nums">{concluidos}</div></div>
     </section>
-    <div className="flex flex-wrap gap-2"><div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar feedback..." value={busca} onChange={e => setBusca(e.target.value)} /></div>
+    <div className="app-toolbar flex flex-wrap gap-2"><div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar feedback..." value={busca} onChange={e => setBusca(e.target.value)} /></div>
       <select className="h-10 rounded-md border border-input bg-card px-3 text-sm" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}><option>Todos</option>{statusOptions.map(s => <option key={s}>{s}</option>)}</select>
     </div>
     <div className="app-responsive-table overflow-x-auto rounded-xl border bg-card shadow-sm"><table className="w-full text-sm">
