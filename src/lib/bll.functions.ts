@@ -9,12 +9,56 @@ import {
 
 const BLL_PUBLIC_URL = "https://bllcompras.com/Process/ProcessSearchPublic";
 const PAGINAS_CONSULTADAS = 6;
+const TEMPO_LIMITE_POR_PAGINA_MS = 8_000;
+
+async function carregarPaginaBll(pagina: number): Promise<string> {
+  const url = new URL(BLL_PUBLIC_URL);
+  url.searchParams.set("param1", String(pagina));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TEMPO_LIMITE_POR_PAGINA_MS);
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        Referer: "https://bllcompras.com/",
+        "Cache-Control": "no-cache",
+      },
+      redirect: "follow",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const html = await response.text();
+    if (html.length < 1000 || /access denied|captcha|temporarily blocked|acesso negado/i.test(html)) {
+      throw new Error("A BLL não disponibilizou a listagem pública.");
+    }
+    if (!/<tr\b[^>]*>/i.test(html)) {
+      throw new Error("A página foi recebida, mas a tabela de processos não veio no HTML.");
+    }
+
+    return html;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Tempo esgotado ao consultar a página " + pagina + " da BLL (8 segundos).");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 /**
- * Consulta páginas públicas da BLL em lote. O parâmetro param1 é o índice
- * da página pública: 0 é a primeira, 1 a seguinte etc. Procuramos até seis
- * páginas para não considerar "não localizado" apenas por o edital estar
- * fora da primeira página mais recente.
+ * Consulta em lote até seis páginas públicas da BLL.
+ * Cada requisição tem limite de oito segundos. Falha em uma página não
+ * impede o uso dos resultados das demais; se todas falharem, a função
+ * termina com erro legível em vez de deixar a interface carregando.
  */
 export const consultarStatusBll = createServerFn({ method: "POST" })
   .middleware([forwardSupabaseAccessToken, requireSupabaseAuthForWorker])
@@ -35,78 +79,68 @@ export const consultarStatusBll = createServerFn({ method: "POST" })
     consultadoEm: string;
     fonte: string;
     paginasConsultadas: number;
+    paginasDisponiveis: number;
+    paginasComFalha: number;
     resultados: ResultadoStatusBll[];
     aviso?: string;
   }> => {
     const consultadoEm = new Date().toISOString();
 
-    try {
-      const paginas = await Promise.all(
-        Array.from({ length: PAGINAS_CONSULTADAS }, async (_, pagina) => {
-          const url = new URL(BLL_PUBLIC_URL);
-          url.searchParams.set("param1", String(pagina));
-          const response = await fetch(url.toString(), {
-            method: "GET",
-            headers: {
-              Accept: "text/html,application/xhtml+xml",
-              "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-              Referer: "https://bllcompras.com/",
-            },
-            redirect: "follow",
-          });
+    const respostas = await Promise.allSettled(
+      Array.from({ length: PAGINAS_CONSULTADAS }, (_, pagina) => carregarPaginaBll(pagina)),
+    );
 
-          if (!response.ok) {
-            throw new Error("A BLL respondeu HTTP " + response.status + " ao consultar a página " + pagina + ".");
-          }
+    const paginas = respostas
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+      .map((r) => r.value);
+    const falhas = respostas.filter((r) => r.status === "rejected");
+    const paginasComFalha = falhas.length;
 
-          const html = await response.text();
-          if (html.length < 1000 || /access denied|captcha|temporarily blocked|acesso negado/i.test(html)) {
-            throw new Error("A BLL não disponibilizou a listagem pública da página " + pagina + ".");
-          }
-          if (!/<tr\b[^>]*>/i.test(html)) {
-            throw new Error("A BLL carregou a página " + pagina + ", mas não disponibilizou a tabela de processos.");
-          }
-
-          return html;
-        }),
+    if (paginas.length === 0) {
+      const motivos = falhas
+        .slice(0, 2)
+        .map((r) => r.status === "rejected" && r.reason instanceof Error ? r.reason.message : "falha desconhecida")
+        .join("; ");
+      throw new Error(
+        "A BLL não respondeu a nenhuma das seis páginas consultadas. " +
+        (motivos ? "Detalhe: " + motivos : "Tente novamente mais tarde."),
       );
+    }
 
-      const resultadosPorAta = new Map<string, ResultadoStatusBll>();
-      for (const html of paginas) {
-        const resultados = extrairStatusBllHtml(html, data.processos);
-        for (const resultado of resultados) {
-          if (resultado.localizado && resultado.fase) {
-            resultadosPorAta.set(resultado.ataId, resultado);
-          }
+    const resultadosPorAta = new Map<string, ResultadoStatusBll>();
+    for (const html of paginas) {
+      const resultados = extrairStatusBllHtml(html, data.processos);
+      for (const resultado of resultados) {
+        if (resultado.localizado && resultado.fase) {
+          resultadosPorAta.set(resultado.ataId, resultado);
         }
       }
-
-      const resultados = data.processos.map((processo) =>
-        resultadosPorAta.get(processo.ataId) ?? {
-          ataId: processo.ataId,
-          numeroEdital: processo.numeroEdital,
-          fase: null,
-          localizado: false,
-          mensagem: "Edital não localizado nas seis páginas públicas consultadas da BLL.",
-        },
-      );
-
-      const localizados = resultados.filter((r) => r.localizado).length;
-      return {
-        consultadoEm,
-        fonte: BLL_PUBLIC_URL + "?param1=0",
-        paginasConsultadas: PAGINAS_CONSULTADAS,
-        resultados,
-        ...(localizados === 0
-          ? {
-              aviso: "Nenhum edital foi encontrado nas seis páginas públicas consultadas. A BLL pode ter mais páginas ou alterado a forma de exibição; abra a busca pública para conferir manualmente.",
-            }
-          : {}),
-      };
-    } catch (e) {
-      console.error("consultarStatusBll", e);
-      const mensagem =
-        e instanceof Error ? e.message : "Falha inesperada ao consultar a BLL.";
-      throw new Error("Não foi possível consultar a BLL agora: " + mensagem);
     }
+
+    const resultados = data.processos.map((processo) =>
+      resultadosPorAta.get(processo.ataId) ?? {
+        ataId: processo.ataId,
+        numeroEdital: processo.numeroEdital,
+        fase: null,
+        localizado: false,
+        mensagem: paginasComFalha > 0
+          ? "Edital não localizado nas páginas disponíveis. " + paginasComFalha + " página(s) da BLL não responderam."
+          : "Edital não localizado nas seis páginas públicas consultadas da BLL.",
+      },
+    );
+
+    const localizados = resultados.filter((r) => r.localizado).length;
+    return {
+      consultadoEm,
+      fonte: BLL_PUBLIC_URL + "?param1=0",
+      paginasConsultadas: PAGINAS_CONSULTADAS,
+      paginasDisponiveis: paginas.length,
+      paginasComFalha,
+      resultados,
+      ...(paginasComFalha > 0
+        ? { aviso: "A BLL respondeu a " + paginas.length + " de " + PAGINAS_CONSULTADAS + " páginas. O status pode estar incompleto." }
+        : localizados === 0
+          ? { aviso: "Nenhum edital foi encontrado nas seis páginas públicas consultadas. Confira o número do edital na busca pública da BLL." }
+          : {}),
+    };
   });

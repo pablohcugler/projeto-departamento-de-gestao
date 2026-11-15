@@ -95,11 +95,27 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   );
   const bllStatusQ = useQuery({
     queryKey: ["bll-status", editaisParaConsultaBll.map((p) => p.ataId + ":" + p.numeroEdital)],
-    queryFn: () => consultarBll({ data: { processos: editaisParaConsultaBll } }),
+    queryFn: async () => {
+      let watchdog: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          consultarBll({ data: { processos: editaisParaConsultaBll } }),
+          new Promise<never>((_, reject) => {
+            watchdog = setTimeout(
+              () => reject(new Error("A consulta da BLL ultrapassou 15 segundos. Tente atualizar novamente.")),
+              15_000,
+            );
+          }),
+        ]);
+      } finally {
+        if (watchdog) clearTimeout(watchdog);
+      }
+    },
     enabled: editaisParaConsultaBll.length > 0 && filtroSituacao !== "Vigentes",
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
     refetchIntervalInBackground: false,
+    retry: false,
   });
   const classesQ = useQuery({
     queryKey: ["classificacoes"],
@@ -390,9 +406,18 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                                   </div>
                                 );
                               }
-                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando BLL...</span>;
-                              if (bllStatusQ.isError) return <span className="text-xs text-destructive">Consulta indisponível</span>;
-                              return <span className="text-xs text-muted-foreground">Não localizado nas páginas consultadas</span>;
+                              if (bllStatusQ.isError) {
+                                const erro = bllStatusQ.error instanceof Error ? bllStatusQ.error.message : "Falha inesperada na consulta.";
+                                return <span className="text-xs text-destructive" title={erro}>BLL indisponível · tentar novamente</span>;
+                              }
+                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando BLL (limite de 15s)...</span>;
+                              if (bllStatusQ.data?.paginasDisponiveis === 0) return <span className="text-xs text-destructive" title={bllStatusQ.data.aviso}>BLL não respondeu</span>;
+                              return (
+                                <div className="text-xs text-muted-foreground" title={resultado?.mensagem ?? bllStatusQ.data?.aviso}>
+                                  Não localizado em {bllStatusQ.data?.paginasDisponiveis ?? 0}/{bllStatusQ.data?.paginasConsultadas ?? 6} páginas
+                                  {bllStatusQ.data?.paginasComFalha ? " · consulta parcial" : ""}
+                                </div>
+                              );
                             })()
                           )}
                           {a.situacao_cadastro === "Em andamento" && a.fase_processo === "Publicado" && (
