@@ -452,6 +452,15 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   });
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
+  const fornecedoresDaAta = [
+    ...((ata.fornecedor ?? "").split(",")),
+    ...itens.map((item) => item.fornecedor ?? ""),
+  ];
+  const fornecedoresContados = new Set(
+    fornecedoresDaAta
+      .map((nome) => nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
+      .filter(Boolean),
+  ).size;
   const [importar, setImportar] = useState(false);
   const [novo, setNovo] = useState({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
@@ -501,9 +510,11 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
         </div>
       </div>
 
-      <div className="mb-8 grid gap-3 sm:grid-cols-4">
-        <Info rotulo="Processo" valor={`${ata.processo ?? "—"}${ata.fase_processo ? " · " + ata.fase_processo : ""}`} />
-        <Info rotulo="Fornecedores" valor={fornecedoresDe(ata, itens.map((i) => i.fornecedor ?? "").filter(Boolean)) || "—"} />
+      <div className="mb-8 grid gap-3 sm:grid-cols-3">
+        <Info
+          rotulo="Fornecedores"
+          valor={`${fornecedoresContados} ${fornecedoresContados === 1 ? "fornecedor" : "fornecedores"}`}
+        />
         <Info rotulo="Homologação" valor={dataBR(ata.data_homologacao)} />
         <Info rotulo="Vencimento" valor={`${dataBR(ata.data_vencimento)} · ${dias === null ? "não computado enquanto em andamento" : textoDias(dias)}`} />
       </div>
