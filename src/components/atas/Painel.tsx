@@ -24,7 +24,7 @@ type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
 type Classe = Tables<"classificacoes">;
 
-const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Concluído"];
+const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Publicado", "Concluído"];
 
 const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
   vencida: { rotulo: "Vencida", cls: "bg-destructive text-destructive-foreground" },
@@ -110,7 +110,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
           (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
-          `${a.numero} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+          `${a.numero ?? ""} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
     [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
@@ -120,18 +120,21 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     statusAta(a.data_vencimento, a.dias_alerta) !== "vigente",
   );
 
-  // Em Atas Vigentes, os campos de situação, fase e observações do novo processo
-  // não fazem parte do formulário, tanto na criação quanto na edição.
+  // O formulário muda conforme o módulo selecionado no menu superior.
+  // Atas em andamento ainda não possuem número de Ata, processo licitatório ou alerta de vencimento.
   const ataVigente = !!editando && editando.situacao_cadastro === "Vigentes";
+  const ataEmAndamento = !!editando && editando.situacao_cadastro !== "Vigentes";
   const ataSel = atas.find((a) => a.id === selecionada);
 
   async function salvarAta() {
-    if (!editando?.numero || !editando.objeto || !editando.data_vencimento) {
-      toast.error("Preencha número, objeto e data de vencimento.");
+    if ((!ataEmAndamento && !editando?.numero?.trim()) || !editando?.objeto?.trim() || !editando.data_vencimento) {
+      toast.error(ataEmAndamento
+        ? "Preencha o objeto e a data de vencimento."
+        : "Preencha o número da Ata, o objeto e a data de vencimento.");
       return;
     }
     const payload = {
-      numero: editando.numero,
+      numero: editando.numero?.trim() || null,
       processo: editando.processo || null,
       objeto: editando.objeto,
       data_homologacao: editando.data_homologacao || null,
@@ -322,7 +325,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <tbody>
                   {filtradas.map((a) => (
                     <tr key={a.id} className="cursor-pointer border-t hover:bg-accent/50" onClick={() => setSelecionada(a.id)}>
-                      <td data-label="Nº Ata" className="px-4 py-3 font-medium">{a.numero}</td>
+                      <td data-label="Nº Ata" className="px-4 py-3 font-medium">{a.numero ?? "Em andamento"}</td>
                       <td data-label="Objeto" className="px-4 py-3">{a.objeto}</td>
                       <td data-label="Classificação" className="px-4 py-3 text-muted-foreground">{nomeClasse(a.classificacao_id) ?? "—"}</td>
                       <td data-label="Vencimento" className="px-4 py-3">
@@ -360,17 +363,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </DialogHeader>
           {editando && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>
-              <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>
+              {!ataEmAndamento && <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>}
+              {!ataEmAndamento && <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>}
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
-              {!ataVigente && (
-              <Campo label="Situação do cadastro">
-                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.situacao_cadastro ?? "Em andamento"} onChange={(e) => setEditando({ ...editando, situacao_cadastro: e.target.value })}>
-                  <option value="Em andamento">Em andamento</option>
-                  <option value="Vigentes">Vigentes</option>
-                </select>
-              </Campo>
-              )}
               <Campo label="Classificação">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
@@ -383,9 +378,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </Campo>
               <Campo label="Data de homologação"><Input type="date" value={editando.data_homologacao ?? ""} onChange={(e) => setEditando({ ...editando, data_homologacao: e.target.value })} /></Campo>
               <Campo label="Data de vencimento *"><Input type="date" value={editando.data_vencimento ?? ""} onChange={(e) => setEditando({ ...editando, data_vencimento: e.target.value })} /></Campo>
-              <Campo label="Alertar com quantos dias de antecedência?" full>
-                <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
-              </Campo>
+              {!ataEmAndamento && (
+                <Campo label="Alertar com quantos dias de antecedência?" full>
+                  <Input type="number" min={1} value={editando.dias_alerta ?? 90} onChange={(e) => setEditando({ ...editando, dias_alerta: Number(e.target.value) })} />
+                </Campo>
+              )}
               {!ataVigente && (
               <Campo label="Fase do novo processo" full>
                 <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
@@ -536,7 +533,7 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
             {ata.situacao_cadastro === "Vigentes" ? <StatusBadge ata={ata} /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">Em andamento</span>}
             {classe && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground">{classe}</span>}
           </div>
-          <h2 className="font-display text-3xl">Ata {ata.numero}</h2>
+          <h2 className="font-display text-3xl">{ata.numero ? `Ata ${ata.numero}` : "Ata em andamento"}</h2>
           <p className="text-muted-foreground">{ata.objeto}</p>
         </div>
         <div className="flex gap-2">
