@@ -134,7 +134,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         (a) =>
           (filtroClasse === "todas" || (filtroClasse === "sem" ? !a.classificacao_id : a.classificacao_id === filtroClasse)) &&
           (filtroSituacao === "todas" || a.situacao_cadastro === filtroSituacao) &&
-          `${a.numero ?? ""} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+          `${a.numero ?? ""} ${a.numero_edital_bll ?? ""} ${a.objeto} ${fornecedoresDe(a, totaisQ.data?.f?.[a.id])} ${a.processo ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
       ),
     [atas, filtroClasse, filtroSituacao, busca, totaisQ.data],
   );
@@ -445,7 +445,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               )}
               {!ataVigente && (
               <Campo label="Fase do novo processo" full>
-                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null, ...(e.target.value === "Publicado" ? {} : {}) })}>
+                <select className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm" value={editando.fase_processo ?? ""} onChange={(e) => setEditando({ ...editando, fase_processo: e.target.value || null })}>
                   <option value="">—</option>
                   {FASES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
