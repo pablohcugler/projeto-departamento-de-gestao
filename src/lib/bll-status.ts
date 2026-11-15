@@ -32,15 +32,15 @@ function decodificarHtml(valor: string): string {
   };
 
   return valor
-    .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, " ")
-    .replace(/<br\\s*\\/?>/gi, " ")
-    .replace(/<\\/(?:div|p|span|li|a)>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(?:div|p|span|li|a)>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&([A-Za-z]+);/g, (entity, name: string) => entidades[name] ?? entity)
-    .replace(/&#(\\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
