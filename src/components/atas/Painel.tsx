@@ -385,14 +385,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                                   <div className="min-w-40">
                                     <span className="inline-flex rounded-full bg-accent px-2.5 py-1 text-xs font-medium">{resultado.fase}</span>
                                     <div className="mt-1 text-[10px] text-muted-foreground">
-                                      {bllStatusQ.data?.consultadoEm ? new Date(bllStatusQ.data.consultadoEm).toLocaleString("pt-BR") : "Consultado agora"}
+                                      {bllStatusQ.data?.consultadoEm ? new Date(bllStatusQ.data.consultadoEm).toLocaleString("pt-BR") : "Consultado agora"} · {bllStatusQ.data?.paginasConsultadas ?? 6} páginas
                                     </div>
                                   </div>
                                 );
                               }
                               if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando BLL...</span>;
                               if (bllStatusQ.isError) return <span className="text-xs text-destructive">Consulta indisponível</span>;
-                              return <span className="text-xs text-muted-foreground">Não localizado na listagem pública</span>;
+                              return <span className="text-xs text-muted-foreground">Não localizado nas páginas consultadas</span>;
                             })()
                           )}
                           {a.situacao_cadastro === "Em andamento" && a.fase_processo === "Publicado" && (
