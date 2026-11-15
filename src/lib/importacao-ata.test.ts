@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { extrairItensAtaTexto, numeroBR } from "./importacao-ata";
+import {
+  extrairItensAtaTexto,
+  numeroBR,
+  reconstruirLinhasPdf,
+} from "./importacao-ata";
 
 describe("leitura do relatório de saldo da ata", () => {
   it("preserva códigos, fornecedor, unidade e valores brasileiros", () => {
@@ -21,6 +25,42 @@ describe("leitura do relatório de saldo da ata", () => {
         valor_total: 2018.24,
       },
     ]);
+  });
+
+  it("reconstrói as colunas a partir das coordenadas dos fragmentos PDF", () => {
+    const linha = (y: number, itens: Array<[string, number, number]>) =>
+      itens.map(([str, x, width]) => ({
+        str, x, y, width, height: 8, fontSize: 8,
+      }));
+
+    const paginas = [[
+      ...linha(100, [
+        ["Fornecedor:", 20, 50], ["5400", 90, 18], ["-", 112, 3],
+        ["GILBERTO", 120, 35], ["DOMINGUES", 158, 45],
+        ["MERCEARIA", 207, 43], ["-", 253, 3], ["ME", 260, 11],
+      ]),
+      ...linha(90, [
+        ["0002", 49, 18], ["15.04458", 87, 34],
+        ["ACENDEDOR, TIPO FOSFORO de segurança,", 170, 180],
+        ["MÇ", 540, 14], ["3,7100", 599, 28],
+        ["544,0000", 685, 36], ["2.018,24", 756, 33],
+      ]),
+      ...linha(80, [["resistente, com ponta abrasiva e lixa externa.", 170, 180]]),
+    ]];
+
+    const texto = reconstruirLinhasPdf(paginas).join("\n");
+    const itens = extrairItensAtaTexto(texto);
+    expect(itens).toHaveLength(1);
+    expect(itens[0]).toMatchObject({
+      codigo_item: "0002",
+      codigo_produto: "15.04458",
+      fornecedor: "GILBERTO DOMINGUES MERCEARIA - ME",
+      unidade: "MÇ",
+      preco_unitario: 3.71,
+      quantidade: 544,
+      valor_total: 2018.24,
+    });
+    expect(itens[0]?.descricao).toContain("resistente, com ponta abrasiva");
   });
 
   it("anexa linhas de continuação à descrição e troca o fornecedor no cabeçalho seguinte", () => {
