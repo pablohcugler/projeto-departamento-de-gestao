@@ -276,7 +276,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <div>
                 <div className="app-eyebrow">CONTROLE DE REGISTROS</div>
                 <h2 className="app-page-title">Atas de Registro de Preços</h2>
-                <p className="text-sm text-muted-foreground">{atas.length} ata(s) cadastrada(s) no sistema</p>
+                <p className="text-sm text-muted-foreground">{filtradas.length} ata(s) exibida(s) nesta situação · {atas.length} cadastrada(s) no sistema</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
