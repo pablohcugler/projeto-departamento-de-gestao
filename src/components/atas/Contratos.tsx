@@ -116,7 +116,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </div>
       </div>
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos contratos">
+      <section className="app-contract-summary mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos contratos">
         <button onClick={() => setSituacao("todas")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 ${situacao === "todas" ? "border-primary ring-1 ring-primary/20" : ""}`}>
           <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Total de contratos</span><FileText className="h-4 w-4" /></div>
           <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.length}</div>
@@ -139,7 +139,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </button>
       </section>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="app-toolbar mb-4 flex flex-wrap gap-2">
         <Input placeholder="Buscar por número, objeto, contratado..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <select className="h-9 rounded-md border border-input bg-card px-3 text-sm" value={filtroCadastro} onChange={(e) => setFiltroCadastro(e.target.value as typeof filtroCadastro)}>
           <option value="todas">Todas as situações</option>
@@ -157,7 +157,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         <span>{filtrados.length} de {lista.length} contrato(s)</span>
         {situacao !== "todas" && <button className="font-medium text-primary hover:underline" onClick={() => setSituacao("todas")}>Limpar filtro de situação</button>}
       </div>
-      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+      <div className="app-responsive-table overflow-x-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>
@@ -177,20 +177,20 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
               const st = statusAta(c.data_vencimento, c.dias_alerta);
               return (
                 <tr key={c.id} className={`border-t ${st === "vencida" ? "bg-destructive/10" : st === "alerta" ? "bg-warning/15" : ""}`}>
-                  <td className="px-4 py-3 font-medium">{c.numero}</td>
-                  <td className="px-4 py-3">{c.objeto}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{nomeClasse(c.classificacao_id) ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.contratado ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{c.valor != null ? brl(Number(c.valor)) : "—"}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Nº Contrato" className="px-4 py-3 font-medium">{c.numero}</td>
+                  <td data-label="Objeto" className="px-4 py-3">{c.objeto}</td>
+                  <td data-label="Classificação" className="px-4 py-3 text-muted-foreground">{nomeClasse(c.classificacao_id) ?? "—"}</td>
+                  <td data-label="Contratado" className="px-4 py-3 text-muted-foreground">{c.contratado ?? "—"}</td>
+                  <td data-label="Valor" className="px-4 py-3 text-right tabular-nums">{c.valor != null ? brl(Number(c.valor)) : "—"}</td>
+                  <td data-label="Vencimento" className="px-4 py-3">
                     {dataBR(c.data_vencimento)}
                     <div className="text-xs text-muted-foreground">{textoDias(diasParaVencer(c.data_vencimento))}</div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Cadastro" className="px-4 py-3">
                     <span className={c.situacao_cadastro === "Vigentes" ? "rounded-full bg-success/15 px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>{c.situacao_cadastro}</span>
                   </td>
-                  <td className="px-4 py-3"><StatusBadge ata={c} /></td>
-                  <td className="whitespace-nowrap px-2">
+                  <td data-label="Situação do vencimento" className="px-4 py-3"><StatusBadge ata={c} /></td>
+                  <td data-label="Ações" className="whitespace-nowrap px-2">
                     <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => setEditando(c)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" aria-label="Excluir" onClick={() => excluir(c.id)}><Trash2 className="h-4 w-4" /></Button>
                   </td>

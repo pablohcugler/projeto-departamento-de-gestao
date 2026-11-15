@@ -107,8 +107,8 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
         {itens.length > 0 && (
           <>
             <p className="text-sm text-muted-foreground">Confira os dados antes de gravar: {itens.length} itens · total recalculado {brl(total)}.</p>
-            <div className="max-h-[55vh] overflow-auto rounded-lg border">
-              <table className="w-full min-w-[1200px] text-sm">
+            <div className="app-responsive-table app-import-preview max-h-[55vh] overflow-auto rounded-lg border">
+              <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted text-left text-muted-foreground">
                   <tr>
                     <th className="p-2 w-24">Cód. item</th>
@@ -125,15 +125,15 @@ export function ImportarItens({ ataId, aberto, onFechar, onImportado }: { ataId:
                 <tbody>
                   {itens.map((it, i) => (
                     <tr key={it.codigo_item + "-" + i} className="border-t">
-                      <td className="p-1"><Input value={it.codigo_item} onChange={(e) => atualizar(i, "codigo_item", e.target.value)} /></td>
-                      <td className="p-1"><Input value={it.codigo_produto} onChange={(e) => atualizar(i, "codigo_produto", e.target.value)} /></td>
-                      <td className="p-1"><Input value={it.descricao} onChange={(e) => atualizar(i, "descricao", e.target.value)} /></td>
-                      <td className="p-1"><Input value={it.fornecedor} onChange={(e) => atualizar(i, "fornecedor", e.target.value)} /></td>
-                      <td className="p-1"><Input value={it.unidade} onChange={(e) => atualizar(i, "unidade", e.target.value)} /></td>
-                      <td className="p-1"><Input value={String(it.quantidade)} onChange={(e) => atualizar(i, "quantidade", e.target.value)} /></td>
-                      <td className="p-1"><Input value={String(it.preco_unitario)} onChange={(e) => atualizar(i, "preco_unitario", e.target.value)} /></td>
-                      <td className="p-2 text-right tabular-nums">{brl(it.quantidade * it.preco_unitario)}</td>
-                      <td className="p-1"><Button variant="ghost" size="icon" aria-label="Remover" onClick={() => setItens(itens.filter((_, x) => x !== i))}><Trash2 className="h-4 w-4" /></Button></td>
+                      <td data-label="Cód. item" className="p-1"><Input value={it.codigo_item} onChange={(e) => atualizar(i, "codigo_item", e.target.value)} /></td>
+                      <td data-label="Cód. produto" className="p-1"><Input value={it.codigo_produto} onChange={(e) => atualizar(i, "codigo_produto", e.target.value)} /></td>
+                      <td data-label="Descrição" className="p-1"><Input value={it.descricao} onChange={(e) => atualizar(i, "descricao", e.target.value)} /></td>
+                      <td data-label="Fornecedor" className="p-1"><Input value={it.fornecedor} onChange={(e) => atualizar(i, "fornecedor", e.target.value)} /></td>
+                      <td data-label="Unidade" className="p-1"><Input value={it.unidade} onChange={(e) => atualizar(i, "unidade", e.target.value)} /></td>
+                      <td data-label="Saldo" className="p-1"><Input value={String(it.quantidade)} onChange={(e) => atualizar(i, "quantidade", e.target.value)} /></td>
+                      <td data-label="Valor unitário" className="p-1"><Input value={String(it.preco_unitario)} onChange={(e) => atualizar(i, "preco_unitario", e.target.value)} /></td>
+                      <td data-label="Valor total" className="p-2 text-right tabular-nums">{brl(it.quantidade * it.preco_unitario)}</td>
+                      <td data-label="Ações" className="p-1"><Button variant="ghost" size="icon" aria-label="Remover" onClick={() => setItens(itens.filter((_, x) => x !== i))}><Trash2 className="h-4 w-4" /></Button></td>
                     </tr>
                   ))}
                 </tbody>
