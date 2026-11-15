@@ -116,7 +116,7 @@ export function Contratos({ classes, onGerirClasses }: { classes: Classe[]; onGe
         </div>
       </div>
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos contratos">
+      <section className="app-contract-summary mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos contratos">
         <button onClick={() => setSituacao("todas")} className={`rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 ${situacao === "todas" ? "border-primary ring-1 ring-primary/20" : ""}`}>
           <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Total de contratos</span><FileText className="h-4 w-4" /></div>
           <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.length}</div>
