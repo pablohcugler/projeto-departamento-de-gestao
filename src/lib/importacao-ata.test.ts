@@ -82,4 +82,19 @@ describe("leitura do relatório de saldo da ata", () => {
     expect(numeroBR("2.018,24")).toBe(2018.24);
     expect(numeroBR("544,0000")).toBe(544);
   });
+
+  it("extrai a data do relatório no formato por extenso, inclusive com acento", () => {
+    expect(extrairDataRelatorioTexto("CAJATI, 15 de Novembro de 2026.")).toBe("2026-11-15");
+    expect(extrairDataRelatorioTexto("Cajati, 9 de março de 2026.")).toBe("2026-03-09");
+  });
+
+  it("extrai a data numérica da última página quando estiver em dd/mm/aaaa", () => {
+    expect(extrairDataRelatorioTexto("Emitido em 15/11/2026")).toBe("2026-11-15");
+  });
+
+  it("não aceita datas impossíveis ou ausentes", () => {
+    expect(extrairDataRelatorioTexto("Cajati, 32 de Novembro de 2026.")).toBeNull();
+    expect(extrairDataRelatorioTexto("sem data no rodapé")).toBeNull();
+  });
+
 });
