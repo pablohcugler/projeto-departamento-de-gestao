@@ -452,12 +452,15 @@ function DetalheAta({ ata, classe, onVoltar, onEditar, onExcluir }: { ata: Ata; 
   });
   const itens = itensQ.data ?? [];
   const total = itens.reduce((s, i) => s + Number(i.preco_total ?? 0), 0);
-  const fornecedoresDosItens = itens
-    .map((i) => (i.fornecedor ?? "").trim())
-    .filter(Boolean);
-  const fornecedoresContados = fornecedoresDosItens.length > 0
-    ? new Set(fornecedoresDosItens.map((nome) => nome.replace(/\\s+/g, " ").toLocaleLowerCase("pt-BR"))).size
-    : new Set((ata.fornecedor ?? "").split(",").map((nome) => nome.trim()).filter(Boolean).map((nome) => nome.replace(/\\s+/g, " ").toLocaleLowerCase("pt-BR"))).size;
+  const fornecedoresDaAta = [
+    ...((ata.fornecedor ?? "").split(",")),
+    ...itens.map((item) => item.fornecedor ?? ""),
+  ];
+  const fornecedoresContados = new Set(
+    fornecedoresDaAta
+      .map((nome) => nome.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\s+/g, " ").trim().toLocaleLowerCase("pt-BR"))
+      .filter(Boolean),
+  ).size;
   const [importar, setImportar] = useState(false);
   const [novo, setNovo] = useState({ codigo_item: "", codigo_produto: "", descricao: "", fornecedor: "", unidade: "UN", quantidade: "1", preco_unitario: "" });
 
