@@ -102,8 +102,8 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           consultarBll({ data: { processos: editaisParaConsultaBll } }),
           new Promise<never>((_, reject) => {
             watchdog = setTimeout(
-              () => reject(new Error("A consulta da BLL ultrapassou 15 segundos. Tente atualizar novamente.")),
-              15_000,
+              () => reject(new Error("A consulta da BLL ultrapassou 45 segundos. Verifique o acesso à BLL e tente novamente.")),
+              45_000,
             );
           }),
         ]);
@@ -408,9 +408,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                               }
                               if (bllStatusQ.isError) {
                                 const erro = bllStatusQ.error instanceof Error ? bllStatusQ.error.message : "Falha inesperada na consulta.";
-                                return <span className="text-xs text-destructive" title={erro}>BLL indisponível · tentar novamente</span>;
+                                return (
+                                  <div className="min-w-52 max-w-72 whitespace-normal text-xs text-destructive" title={erro}>
+                                    <div className="font-semibold">BLL indisponível</div>
+                                    <div className="mt-1 break-words">{erro}</div>
+                                    <button type="button" className="mt-1 underline" onClick={() => void bllStatusQ.refetch()}>
+                                      Tentar novamente
+                                    </button>
+                                  </div>
+                                );
                               }
-                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando BLL (limite de 15s)...</span>;
+                              if (bllStatusQ.isFetching) return <span className="text-xs text-muted-foreground">Consultando páginas da BLL...</span>;
                               if (bllStatusQ.data?.paginasDisponiveis === 0) return <span className="text-xs text-destructive" title={bllStatusQ.data.aviso}>BLL não respondeu</span>;
                               return (
                                 <div className="text-xs text-muted-foreground" title={resultado?.mensagem ?? bllStatusQ.data?.aviso}>
