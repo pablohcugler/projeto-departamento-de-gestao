@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Search, ShieldCheck, UserRound, Users, KeyRound, Ban, CheckCircle2, RefreshCw } from "lucide-react";
+import { ImportacaoLoteAtas } from "@/components/atas/ImportacaoLoteAtas";
 
 type Usuario = {
   id: string;
@@ -102,9 +103,12 @@ export function Administracao() {
           <h2 className="app-page-title flex items-center gap-2"><ShieldCheck className="h-6 w-6" /> Administração de usuários</h2>
           <p className="text-sm text-muted-foreground">Gerencie contas, setores, permissões, suspensão e senhas.</p>
         </div>
-        <Button variant="outline" onClick={() => void consulta.refetch()} disabled={consulta.isFetching}>
-          <RefreshCw className="h-4 w-4" /> Atualizar lista
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <ImportacaoLoteAtas />
+          <Button variant="outline" onClick={() => void consulta.refetch()} disabled={consulta.isFetching}>
+            <RefreshCw className="h-4 w-4" /> Atualizar lista
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
