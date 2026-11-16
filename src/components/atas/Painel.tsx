@@ -497,7 +497,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         {aba === "administracao" ? (
           <Administracao />
         ) : aba === "pedidos" ? (
-          <Pedidos atas={atas} />
+          <Pedidos atas={atas} onCriarPedido={() => setPedidoAberto(true)} />
         ) : aba === "feedbacks" ? (
           <div className="space-y-4">
             <Button variant="outline" onClick={() => setAba("atas")}>
