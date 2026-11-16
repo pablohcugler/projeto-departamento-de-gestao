@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ArrowLeft, ArrowRight, FileText, FileUp, Loader2, Printer } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, FileText, FileUp, Loader2, Printer, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,7 @@ export function CriarPedido({
   const [ataId, setAtaId] = useState("");
   const [itensAta, setItensAta] = useState<ItemAta[]>([]);
   const [linhas, setLinhas] = useState<LinhaPedido[]>([]);
+  const [buscaDescricao, setBuscaDescricao] = useState("");
   const [dataRelatorio, setDataRelatorio] = useState("");
   const [nomeArquivo, setNomeArquivo] = useState("");
   const [justificativa, setJustificativa] = useState("");
@@ -63,6 +64,21 @@ export function CriarPedido({
   const [carregandoItens, setCarregandoItens] = useState(false);
 
   const ataSelecionada = atas.find((ata) => ata.id === ataId);
+  const linhasFiltradas = useMemo(() => {
+    const termo = buscaDescricao
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR")
+      .trim();
+    if (!termo) return linhas;
+    return linhas.filter((linha) =>
+      linha.descricao
+        .normalize("NFD")
+        .replace(/[\\u0300-\\u036f]/g, "")
+        .toLocaleLowerCase("pt-BR")
+        .includes(termo),
+    );
+  }, [linhas, buscaDescricao]);
   const escolhidas = useMemo(() => linhas.filter((linha) => linha.selecionado && linha.quantidadePedido > 0), [linhas]);
   const totalPedido = useMemo(
     () => escolhidas.reduce((total, linha) => total + linha.quantidadePedido * linha.preco_unitario, 0),
@@ -84,6 +100,7 @@ export function CriarPedido({
     setAtaId("");
     setItensAta([]);
     setLinhas([]);
+    setBuscaDescricao("");
     setDataRelatorio("");
     setNomeArquivo("");
     setJustificativa("");
@@ -237,6 +254,7 @@ export function CriarPedido({
 
       setDataRelatorio(resposta.dataRelatorio);
       setLinhas(linhasLidas);
+      setBuscaDescricao("");
       setEtapa("itens");
       const semCorrespondencia = linhasLidas.length - saldosParaAtualizar.length;
       if (semCorrespondencia > 0) {
@@ -408,6 +426,34 @@ export function CriarPedido({
               <div className="text-muted-foreground">{linhas.length} item(ns) lido(s) · saldo registrado no sistema para {linhas.filter((l) => l.ataItemId).length} item(ns) do cadastro</div>
             </div>
             <p className="text-sm text-muted-foreground">Marque os itens que farão parte do pedido e informe a quantidade. O sistema não permitirá quantidade superior à coluna “Qtd. Saldo”.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[240px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  value={buscaDescricao}
+                  onChange={(e) => setBuscaDescricao(e.target.value)}
+                  placeholder="Pesquisar item pela descrição..."
+                  aria-label="Pesquisar item pela descrição"
+                  className="pl-9 pr-10"
+                />
+                {buscaDescricao && (
+                  <button
+                    type="button"
+                    onClick={() => setBuscaDescricao("")}
+                    aria-label="Limpar pesquisa"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {buscaDescricao.trim()
+                  ? `${linhasFiltradas.length} de ${linhas.length} item(ns)`
+                  : `${linhas.length} item(ns)`}
+              </span>
+            </div>
             <div className="max-h-[50vh] overflow-auto rounded-lg border">
               <table className="w-full min-w-[900px] text-sm">
                 <thead className="sticky top-0 bg-muted text-left">
@@ -416,7 +462,7 @@ export function CriarPedido({
                   </tr>
                 </thead>
                 <tbody>
-                  {linhas.map((linha) => (
+                  {linhasFiltradas.map((linha) => (
                     <tr key={linha.chave} className="border-t">
                       <td className="p-2"><input type="checkbox" checked={linha.selecionado} onChange={(e) => atualizarLinha(linha.chave, { selecionado: e.target.checked, quantidadePedido: e.target.checked ? (linha.quantidade >= 1 ? 1 : linha.quantidade) : 0 })} aria-label={`Selecionar item ${linha.codigo_item}`} /></td>
                       <td className="p-2">{linha.fornecedor}</td>
@@ -428,6 +474,13 @@ export function CriarPedido({
                       <td className="p-2 text-right tabular-nums">{moeda(linha.selecionado ? linha.quantidadePedido * linha.preco_unitario : 0)}</td>
                     </tr>
                   ))}
+                  {linhasFiltradas.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
+                        Nenhum item encontrado para “{buscaDescricao}”.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
