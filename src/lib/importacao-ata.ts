@@ -411,7 +411,7 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
       fornecedorAtual = fornecedor;
       continue;
     }
-    if (linhaEhCabecalhoOuRodapeAta(linha)) continue;
+    if (linhaEhCabecalhoOuRodapeAta(linha) && !/^item\s+\d/i.test(linha)) continue;
 
     // Alguns editais imprimem "Item 01" antes do número; elimina só esse rótulo.
     const linhaItem = linha.replace(/^item\s+(?=\d)/i, "");
