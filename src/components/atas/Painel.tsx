@@ -432,43 +432,49 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </button>
           {aba === "inicio" || aba === "pca" ? <div className="flex-1" /> : (
           <nav className="app-nav flex gap-1" aria-label="Navegação dos módulos">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant={aba === "atas" ? "secondary" : "ghost"} className={aba === "atas" ? "app-nav-active" : "app-nav-item"}>
-                  Atas de Registro <span className="ml-1 text-xs opacity-70">⌄</span>
+            {(aba === "atas" || aba === "pedidos") && (
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant={aba === "atas" ? "secondary" : "ghost"} className={aba === "atas" ? "app-nav-active" : "app-nav-item"}>
+                      Atas de Registro <span className="ml-1 text-xs opacity-70">⌄</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-52">
+                    <DropdownMenuLabel>Exibir Atas de Registro</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
+                      {filtroSituacao === "Vigentes" ? "✓ " : ""}Vigentes
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
+                      {filtroSituacao === "Em andamento" ? "✓ " : ""}Em andamento
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant={aba === "pedidos" ? "secondary" : "ghost"} className={aba === "pedidos" ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba("pedidos"); setSelecionada(null); }}>
+                  Pedidos
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                <DropdownMenuLabel>Exibir Atas de Registro</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
-                  {filtroSituacao === "Vigentes" ? "✓ " : ""}Vigentes
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
-                  {filtroSituacao === "Em andamento" ? "✓ " : ""}Em andamento
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant={aba === "contratos" ? "secondary" : "ghost"} className={aba === "contratos" ? "app-nav-active" : "app-nav-item"}>
-                  Contratos <span className="ml-1 text-xs opacity-70">⌄</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                <DropdownMenuLabel>Exibir Contratos</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Vigentes"); setBusca(""); }}>
-                  {filtroSituacaoContratos === "Vigentes" ? "✓ " : ""}Vigentes
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Em andamento"); setBusca(""); }}>
-                  {filtroSituacaoContratos === "Em andamento" ? "✓ " : ""}Em andamento
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant={aba === "pedidos" ? "secondary" : "ghost"} className={aba === "pedidos" ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba("pedidos"); setSelecionada(null); }}>
-              Pedidos
-            </Button>
+              </>
+            )}
+            {aba === "contratos" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="secondary" className="app-nav-active">
+                    Contratos <span className="ml-1 text-xs opacity-70">⌄</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  <DropdownMenuLabel>Exibir Contratos</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Vigentes"); setBusca(""); }}>
+                    {filtroSituacaoContratos === "Vigentes" ? "✓ " : ""}Vigentes
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Em andamento"); setBusca(""); }}>
+                    {filtroSituacaoContratos === "Em andamento" ? "✓ " : ""}Em andamento
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
           )}
           <div className="app-header-actions flex items-center gap-2 text-sm">
