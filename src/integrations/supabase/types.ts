@@ -152,6 +152,7 @@ export type Database = {
         Update: {
           classificacao_id?: string | null
           created_at?: string
+          setor_id?: string
           data_homologacao?: string | null
           data_vencimento?: string
           dias_alerta?: number
@@ -246,6 +247,7 @@ export type Database = {
           classificacao_id?: string | null
           contratado?: string | null
           created_at?: string
+          setor_id?: string
           data_inicio?: string | null
           data_vencimento?: string
           dias_alerta?: number
