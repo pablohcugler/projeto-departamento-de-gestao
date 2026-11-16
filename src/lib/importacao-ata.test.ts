@@ -129,7 +129,7 @@ describe("leitura do relatório de saldo da ata", () => {
       "Data Início: 11/08/2026",
       "Data Fim: 11/08/2027",
       "Sequência: 20/2026",
-    ].join("\\n");
+    ].join("\n");
     expect(extrairDadosAtaTexto(texto)).toEqual({
       numero: "24/2026",
       processo: "229/2026",
