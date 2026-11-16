@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extrairDadosAtaTexto,
   extrairDataRelatorioTexto,
   extrairDataRelatorioUltimaPagina,
   extrairItensAtaTexto,
@@ -117,5 +118,31 @@ describe("leitura do relatório de saldo da ata", () => {
     expect(localizarCabecalhoPdf(new TextEncoder().encode("%PDF-1.7\\n"))).toBe(0);
     expect(localizarCabecalhoPdf(new TextEncoder().encode("prefixo\\n%PDF-1.7\\n"))).toBe(9);
     expect(localizarCabecalhoPdf(new TextEncoder().encode("arquivo sem cabeçalho"))).toBe(-1);
+  });
+
+  it("extrai os dados cadastrais da ata e aplica os mapeamentos solicitados", () => {
+    const texto = [
+      "PREFEITURA MUNICIPAL DE CAJATI",
+      "ATA DE REGISTRO DE PREÇOS Nº 24/2026",
+      "Processo/Ano: 229/2026",
+      "Objeto: Aquisição de materiais de consumo para atendimento das unidades municipais.",
+      "Data Início: 11/08/2026",
+      "Data Fim: 11/08/2027",
+      "Sequência: 20/2026",
+    ].join("\\n");
+    expect(extrairDadosAtaTexto(texto)).toEqual({
+      numero: "24/2026",
+      processo: "229/2026",
+      objeto: "Aquisição de materiais de consumo para atendimento das unidades municipais.",
+      data_homologacao: "2026-08-11",
+      data_vencimento: "2027-08-11",
+      pregao: "20/2026",
+    });
+  });
+
+  it("não inventa campos que não estejam identificados no documento", () => {
+    expect(extrairDadosAtaTexto("ATA DE REGISTRO DE PREÇOS\nObjeto: Compra de materiais.")).toEqual({
+      objeto: "Compra de materiais.",
+    });
   });
 });
