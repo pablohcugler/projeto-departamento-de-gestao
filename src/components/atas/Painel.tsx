@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -20,6 +21,7 @@ import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
+import { extrairDadosAtaPdf } from "@/lib/importar.functions";
 
 type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
@@ -64,6 +66,10 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [aba, setAba] = useState<"atas" | "contratos" | "feedbacks">("atas");
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
+  const extrairDadosAta = useServerFn(extrairDadosAtaPdf);
+  const inputPdfAta = useRef<HTMLInputElement>(null);
+  const [arquivoPdfAta, setArquivoPdfAta] = useState<File | null>(null);
+  const [lendoPdfAta, setLendoPdfAta] = useState(false);
   const [pedidoAberto, setPedidoAberto] = useState(false);
   const [gerirClasses, setGerirClasses] = useState(false);
   const [filtroClasse, setFiltroClasse] = useState<string>("todas");
@@ -145,7 +151,97 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const ataEmAndamento = !!editando && editando.situacao_cadastro !== "Vigentes";
   const ataSel = atas.find((a) => a.id === selecionada);
 
+  async function importarPdfDaAta(arquivo?: File) {
+    if (!arquivo) return;
+    if (arquivo.type !== "application/pdf" && !arquivo.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Selecione um arquivo PDF da Ata de Registro de Preços.");
+      return;
+    }
+    if (arquivo.size === 0 || arquivo.size > 10 * 1024 * 1024) {
+      toast.error(arquivo.size === 0 ? "O arquivo selecionado está vazio." : "O PDF ultrapassa o limite de 10 MB.");
+      return;
+    }
+
+    setLendoPdfAta(true);
+    setArquivoPdfAta(arquivo);
+    try {
+      const bytes = await new Promise<Uint8Array>((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onload = () => {
+          if (!(leitor.result instanceof ArrayBuffer)) {
+            reject(new Error("O navegador não retornou os dados binários do PDF."));
+            return;
+          }
+          resolve(new Uint8Array(leitor.result));
+        };
+        leitor.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."));
+        leitor.onabort = () => reject(new Error("A leitura do PDF foi cancelada."));
+        leitor.readAsArrayBuffer(arquivo);
+      });
+      if (bytes.length === 0 || bytes.length !== arquivo.size) {
+        throw new Error("A leitura do PDF ficou incompleta. Salve uma cópia do arquivo no computador e tente novamente.");
+      }
+
+      let binario = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      const resposta = await extrairDadosAta({ data: { base64: btoa(binario) } });
+      if (resposta.erro) {
+        toast.warning(resposta.erro + " O arquivo será mantido para anexação após o cadastro; preencha os campos manualmente.");
+        return;
+      }
+
+      const dados = resposta.dados;
+      setEditando((atual) => atual ? ({
+        ...atual,
+        ...(dados.numero ? { numero: dados.numero } : {}),
+        ...(dados.processo ? { processo: dados.processo } : {}),
+        ...(dados.objeto ? { objeto: dados.objeto } : {}),
+        ...(dados.data_homologacao ? { data_homologacao: dados.data_homologacao } : {}),
+        ...(dados.data_vencimento ? { data_vencimento: dados.data_vencimento } : {}),
+        ...(dados.pregao ? { pregao: dados.pregao } : {}),
+      }) : atual);
+
+      const nomes: Record<string, string> = {
+        numero: "número da ata",
+        processo: "número do processo",
+        objeto: "objeto",
+        data_homologacao: "data de homologação (Data Início)",
+        data_vencimento: "data de vencimento (Data Fim)",
+        pregao: "pregão eletrônico (Sequência)",
+      };
+      const encontrados = resposta.camposEncontrados.map((campo) => nomes[campo] ?? campo);
+      const faltantes = Object.keys(nomes).filter((campo) => !resposta.camposEncontrados.includes(campo)).map((campo) => nomes[campo]);
+      toast.success("PDF lido. Campos preenchidos: " + encontrados.join(", ") + ".");
+      if (faltantes.length) {
+        toast.warning("Não localizei no PDF: " + faltantes.join(", ") + ". Confira e preencha manualmente.");
+      }
+    } catch (erro) {
+      const mensagem = erro instanceof Error ? erro.message : "Erro inesperado ao ler o PDF.";
+      toast.error(mensagem);
+    } finally {
+      setLendoPdfAta(false);
+      if (inputPdfAta.current) inputPdfAta.current.value = "";
+    }
+  }
+
+  function fecharFormularioAta() {
+    setEditando(null);
+    setArquivoPdfAta(null);
+    setLendoPdfAta(false);
+    if (inputPdfAta.current) inputPdfAta.current.value = "";
+  }
+
   async function salvarAta() {
+    if (!editando?.memorando_1doc?.trim() || !editando?.processo_1doc?.trim()) {
+      toast.error("Informe o número do Memorando e do Processo Administrativo no 1Doc.");
+      return;
+    }
+    if (!editando.id && !editando.classificacao_id) {
+      toast.error("Selecione uma classificação para a nova ata.");
+      return;
+    }
     if ((!ataEmAndamento && !editando?.numero?.trim()) || !editando?.objeto?.trim() || !editando.data_vencimento) {
       toast.error(ataEmAndamento
         ? "Preencha o objeto e a data de vencimento."
@@ -172,12 +268,41 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       classificacao_id: editando.classificacao_id || null,
       situacao_cadastro: editando.situacao_cadastro ?? "Em andamento",
     };
-    const { error } = editando.id
-      ? await supabase.from("atas").update(payload).eq("id", editando.id)
-      : await supabase.from("atas").insert(payload);
-    if (error) { toast.error(error.message); return; }
+    let ataIdSalva = editando.id;
+    if (editando.id) {
+      const { error } = await supabase.from("atas").update(payload).eq("id", editando.id);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { data, error } = await supabase.from("atas").insert(payload).select("id").single();
+      if (error || !data) { toast.error(error?.message ?? "Não foi possível salvar a ata."); return; }
+      ataIdSalva = data.id;
+    }
+
+    if (arquivoPdfAta && ataIdSalva) {
+      const seguro = arquivoPdfAta.name.normalize("NFD").replace(/[^\w.\-]+/g, "_");
+      const caminho = "ata/" + ataIdSalva + "/" + Date.now() + "_" + seguro;
+      const upload = await supabase.storage.from("anexos").upload(caminho, arquivoPdfAta);
+      if (upload.error) {
+        toast.warning("Ata salva, mas não foi possível anexar o PDF: " + upload.error.message);
+      } else {
+        const { error: erroAnexo } = await supabase.from("anexos").insert({
+          ref_tipo: "ata",
+          ref_id: ataIdSalva,
+          tipo_doc: "Ata de Registro de Preços",
+          nome: arquivoPdfAta.name,
+          caminho,
+        });
+        if (erroAnexo) {
+          await supabase.storage.from("anexos").remove([caminho]);
+          toast.warning("Ata salva, mas houve falha ao registrar o PDF como anexo: " + erroAnexo.message);
+        }
+      }
+    }
+
     toast.success("Ata salva.");
     setEditando(null);
+    setArquivoPdfAta(null);
+    if (inputPdfAta.current) inputPdfAta.current.value = "";
     qc.invalidateQueries({ queryKey: ["atas"] });
   }
 
@@ -316,7 +441,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <Button variant="outline" onClick={() => setGerirClasses(true)}>
                   <Tags className="h-4 w-4" /> Classificações
                 </Button>
-                <Button onClick={() => setEditando({ dias_alerta: 90, situacao_cadastro: filtroSituacao === "todas" ? "Em andamento" : filtroSituacao })}>
+                <Button onClick={() => { setArquivoPdfAta(null); if (inputPdfAta.current) inputPdfAta.current.value = ""; setEditando({ dias_alerta: 90, situacao_cadastro: filtroSituacao === "todas" ? "Em andamento" : filtroSituacao }); }}>
                   <Plus className="h-4 w-4" /> Nova ata
                 </Button>
               </div>
@@ -406,23 +531,44 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         )}
       </main>
 
-      <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
+      <Dialog open={!!editando} onOpenChange={(o) => !o && fecharFormularioAta()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editando?.id ? "Editar ata" : "Nova ata"}</DialogTitle>
           </DialogHeader>
           {editando && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {!editando.id && ataVigente && (
+                <Campo label="Importar dados da Ata (PDF)" full>
+                  <input
+                    ref={inputPdfAta}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="hidden"
+                    disabled={lendoPdfAta}
+                    onChange={(e) => { void importarPdfDaAta(e.target.files?.[0]); }}
+                  />
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3">
+                    <Button type="button" variant="outline" disabled={lendoPdfAta} onClick={() => inputPdfAta.current?.click()}>
+                      <FileUp className="h-4 w-4" /> {lendoPdfAta ? "Lendo PDF..." : "Selecionar PDF da ata"}
+                    </Button>
+                    {arquivoPdfAta && <span className="max-w-full truncate text-xs text-muted-foreground">{arquivoPdfAta.name}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O sistema tentará preencher número da ata, processo, objeto, Data Início (homologação), Data Fim (vencimento) e Sequência (pregão eletrônico). A classificação e os números do 1Doc serão informados pelo usuário.
+                  </p>
+                </Campo>
+              )}
               {!ataEmAndamento && <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>}
               {!ataEmAndamento && <Campo label="Nº do processo"><Input value={editando.processo ?? ""} onChange={(e) => setEditando({ ...editando, processo: e.target.value })} /></Campo>}
               <Campo label="Objeto *" full><Input value={editando.objeto ?? ""} onChange={(e) => setEditando({ ...editando, objeto: e.target.value })} /></Campo>
-              <Campo label="Classificação">
+              <Campo label="Classificação *">
                 <select
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
                   value={editando.classificacao_id ?? ""}
                   onChange={(e) => setEditando({ ...editando, classificacao_id: e.target.value || null })}
                 >
-                  <option value="">Sem classificação</option>
+                  <option value="">Selecione uma classificação...</option>
                   {classes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </Campo>
@@ -455,13 +601,13 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <Campo label="Observações sobre o andamento" full><Textarea placeholder="Ex.: cotação enviada a 3 fornecedores em 10/11..." value={editando.observacoes ?? ""} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} /></Campo>
               )}
               <Campo label="Nº do Pregão Eletrônico" full><Input placeholder="Opcional" value={editando.pregao ?? ""} onChange={(e) => setEditando({ ...editando, pregao: e.target.value })} /></Campo>
-              <Campo label="Memorando (1Doc)"><Input placeholder="Opcional" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
-              <Campo label="Processo Administrativo (1Doc)"><Input placeholder="Opcional" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
+              <Campo label="Nº do Memorando (1Doc) *"><Input required placeholder="Número do memorando no 1Doc" value={editando.memorando_1doc ?? ""} onChange={(e) => setEditando({ ...editando, memorando_1doc: e.target.value })} /></Campo>
+              <Campo label="Processo Administrativo (1Doc) *"><Input required placeholder="Número do processo no 1Doc" value={editando.processo_1doc ?? ""} onChange={(e) => setEditando({ ...editando, processo_1doc: e.target.value })} /></Campo>
               <Campo label="Documentos anexos (opcional)" full><Anexos refTipo="ata" refId={editando.id} /></Campo>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={fecharFormularioAta}>Cancelar</Button>
             <Button onClick={salvarAta}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
