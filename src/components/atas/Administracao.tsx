@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listarUsuariosAdministracao, atualizarUsuarioAdministrativamente } from "@/lib/usuarios.functions";
+import { adminApi } from "@/lib/admin-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,15 +38,13 @@ function mascararCpf(cpf: string | null) {
 
 export function Administracao() {
   const qc = useQueryClient();
-  const listar = useServerFn(listarUsuariosAdministracao);
-  const salvar = useServerFn(atualizarUsuarioAdministrativamente);
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<EdicaoUsuario | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const consulta = useQuery({
     queryKey: ["administracao-usuarios"],
-    queryFn: () => listar(),
+    queryFn: () => adminApi<{ usuarios: Usuario[]; setores: Array<{ id: string; nome: string; ativo: boolean }> }>({ action: "list-users" }),
   });
   const usuarios = (consulta.data?.usuarios ?? []) as Usuario[];
   const setores = consulta.data?.setores ?? [];
@@ -76,16 +73,15 @@ export function Administracao() {
     if (!editando) return;
     setSalvando(true);
     try {
-      await salvar({
-        data: {
-          user_id: editando.id,
-          email: editando.email,
-          nome: editando.nome,
-          setor_id: editando.setor_id,
-          admin: editando.admin,
-          suspenso: editando.suspenso,
-          ...(editando.nova_senha ? { nova_senha: editando.nova_senha } : {}),
-        },
+      await adminApi({ 
+        action: "update-user",
+        user_id: editando.id,
+        email: editando.email,
+        nome: editando.nome,
+        setor_id: editando.setor_id,
+        admin: editando.admin,
+        suspenso: editando.suspenso,
+        ...(editando.nova_senha ? { nova_senha: editando.nova_senha } : {}),
       });
       toast.success("Usuário atualizado.");
       setEditando(null);
