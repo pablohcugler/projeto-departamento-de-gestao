@@ -127,7 +127,7 @@ describe("leitura do relatório de saldo da ata", () => {
       "ATA DE REGISTRO DE PREÇOS Nº 24/2026",
       "Processo/Ano: 229/2026",
       "Objeto: Aquisição de materiais de consumo para atendimento das unidades municipais.",
-      "Data Início: 11/08/2026",
+      "Data da Licitação: 11/08/2026",
       "Data Fim: 11/08/2027",
       "Sequência: 20/2026",
     ].join("\n");
@@ -203,6 +203,18 @@ describe("leitura do relatório de saldo da ata", () => {
       preco_unitario: 5.25,
       valor_total: 525,
       fornecedor: "",
+    });
+  });
+
+  it("usa Data da Licitação para homologação e Data Fim para vencimento", () => {
+    const texto = [
+      "ATA DE REGISTRO DE PREÇOS Nº 31/2026",
+      "Data da Licitação: 05/09/2026",
+      "Data Fim: 04/09/2027",
+    ].join("\n");
+    expect(extrairDadosAtaTexto(texto)).toMatchObject({
+      data_homologacao: "2026-09-05",
+      data_vencimento: "2027-09-04",
     });
   });
 
