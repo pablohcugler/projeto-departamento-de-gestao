@@ -247,7 +247,10 @@ FOR SELECT TO authenticated USING (public.usuario_ativo(auth.uid()));
 DROP POLICY IF EXISTS "own profile or admin reads" ON public.user_profiles;
 CREATE POLICY "own profile or admin reads" ON public.user_profiles
 FOR SELECT TO authenticated
-USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'::public.app_role));
+USING (
+  public.usuario_ativo(auth.uid())
+  AND (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'::public.app_role))
+);
 
 -- O CPF, setor e status só podem ser alterados pelo serviço administrativo
 -- (service_role) ou pela função registrar_cpf_usuario para o próprio usuário.
@@ -394,8 +397,11 @@ WITH CHECK (
 );
 CREATE POLICY "sector deletes pedidos" ON public.pedidos
 FOR DELETE TO authenticated USING (
-  public.has_role(auth.uid(), 'admin'::public.app_role)
-  OR (user_id = auth.uid() AND public.usuario_pode_acessar_setor(setor_id))
+  public.usuario_ativo(auth.uid())
+  AND (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR (user_id = auth.uid() AND public.usuario_pode_acessar_setor(setor_id))
+  )
 );
 
 REVOKE ALL ON FUNCTION public.registrar_cpf_usuario(text) FROM PUBLIC;
