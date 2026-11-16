@@ -84,6 +84,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
+  const [ataParaExcluir, setAtaParaExcluir] = useState<Ata | null>(null);
+  const [pedidosVinculados, setPedidosVinculados] = useState(0);
+  const [senhaExclusaoAta, setSenhaExclusaoAta] = useState("");
+  const [consultandoPedidosAta, setConsultandoPedidosAta] = useState(false);
+  const [excluindoAta, setExcluindoAta] = useState(false);
   const extrairDadosAta = useServerFn(extrairDadosAtaPdf);
   const inputPdfAta = useRef<HTMLInputElement>(null);
   const [arquivoPdfAta, setArquivoPdfAta] = useState<File | null>(null);
@@ -421,13 +426,76 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     qc.invalidateQueries({ queryKey: ["atas"] });
   }
 
-  async function excluirAta(id: string) {
-    if (!confirm("Excluir esta ata e todos os seus itens?")) return;
-    const { error } = await supabase.from("atas").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+  async function solicitarExclusaoAta(id: string) {
+    setConsultandoPedidosAta(true);
+    const ata = atas.find((registro) => registro.id === id);
+    if (!ata) {
+      setConsultandoPedidosAta(false);
+      toast.error("Não foi possível localizar a ata selecionada.");
+      return;
+    }
+    const { count, error } = await supabase
+      .from("pedidos")
+      .select("id", { count: "exact", head: true })
+      .eq("ata_id", id);
+    setConsultandoPedidosAta(false);
+    if (error) {
+      toast.error("Não foi possível verificar os pedidos vinculados: " + error.message);
+      return;
+    }
+    setAtaParaExcluir(ata);
+    setPedidosVinculados(count ?? 0);
+    setSenhaExclusaoAta("");
+  }
+
+  async function confirmarExclusaoAta() {
+    if (!ataParaExcluir || excluindoAta) return;
+    if (!senhaExclusaoAta) {
+      toast.error("Informe sua senha para confirmar a exclusão.");
+      return;
+    }
+    setExcluindoAta(true);
+    const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
+    if (erroUsuario || !usuarioAtual.user?.email) {
+      setExcluindoAta(false);
+      toast.error("Não foi possível validar sua sessão. Entre novamente no sistema.");
+      return;
+    }
+    const { error: erroSenha } = await supabase.auth.signInWithPassword({
+      email: usuarioAtual.user.email,
+      password: senhaExclusaoAta,
+    });
+    if (erroSenha) {
+      setExcluindoAta(false);
+      toast.error("Senha incorreta. A ata não foi excluída.");
+      return;
+    }
+
+    // A exclusão dos pedidos vinculados é feita pelo vínculo ON DELETE CASCADE no banco.
+    // Assim, a ata e seus pedidos são removidos juntos, sem exclusões parciais.
+    const { error } = await supabase.from("atas").delete().eq("id", ataParaExcluir.id);
+    setExcluindoAta(false);
+    if (error) {
+      toast.error(
+        error.message.includes("foreign key") || error.message.includes("violates")
+          ? "Não foi possível excluir: a relação de pedidos vinculados ainda não está configurada para exclusão em cascata no banco de dados."
+          : "Não foi possível excluir a ata: " + error.message,
+      );
+      return;
+    }
+
     setSelecionada(null);
-    qc.invalidateQueries({ queryKey: ["atas"] });
-    qc.invalidateQueries({ queryKey: ["totais"] });
+    setAtaParaExcluir(null);
+    setSenhaExclusaoAta("");
+    setPedidosVinculados(0);
+    toast.success(
+      pedidosVinculados > 0
+        ? `Ata e ${pedidosVinculados} pedido(s) vinculado(s) excluídos.`
+        : "Ata excluída com sucesso.",
+    );
+    void qc.invalidateQueries({ queryKey: ["atas"] });
+    void qc.invalidateQueries({ queryKey: ["pedidos"] });
+    void qc.invalidateQueries({ queryKey: ["totais"] });
   }
 
   return (
@@ -718,7 +786,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         ) : aba === "administracao" ? (
           <Administracao />
         ) : aba === "pedidos" ? (
-          <Pedidos atas={atas} onCriarPedido={() => setPedidoAberto(true)} />
+          <Pedidos atas={atas} userId={userId} isAdmin={!!adminQ.data} onCriarPedido={() => setPedidoAberto(true)} />
         ) : aba === "feedbacks" ? (
           <div className="space-y-4">
             <Button variant="outline" onClick={() => setAba("inicio")}>
@@ -734,7 +802,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             classe={nomeClasse(ataSel.classificacao_id)}
             onVoltar={() => setSelecionada(null)}
             onEditar={() => setEditando(ataSel)}
-            onExcluir={() => excluirAta(ataSel.id)}
+            onExcluir={() => { void solicitarExclusaoAta(ataSel.id); }}
           />
         ) : (
           <>
@@ -982,6 +1050,64 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           <DialogFooter>
             <Button variant="outline" onClick={fecharFormularioAta}>Cancelar</Button>
             <Button onClick={salvarAta}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!ataParaExcluir} onOpenChange={(aberto) => {
+        if (!aberto && !excluindoAta) {
+          setAtaParaExcluir(null);
+          setSenhaExclusaoAta("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Confirmar exclusão da ata
+            </DialogTitle>
+          </DialogHeader>
+          {ataParaExcluir && (
+            <div className="space-y-4 text-sm">
+              <p>
+                Você está prestes a excluir permanentemente a ata
+                <strong> {ataParaExcluir.numero || "sem número"} </strong>
+                — {ataParaExcluir.objeto}.
+              </p>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                {pedidosVinculados > 0 ? (
+                  <p className="font-medium text-destructive">
+                    Atenção: {pedidosVinculados} pedido(s) estão vinculados a esta ata.
+                    Todos serão apagados junto com a ata. Esta ação não poderá ser desfeita.
+                  </p>
+                ) : (
+                  <p className="font-medium">
+                    Esta ata não possui pedidos vinculados. Seus itens também serão excluídos.
+                    Esta ação não poderá ser desfeita.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="senha-exclusao-ata">Digite sua senha para confirmar</Label>
+                <Input
+                  id="senha-exclusao-ata"
+                  type="password"
+                  autoComplete="current-password"
+                  value={senhaExclusaoAta}
+                  onChange={(e) => setSenhaExclusaoAta(e.target.value)}
+                  placeholder="Sua senha de acesso"
+                  disabled={excluindoAta}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={excluindoAta} onClick={() => {
+              setAtaParaExcluir(null);
+              setSenhaExclusaoAta("");
+            }}>Cancelar</Button>
+            <Button variant="destructive" disabled={excluindoAta || !senhaExclusaoAta} onClick={() => void confirmarExclusaoAta()}>
+              <Trash2 className="h-4 w-4" /> {excluindoAta ? "Validando e excluindo..." : "Confirmar exclusão"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
