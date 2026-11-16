@@ -41,6 +41,56 @@ const QUADROS: { value: QuadroInferiorTv; label: string; description: string }[]
   { value: "atas-vencidas", label: "Atas vencidas", description: "Atas vigentes no cadastro cuja data de vencimento já passou." },
 ];
 
+function LayoutPreview({ layout }: { layout: LayoutTv }) {
+  const panel = (x: number, y: number, width: number, height: number, opacity: number) => (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx="3"
+      fill={`rgba(13, 148, 136, ${opacity})`}
+      stroke="rgba(13, 148, 136, 0.8)"
+      strokeWidth="1"
+    />
+  );
+
+  return (
+    <svg
+      viewBox="0 0 120 72"
+      className="h-auto w-full"
+      role="img"
+      aria-label={
+        layout === "destaque-esquerda"
+          ? "Prévia: um quadro grande à esquerda e dois menores à direita"
+          : layout === "tres-colunas"
+            ? "Prévia: três quadros lado a lado"
+            : "Prévia: dois quadros lado a lado"
+      }
+    >
+      <rect x="1" y="1" width="118" height="70" rx="6" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="1.5" />
+      {layout === "destaque-esquerda" ? (
+        <>
+          {panel(7, 7, 57, 58, 0.24)}
+          {panel(69, 7, 44, 26, 0.14)}
+          {panel(69, 39, 44, 26, 0.1)}
+        </>
+      ) : layout === "tres-colunas" ? (
+        <>
+          {panel(7, 7, 33, 58, 0.24)}
+          {panel(44, 7, 32, 58, 0.16)}
+          {panel(80, 7, 33, 58, 0.1)}
+        </>
+      ) : (
+        <>
+          {panel(7, 7, 51, 58, 0.24)}
+          {panel(62, 7, 51, 58, 0.14)}
+        </>
+      )}
+    </svg>
+  );
+}
+
 export function urlTv(c: ConfigTvValores) {
   const p = new URLSearchParams({ dias: String(c.dias), atas: c.atas ? "1" : "0", contratos: c.contratos ? "1" : "0", vencidas: c.vencidas ? "1" : "0", titulo: c.titulo, layout: c.layout, quadro: c.quadroInferior });
   return `/tv?${p.toString()}`;
@@ -73,7 +123,13 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
               {LAYOUTS.map((layout) => (
                 <label key={layout.value} className={c.layout === layout.value ? "flex cursor-pointer items-start gap-3 rounded-lg border border-primary bg-primary/5 p-3" : "flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50"}>
                   <input type="radio" name="layout-tv" className="mt-1 accent-primary" checked={c.layout === layout.value} onChange={() => setC({ ...c, layout: layout.value })} />
-                  <span><span className="block text-sm font-medium">{layout.label}</span><span className="block text-xs text-muted-foreground">{layout.description}</span></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{layout.label}</span>
+                    <span className="block text-xs text-muted-foreground">{layout.description}</span>
+                  </span>
+                  <span className="ml-auto w-[92px] shrink-0 self-center sm:w-[104px]">
+                    <LayoutPreview layout={layout.value} />
+                  </span>
                 </label>
               ))}
             </div>
