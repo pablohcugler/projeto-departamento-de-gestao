@@ -84,7 +84,7 @@ export function Administracao() {
           setor_id: editando.setor_id,
           admin: editando.admin,
           suspenso: editando.suspenso,
-          nova_senha: editando.nova_senha || undefined,
+          ...(editando.nova_senha ? { nova_senha: editando.nova_senha } : {}),
         },
       });
       toast.success("Usuário atualizado.");

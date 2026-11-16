@@ -78,10 +78,10 @@ function Index() {
   if (!perfil.cpf) {
     return (
       <CompletarCpf
-        nome={session.user.user_metadata?.nome as string | undefined}
+        nome={(session.user.user_metadata?.["nome"] as string | undefined) ?? null}
         onConcluido={(cpf) => setPerfil({ ...perfil, cpf })}
       />
     );
   }
-  return <Painel nome={session.user.user_metadata?.nome as string | undefined} userId={session.user.id} />;
+  return <Painel nome={(session.user.user_metadata?.["nome"] as string | undefined) ?? null} userId={session.user.id} />;
 }

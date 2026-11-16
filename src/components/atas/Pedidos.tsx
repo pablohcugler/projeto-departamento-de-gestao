@@ -32,13 +32,13 @@ function itensDoPedido(valor: Json): ItemPedido[] {
   return valor.filter((item) => !!item && typeof item === "object" && !Array.isArray(item)).map((item) => {
     const dado = item as Record<string, unknown>;
     return {
-      codigo_item: String(dado.codigo_item ?? ""),
-      descricao: String(dado.descricao ?? ""),
-      fornecedor: String(dado.fornecedor ?? ""),
-      unidade: String(dado.unidade ?? ""),
-      quantidade: Number(dado.quantidade ?? 0),
-      preco_unitario: Number(dado.preco_unitario ?? 0),
-      valor_total: Number(dado.valor_total ?? 0),
+      codigo_item: String(dado["codigo_item"] ?? ""),
+      descricao: String(dado["descricao"] ?? ""),
+      fornecedor: String(dado["fornecedor"] ?? ""),
+      unidade: String(dado["unidade"] ?? ""),
+      quantidade: Number(dado["quantidade"] ?? 0),
+      preco_unitario: Number(dado["preco_unitario"] ?? 0),
+      valor_total: Number(dado["valor_total"] ?? 0),
     };
   });
 }

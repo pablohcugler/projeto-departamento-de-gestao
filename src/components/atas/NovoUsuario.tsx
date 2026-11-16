@@ -36,7 +36,7 @@ export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: (
   }
 
   async function enviar() {
-    if (!setorId) return toast.error("Selecione o setor de lotação do usuário.");
+    if (!setorId) { toast.error("Selecione o setor de lotação do usuário."); return; }
     setSalvando(true);
     try {
       await criar({ data: { email, senha, admin, setor_id: setorId, nome } });

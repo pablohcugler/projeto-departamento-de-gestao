@@ -122,7 +122,7 @@ export const listarUsuariosAdministracao = createServerFn({ method: "GET" })
         return {
           id: u.id,
           email: u.email ?? "",
-          nome: String(u.user_metadata?.nome ?? ""),
+          nome: String(u.user_metadata?.["nome"] ?? ""),
           cpf: p?.cpf ?? null,
           setor_id: p?.setor_id ?? "",
           setor_nome: p ? setoresPorId.get(p.setor_id) ?? "Setor não encontrado" : "Sem setor",

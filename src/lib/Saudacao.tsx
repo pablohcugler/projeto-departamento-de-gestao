@@ -27,11 +27,11 @@ export function Saudacao({ nome, admin }: { nome?: string | null; admin: boolean
 
   async function salvar() {
     const limpo = valor.trim().replace(/\s+/g, " ");
-    if (!limpo) return toast.error("Informe seu nome.");
+    if (!limpo) { toast.error("Informe seu nome."); return; }
     setSalvando(true);
     const { error } = await supabase.auth.updateUser({ data: { nome: limpo } });
     setSalvando(false);
-    if (error) return toast.error("Não foi possível salvar o nome.");
+    if (error) { toast.error("Não foi possível salvar o nome."); return; }
     toast.success("Nome atualizado.");
     setAberto(false);
   }
