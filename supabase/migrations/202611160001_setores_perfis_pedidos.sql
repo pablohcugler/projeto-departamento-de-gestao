@@ -450,6 +450,15 @@ $$;
 
 DROP POLICY IF EXISTS "Usuários enviam feedback próprio" ON public.feedbacks_sistema;
 DROP POLICY IF EXISTS "Feedbacks ativos da equipe" ON public.feedbacks_sistema;
+DROP POLICY IF EXISTS "Administradores visualizam feedbacks" ON public.feedbacks_sistema;
+DROP POLICY IF EXISTS "Administradores atualizam feedbacks" ON public.feedbacks_sistema;
 CREATE POLICY "Feedbacks ativos da equipe" ON public.feedbacks_sistema
 FOR INSERT TO authenticated
 WITH CHECK (auth.uid() = user_id AND public.usuario_ativo(auth.uid()));
+CREATE POLICY "Administradores ativos visualizam feedbacks" ON public.feedbacks_sistema
+FOR SELECT TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.usuario_ativo(auth.uid()));
+CREATE POLICY "Administradores ativos atualizam feedbacks" ON public.feedbacks_sistema
+FOR UPDATE TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.usuario_ativo(auth.uid()))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.usuario_ativo(auth.uid()));
