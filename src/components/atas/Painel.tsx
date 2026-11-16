@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -66,7 +66,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
-  const [aba, setAba] = useState<"inicio" | "pca" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
+  const [aba, setAba] = useState<"inicio" | "pca" | "adiantamentos" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
@@ -95,7 +95,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           filtroSituacaoContratos?: string;
           busca?: string;
         };
-        if (["inicio", "pca", "atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
+        if (["inicio", "pca", "adiantamentos", "atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
           setAba(estado.aba as typeof aba);
         }
         if (typeof estado.selecionada === "string") setSelecionada(estado.selecionada);
@@ -430,7 +430,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
             <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
           </button>
-          {aba === "inicio" || aba === "pca" ? <div className="flex-1" /> : (
+          {aba === "inicio" || aba === "pca" || aba === "adiantamentos" ? <div className="flex-1" /> : (
           <nav className="app-nav flex gap-1" aria-label="Navegação dos módulos">
             {(aba === "atas" || aba === "pedidos") && (
               <>
@@ -540,7 +540,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <span className="text-xs text-muted-foreground">Acesso conforme o setor de lotação</span>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               <button
                 type="button"
                 onClick={() => setAba("pca")}
@@ -621,10 +621,57 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   </div>
                 </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setAba("adiantamentos")}
+                className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-amber-200/20 bg-gradient-to-br from-[#514022] via-[#80602d] to-[#ae8744] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
+                aria-label="Abrir painel de Adiantamentos"
+              >
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10 bg-white/[0.05] transition-transform duration-500 group-hover:scale-110" />
+                <div className="pointer-events-none absolute -bottom-16 right-14 h-40 w-40 rounded-full border border-white/10" />
+                <Wallet className="pointer-events-none absolute -bottom-6 -right-2 h-40 w-40 text-white/[0.075]" strokeWidth={1} />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                      <Wallet className="h-6 w-6" />
+                    </span>
+                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">Em construção</span>
+                  </div>
+                  <div className="mt-8">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100/70">ADIANTAMENTOS</div>
+                    <h3 className="mt-1 text-2xl font-semibold tracking-tight">Adiantamentos</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-amber-50/80">Painel para gestão e acompanhamento de adiantamentos.</p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
+                    Conhecer painel <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </div>
+                </div>
+              </button>
             </div>
 
             <div className="rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário. <em>Desenvolvido por Pablo R. Cugler de Lima.</em>
+              <div className="text-left">
+                <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário.
+              </div>
+              <em className="mt-2 block w-full text-center">Desenvolvido por Pablo R. Cugler de Lima.</em>
+            </div>
+          </section>
+        ) : aba === "adiantamentos" ? (
+          <section className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center text-center">
+            <Button variant="ghost" className="mb-8 self-start" onClick={() => setAba("inicio")}>
+              <ArrowLeft className="h-4 w-4" /> Voltar ao painel inicial
+            </Button>
+            <div className="w-full rounded-3xl border bg-gradient-to-br from-card via-card to-amber-50/50 p-8 shadow-sm dark:to-amber-950/20 sm:p-12">
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <Construction className="h-10 w-10" />
+              </div>
+              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">ADIANTAMENTOS</div>
+              <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">Painel em construção</h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Este painel ainda está em construção. Em breve teremos novidades.
+              </p>
+              <Button className="mt-7" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
             </div>
           </section>
         ) : aba === "pca" ? (
