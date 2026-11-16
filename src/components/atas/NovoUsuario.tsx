@@ -21,7 +21,7 @@ export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: (
   const setoresQ = useQuery({
     queryKey: ["setores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
+      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("acesso_global", { ascending: false }).order("nome");
       if (error) throw error;
       return data;
     },
@@ -59,13 +59,13 @@ export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: (
           <div className="space-y-1.5"><Label>Setor de lotação *</Label>
             <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={setorId} onChange={(e) => setSetorId(e.target.value)}>
               <option value="">Selecione o setor...</option>
-              {setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.nome}</option>)}
+              {setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.acesso_global ? setor.nome + " — Acesso geral" : "↳ " + setor.nome}</option>)}
             </select>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Também é administrador
           </label>
-          <p className="text-xs text-muted-foreground">O CPF será solicitado ao usuário no primeiro acesso.</p>
+          <p className="text-xs text-muted-foreground">O CPF será solicitado ao usuário no primeiro acesso. Usuários lotados em Gestão terão acesso aos dados de todos os setores, mas só serão administradores se essa opção também for marcada.</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { limpar(); onFechar(); }}>Cancelar</Button>
