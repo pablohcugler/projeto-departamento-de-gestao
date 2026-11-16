@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Printer, Search } from "lucide-react";
+import { FileText, Printer, Search, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { brl, dataBR } from "@/lib/vencimento";
 
@@ -43,7 +43,7 @@ function itensDoPedido(valor: Json): ItemPedido[] {
   });
 }
 
-export function Pedidos({ atas }: { atas: Ata[] }) {
+export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: () => void }) {
   const [busca, setBusca] = useState("");
   const [pedidoAberto, setPedidoAberto] = useState<Pedido | null>(null);
   const pedidosQ = useQuery({
@@ -124,10 +124,15 @@ export function Pedidos({ atas }: { atas: Ata[] }) {
 
   return (
     <section className="space-y-5">
-      <div>
-        <div className="app-eyebrow">SOLICITAÇÕES REGISTRADAS</div>
-        <h2 className="app-page-title">Pedidos</h2>
-        <p className="text-sm text-muted-foreground">{pedidos.length} pedido(s) registrados no setor ou disponíveis para administração.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="app-eyebrow">SOLICITAÇÕES REGISTRADAS</div>
+          <h2 className="app-page-title">Pedidos</h2>
+          <p className="text-sm text-muted-foreground">{pedidos.length} pedido(s) registrados no setor ou disponíveis para administração.</p>
+        </div>
+        <Button onClick={onCriarPedido}>
+          <Plus className="h-4 w-4" /> Criar Pedido
+        </Button>
       </div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
