@@ -172,7 +172,14 @@ export const atualizarUsuarioAdministrativamente = createServerFn({ method: "POS
     const { data: atual, error: getError } = await supabaseAdmin.auth.admin.getUserById(data.user_id);
     if (getError || !atual.user) throw new Error("Usuário não encontrado.");
 
-    if (!data.admin) {
+    const { data: papelAdminAlvo, error: papelError } = await supabaseAdmin
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", data.user_id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (papelError) throw new Error(papelError.message);
+    if (papelAdminAlvo && !data.admin) {
       const { count, error: countError } = await supabaseAdmin
         .from("user_roles")
         .select("id", { count: "exact", head: true })
