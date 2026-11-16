@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { entrarComCpf } from "@/lib/usuarios.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,16 +10,36 @@ import { brasaoMunicipio } from "@/lib/brasao";
 import { FileText } from "lucide-react";
 
 export function AuthForm() {
-  const [email, setEmail] = useState("");
+  const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const autenticarCpf = useServerFn(entrarComCpf);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setCarregando(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-    if (error) toast.error("E-mail ou senha inválidos.");
-    setCarregando(false);
+    try {
+      if (identificador.includes("@")) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: identificador.trim().toLowerCase(),
+          password: senha,
+        });
+        if (error) throw error;
+      } else {
+        const cpf = identificador.replace(/\D/g, "");
+        if (cpf.length !== 11) throw new Error("Informe um e-mail válido ou CPF com 11 dígitos.");
+        const sessao = await autenticarCpf({ data: { cpf, senha } });
+        const { error } = await supabase.auth.setSession({
+          access_token: sessao.access_token,
+          refresh_token: sessao.refresh_token,
+        });
+        if (error) throw error;
+      }
+    } catch {
+      toast.error("E-mail/CPF ou senha inválidos.");
+    } finally {
+      setCarregando(false);
+    }
   }
 
   return (
@@ -32,17 +54,17 @@ export function AuthForm() {
         </div>
         <form onSubmit={enviar} className="space-y-4 rounded-xl border bg-card p-6 shadow-sm">
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="login">E-mail ou CPF</Label>
+            <Input id="login" type="text" autoComplete="username" inputMode="text" required value={identificador} onChange={(e) => setIdentificador(e.target.value)} placeholder="seu e-mail ou CPF" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="senha">Senha</Label>
-            <Input id="senha" type="password" required minLength={6} value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <Input id="senha" type="password" autoComplete="current-password" required minLength={6} value={senha} onChange={(e) => setSenha(e.target.value)} />
           </div>
           <Button type="submit" className="w-full" disabled={carregando}>
-            Entrar
+            {carregando ? "Entrando..." : "Entrar"}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">Novos acessos são liberados pelo administrador.</p>
+          <p className="text-center text-xs text-muted-foreground">Use seu e-mail ou CPF cadastrado e sua senha. Novos acessos são liberados pelo administrador.</p>
         </form>
       </div>
     </div>
