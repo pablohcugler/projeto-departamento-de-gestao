@@ -400,3 +400,55 @@ FOR DELETE TO authenticated USING (
 
 REVOKE ALL ON FUNCTION public.registrar_cpf_usuario(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.registrar_cpf_usuario(text) TO authenticated;
+
+
+-- Mantém a atualização de saldo limitada ao setor da ata e bloqueia perfis suspensos.
+CREATE OR REPLACE FUNCTION public.atualizar_saldos_ata(
+  p_ata_id uuid,
+  p_data_relatorio date,
+  p_saldos jsonb
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_atualizados integer := 0;
+  v_setor_id uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.usuario_ativo(auth.uid()) OR NOT public.is_team_member(auth.uid()) THEN
+    RAISE EXCEPTION 'Usuário sem permissão para atualizar saldo da ata.';
+  END IF;
+
+  SELECT a.setor_id INTO v_setor_id FROM public.atas a WHERE a.id = p_ata_id;
+  IF v_setor_id IS NULL OR NOT public.usuario_pode_acessar_setor(v_setor_id) THEN
+    RAISE EXCEPTION 'Você não tem acesso ao setor desta ata.';
+  END IF;
+
+  IF p_data_relatorio IS NULL
+     OR p_data_relatorio <> (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN
+    RAISE EXCEPTION 'O relatório precisa ter a data de hoje.';
+  END IF;
+
+  IF jsonb_typeof(p_saldos) <> 'array' THEN
+    RAISE EXCEPTION 'Lista de saldos inválida.';
+  END IF;
+
+  UPDATE public.ata_itens AS ai
+  SET saldo_disponivel = s.saldo,
+      saldo_atualizado_em = p_data_relatorio
+  FROM jsonb_to_recordset(p_saldos) AS s(item_id uuid, saldo numeric)
+  WHERE ai.id = s.item_id
+    AND ai.ata_id = p_ata_id
+    AND s.saldo >= 0;
+
+  GET DIAGNOSTICS v_atualizados = ROW_COUNT;
+  RETURN v_atualizados;
+END;
+$$;
+
+DROP POLICY IF EXISTS "Feedbacks ativos da equipe" ON public.feedbacks_sistema;
+CREATE POLICY "Feedbacks ativos da equipe" ON public.feedbacks_sistema
+FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id AND public.usuario_ativo(auth.uid()));
