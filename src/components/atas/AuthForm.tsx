@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { entrarComCpf } from "@/lib/usuarios.functions";
+import { adminApi } from "@/lib/admin-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +12,6 @@ export function AuthForm() {
   const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const autenticarCpf = useServerFn(entrarComCpf);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -28,10 +26,14 @@ export function AuthForm() {
       } else {
         const cpf = identificador.replace(/\D/g, "");
         if (cpf.length !== 11) throw new Error("Informe um e-mail válido ou CPF com 11 dígitos.");
-        const sessao = await autenticarCpf({ data: { cpf, senha } });
+        const resposta = await adminApi<{ session: { access_token: string; refresh_token: string } }>({
+          action: "login-cpf",
+          cpf,
+          senha,
+        });
         const { error } = await supabase.auth.setSession({
-          access_token: sessao.access_token,
-          refresh_token: sessao.refresh_token,
+          access_token: resposta.session.access_token,
+          refresh_token: resposta.session.refresh_token,
         });
         if (error) throw error;
       }
