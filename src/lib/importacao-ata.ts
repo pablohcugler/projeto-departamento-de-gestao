@@ -360,8 +360,15 @@ function numeroItemAta(valor: string): boolean {
  * quais seja possível identificar unidade, quantidade e preço unitário.
  */
 export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = ""): ItemImportado[] {
+  // Preserva itens já reconhecidos no formato do relatório JL Soft e complementa
+  // com formatos tabulares comuns usados no instrumento da Ata de Registro.
   const legado = extrairItensAtaTexto(texto);
-  if (legado.length) return legado;
+  const itens: ItemImportado[] = [...legado];
+  const chaves = new Set(
+    itens.map((item) =>
+      (item.codigo_item + "|" + item.descricao).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+    ),
+  );
 
   const linhas = texto
     .replace(/\r/g, "")
@@ -371,7 +378,6 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
     .map((linha) => linha.replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  const itens: ItemImportado[] = [];
   let fornecedorAtual = fornecedorPadrao;
 
   const padraoComCodigoProduto = new RegExp(
@@ -393,6 +399,12 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
     "i",
   );
 
+  const numeroAta = (valor: string) => {
+    if (valor.includes(",")) return numeroBR(valor);
+    if (/^\d{1,3}(?:\.\d{3})+$/.test(valor)) return Number(valor.replace(/\./g, ""));
+    return Number(valor.replace(",", "."));
+  };
+
   for (const linha of linhas) {
     const fornecedor = extrairFornecedorAta(linha);
     if (fornecedor) {
@@ -401,14 +413,16 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
     }
     if (linhaEhCabecalhoOuRodapeAta(linha)) continue;
 
+    // Alguns editais imprimem "Item 01" antes do número; elimina só esse rótulo.
+    const linhaItem = linha.replace(/^item\s+(?=\d)/i, "");
     let item: ItemImportado | undefined;
-    const comCodigoProduto = linha.match(padraoComCodigoProduto);
-    const generico = !comCodigoProduto ? linha.match(padraoGenerico) : null;
-    const quantidadeAntes = !comCodigoProduto && !generico ? linha.match(padraoQuantidadeAntesUnidade) : null;
+    const comCodigoProduto = linhaItem.match(padraoComCodigoProduto);
+    const generico = !comCodigoProduto ? linhaItem.match(padraoGenerico) : null;
+    const quantidadeAntes = !comCodigoProduto && !generico ? linhaItem.match(padraoQuantidadeAntesUnidade) : null;
 
     if (comCodigoProduto && numeroItemAta(comCodigoProduto[1]!)) {
-      const quantidade = numeroBR(comCodigoProduto[5]);
-      const preco_unitario = numeroBR(comCodigoProduto[6]);
+      const quantidade = numeroAta(comCodigoProduto[5]!);
+      const preco_unitario = numeroAta(comCodigoProduto[6]!);
       item = {
         codigo_item: comCodigoProduto[1]!,
         codigo_produto: comCodigoProduto[2]!,
@@ -417,11 +431,11 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
         unidade: comCodigoProduto[4]!.toUpperCase(),
         quantidade,
         preco_unitario,
-        valor_total: comCodigoProduto[7] ? numeroBR(comCodigoProduto[7]) : quantidade * preco_unitario,
+        valor_total: comCodigoProduto[7] ? numeroAta(comCodigoProduto[7]) : quantidade * preco_unitario,
       };
     } else if (generico && numeroItemAta(generico[1]!)) {
-      const quantidade = numeroBR(generico[4]);
-      const preco_unitario = numeroBR(generico[5]);
+      const quantidade = numeroAta(generico[4]!);
+      const preco_unitario = numeroAta(generico[5]!);
       item = {
         codigo_item: generico[1]!,
         codigo_produto: "",
@@ -430,11 +444,11 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
         unidade: generico[3]!.toUpperCase(),
         quantidade,
         preco_unitario,
-        valor_total: generico[6] ? numeroBR(generico[6]) : quantidade * preco_unitario,
+        valor_total: generico[6] ? numeroAta(generico[6]) : quantidade * preco_unitario,
       };
     } else if (quantidadeAntes && numeroItemAta(quantidadeAntes[1]!)) {
-      const quantidade = numeroBR(quantidadeAntes[3]);
-      const preco_unitario = numeroBR(quantidadeAntes[5]);
+      const quantidade = numeroAta(quantidadeAntes[3]!);
+      const preco_unitario = numeroAta(quantidadeAntes[5]!);
       item = {
         codigo_item: quantidadeAntes[1]!,
         codigo_produto: "",
@@ -443,12 +457,19 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
         unidade: quantidadeAntes[4]!.toUpperCase(),
         quantidade,
         preco_unitario,
-        valor_total: quantidadeAntes[6] ? numeroBR(quantidadeAntes[6]) : quantidade * preco_unitario,
+        valor_total: quantidadeAntes[6] ? numeroAta(quantidadeAntes[6]) : quantidade * preco_unitario,
       };
     }
 
-    if (item && item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario)) {
-      itens.push(item);
+    if (item && item.descricao && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario)) {
+      const chave = (item.codigo_item + "|" + item.descricao)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      if (!chaves.has(chave)) {
+        itens.push(item);
+        chaves.add(chave);
+      }
       continue;
     }
 
@@ -463,5 +484,9 @@ export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = 
     }
   }
 
-  return itens.filter((item) => item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario));
+  return itens.filter((item) =>
+    item.descricao &&
+    Number.isFinite(item.quantidade) &&
+    Number.isFinite(item.preco_unitario),
+  );
 }
