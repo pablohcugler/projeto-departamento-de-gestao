@@ -110,6 +110,7 @@ export type Database = {
         Row: {
           classificacao_id: string | null
           created_at: string
+          setor_id: string
           data_homologacao: string | null
           data_vencimento: string
           dias_alerta: number
@@ -130,6 +131,7 @@ export type Database = {
         Insert: {
           classificacao_id?: string | null
           created_at?: string
+          setor_id?: string
           data_homologacao?: string | null
           data_vencimento: string
           dias_alerta?: number
@@ -182,18 +184,21 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          setor_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           nome: string
+          setor_id?: string
           user_id?: string
         }
         Update: {
           created_at?: string
           id?: string
           nome?: string
+          setor_id?: string
           user_id?: string
         }
         Relationships: []
@@ -203,6 +208,7 @@ export type Database = {
           classificacao_id: string | null
           contratado: string | null
           created_at: string
+          setor_id: string
           data_inicio: string | null
           data_vencimento: string
           dias_alerta: number
@@ -221,6 +227,7 @@ export type Database = {
           classificacao_id?: string | null
           contratado?: string | null
           created_at?: string
+          setor_id?: string
           data_inicio?: string | null
           data_vencimento: string
           dias_alerta?: number
@@ -281,6 +288,106 @@ export type Database = {
         }
         Relationships: []
       }
+      pedidos: {
+        Row: {
+          ata_id: string
+          created_at: string
+          data_saldo: string
+          id: string
+          itens: Json
+          justificativa: string
+          setor_id: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          ata_id: string
+          created_at?: string
+          data_saldo: string
+          id?: string
+          itens: Json
+          justificativa: string
+          setor_id: string
+          total: number
+          user_id?: string
+        }
+        Update: {
+          ata_id?: string
+          created_at?: string
+          data_saldo?: string
+          id?: string
+          itens?: Json
+          justificativa?: string
+          setor_id?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_ata_id_fkey"
+            columns: ["ata_id"]
+            isOneToOne: false
+            referencedRelation: "atas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      setores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          setor_id: string
+          suspenso: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          setor_id: string
+          suspenso?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          setor_id?: string
+          suspenso?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -304,6 +411,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_setor_id: { Args: Record<PropertyKey, never>; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -312,6 +420,10 @@ export type Database = {
         Returns: boolean
       }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
+      registrar_cpf_usuario: { Args: { p_cpf: string }; Returns: boolean }
+      usuario_ativo: { Args: { p_user_id?: string }; Returns: boolean }
+      usuario_pode_acessar_referencia: { Args: { p_ref_id: string; p_ref_tipo: string }; Returns: boolean }
+      usuario_pode_acessar_setor: { Args: { p_setor_id: string }; Returns: boolean }
       atualizar_saldos_ata: {
         Args: { p_ata_id: string; p_data_relatorio: string; p_saldos: Json }
         Returns: number
