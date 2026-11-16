@@ -22,6 +22,7 @@ import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/ve
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
 import { extrairDadosAtaPdf } from "@/lib/importar.functions";
+import type { ItemImportado } from "@/lib/importacao-ata";
 
 type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
@@ -69,6 +70,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const extrairDadosAta = useServerFn(extrairDadosAtaPdf);
   const inputPdfAta = useRef<HTMLInputElement>(null);
   const [arquivoPdfAta, setArquivoPdfAta] = useState<File | null>(null);
+  const [itensPdfAta, setItensPdfAta] = useState<ItemImportado[]>([]);
   const [lendoPdfAta, setLendoPdfAta] = useState(false);
   const [pedidoAberto, setPedidoAberto] = useState(false);
   const [gerirClasses, setGerirClasses] = useState(false);
@@ -164,6 +166,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
     setLendoPdfAta(true);
     setArquivoPdfAta(arquivo);
+    setItensPdfAta([]);
     try {
       const bytes = await new Promise<Uint8Array>((resolve, reject) => {
         const leitor = new FileReader();
@@ -193,6 +196,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       }
 
       const dados = resposta.dados;
+      setItensPdfAta(resposta.itens ?? []);
       setEditando((atual) => atual ? ({
         ...atual,
         ...(dados.numero ? { numero: dados.numero } : {}),
@@ -213,9 +217,15 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       };
       const encontrados = resposta.camposEncontrados.map((campo) => nomes[campo] ?? campo);
       const faltantes = Object.keys(nomes).filter((campo) => !resposta.camposEncontrados.includes(campo)).map((campo) => nomes[campo]);
-      toast.success("PDF lido. Campos preenchidos: " + encontrados.join(", ") + ".");
+      toast.success(
+        "PDF lido. Campos preenchidos: " + (encontrados.length ? encontrados.join(", ") : "nenhum campo cadastral") +
+        ". Itens identificados: " + (resposta.itensEncontrados ?? 0) + ".",
+      );
       if (faltantes.length) {
         toast.warning("Não localizei no PDF: " + faltantes.join(", ") + ". Confira e preencha manualmente.");
+      }
+      if (resposta.avisoItens) {
+        toast.warning(resposta.avisoItens);
       }
     } catch (erro) {
       const mensagem = erro instanceof Error ? erro.message : "Erro inesperado ao ler o PDF.";
@@ -229,6 +239,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   function fecharFormularioAta() {
     setEditando(null);
     setArquivoPdfAta(null);
+    setItensPdfAta([]);
     setLendoPdfAta(false);
     if (inputPdfAta.current) inputPdfAta.current.value = "";
   }
@@ -240,6 +251,22 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     }
     if (!editando.id && !editando.classificacao_id) {
       toast.error("Selecione uma classificação para a nova ata.");
+      return;
+    }
+    if (arquivoPdfAta && itensPdfAta.length === 0) {
+      toast.error("O PDF foi anexado, mas nenhum item foi reconhecido. Não é possível concluir uma importação como completa. Envie o PDF com a tabela de itens legível ou faça a inclusão dos itens manualmente.");
+      return;
+    }
+    const itemInvalido = itensPdfAta.find((item) =>
+      !item.descricao.trim() ||
+      !item.unidade.trim() ||
+      !Number.isFinite(item.quantidade) ||
+      item.quantidade <= 0 ||
+      !Number.isFinite(item.preco_unitario) ||
+      item.preco_unitario < 0
+    );
+    if (itemInvalido) {
+      toast.error("Há itens com descrição, unidade, quantidade ou preço inválido. Corrija o documento ou importe os itens manualmente antes de salvar.");
       return;
     }
     if ((!ataEmAndamento && !editando?.numero?.trim()) || !editando?.objeto?.trim() || !editando.data_vencimento) {
@@ -276,6 +303,26 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       const { data, error } = await supabase.from("atas").insert(payload).select("id").single();
       if (error || !data) { toast.error(error?.message ?? "Não foi possível salvar a ata."); return; }
       ataIdSalva = data.id;
+      setEditando({ ...editando, id: data.id });
+    }
+
+    if (itensPdfAta.length > 0 && ataIdSalva) {
+      const { error: erroItens } = await supabase.from("ata_itens").insert(
+        itensPdfAta.map((item) => ({
+          ata_id: ataIdSalva!,
+          codigo_item: item.codigo_item || null,
+          codigo_produto: item.codigo_produto || null,
+          descricao: item.descricao.trim(),
+          fornecedor: item.fornecedor.trim() || null,
+          unidade: item.unidade.trim(),
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+        })),
+      );
+      if (erroItens) {
+        toast.error("A ata foi salva, mas os " + itensPdfAta.length + " itens não foram gravados: " + erroItens.message + ". O cadastro ficou aberto para você tentar novamente; não crie outra ata.");
+        return;
+      }
     }
 
     if (arquivoPdfAta && ataIdSalva) {
@@ -302,6 +349,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     toast.success("Ata salva.");
     setEditando(null);
     setArquivoPdfAta(null);
+    setItensPdfAta([]);
     if (inputPdfAta.current) inputPdfAta.current.value = "";
     qc.invalidateQueries({ queryKey: ["atas"] });
   }
@@ -555,8 +603,51 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     {arquivoPdfAta && <span className="max-w-full truncate text-xs text-muted-foreground">{arquivoPdfAta.name}</span>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    O sistema tentará preencher número da ata, processo, objeto, Data Início (homologação), Data Fim (vencimento) e Sequência (pregão eletrônico). A classificação e os números do 1Doc serão informados pelo usuário.
+                    O sistema preencherá número da ata, processo, objeto, Data Início (homologação), Data Fim (vencimento) e Sequência (pregão eletrônico), além de tentar importar todos os itens da tabela. A classificação e os números do 1Doc serão informados pelo usuário.
                   </p>
+                  {arquivoPdfAta && (
+                    <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+                      <div className="font-medium">
+                        {itensPdfAta.length} item(ns) identificados no PDF
+                      </div>
+                      {itensPdfAta.length > 0 ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">Confira a lista antes de salvar. Todos os itens abaixo serão vinculados à ata.</p>
+                          <div className="max-h-56 overflow-auto rounded border bg-background">
+                            <table className="w-full text-xs">
+                              <thead className="sticky top-0 bg-muted text-left">
+                                <tr>
+                                  <th className="p-2">Item</th>
+                                  <th className="p-2">Descrição</th>
+                                  <th className="p-2">Unid.</th>
+                                  <th className="p-2 text-right">Quantidade</th>
+                                  <th className="p-2 text-right">Valor unitário</th>
+                                  <th className="p-2">Fornecedor</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {itensPdfAta.map((item, indice) => (
+                                  <tr key={item.codigo_item + "-" + indice} className="border-t">
+                                    <td className="p-2">{item.codigo_item || "—"}</td>
+                                    <td className="p-2 whitespace-normal">{item.descricao}</td>
+                                    <td className="p-2">{item.unidade}</td>
+                                    <td className="p-2 text-right">{item.quantidade.toLocaleString("pt-BR")}</td>
+                                    <td className="p-2 text-right">{brl(item.preco_unitario)}</td>
+                                    <td className="p-2">{item.fornecedor || "Não identificado"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="text-right text-xs font-semibold">Total dos itens: {brl(itensPdfAta.reduce((total, item) => total + item.quantidade * item.preco_unitario, 0))}</div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-warning-foreground">
+                          Nenhum item foi reconhecido. O cadastro não poderá ser salvo como importação completa; envie o PDF que contém a tabela de itens ou importe os itens manualmente.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </Campo>
               )}
               {!ataEmAndamento && <Campo label="Nº da ata *"><Input value={editando.numero ?? ""} onChange={(e) => setEditando({ ...editando, numero: e.target.value })} /></Campo>}
