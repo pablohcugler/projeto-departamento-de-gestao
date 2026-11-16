@@ -229,3 +229,93 @@ export function localizarCabecalhoPdf(bytes: Uint8Array): number {
   }
   return -1;
 }
+
+
+export type DadosAtaExtraidos = {
+  numero?: string;
+  processo?: string;
+  objeto?: string;
+  data_homologacao?: string;
+  data_vencimento?: string;
+  pregao?: string;
+};
+
+function primeiroValor(texto: string, padroes: RegExp[]): string | undefined {
+  for (const padrao of padroes) {
+    const valor = texto.match(padrao)?.[1]?.trim().replace(/\s+/g, " ");
+    if (valor) return valor.replace(/[;,.]+$/, "").trim();
+  }
+  return undefined;
+}
+
+function dataDocumentoParaIso(valor: string | undefined): string | undefined {
+  if (!valor) return undefined;
+  const numerica = valor.match(/(\d{1,2})[/.\\-](\d{1,2})[/.\\-](\d{4})/);
+  if (numerica) {
+    return dataIso(Number(numerica[3]), Number(numerica[2]), Number(numerica[1])) ?? undefined;
+  }
+  const extensa = valor.match(/(\d{1,2})\s+de\s+([\p{L}]+)\s+de\s+(\d{4})/iu);
+  if (extensa) {
+    const mesNome = extensa[2].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    const mes = MESES_PT[mesNome];
+    return mes ? dataIso(Number(extensa[3]), mes, Number(extensa[1])) ?? undefined : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Extrai os campos cadastrais de uma Ata de Registro de Preços.
+ * Mapeamentos específicos: "Data Início" -> homologação; "Data Fim" -> vencimento;
+ * "Sequência" -> número do Pregão Eletrônico.
+ */
+export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
+  const limpo = texto.replace(/\r/g, "\n").replace(/\u00a0/g, " ");
+  const numero = primeiroValor(limpo, [
+    /\bAta\s*[:#-]\s*(\d{1,8}\s*[/.-]\s*\d{4})/i,
+    /\bAta\s+(?:de\s+Registro\s+de\s+Pre[cç]os?\s*)?(?:n[º°o.]?\s*)?(\d{1,8}\s*[/.-]\s*\d{4})/i,
+    /\bAta\s+(?:n[º°o.]?\s*)?(\d{1,8})\b/i,
+  ]);
+  const processo = primeiroValor(limpo, [
+    /\bProcesso\s*\/\s*Ano\s*[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
+    /\bProcesso(?:\s+Administrativo)?\s*(?:n[º°o.]?\s*)?[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
+    /\bProcesso(?:\s+Administrativo)?\s+n[º°o.]?\s*([A-Z0-9][A-Z0-9./-]*)/i,
+  ]);
+  const pregao = primeiroValor(limpo, [
+    /\bSequ[eê]ncia\s*[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
+    /\bSequencia\s*[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
+  ]);
+  const dataInicioTexto = primeiroValor(limpo, [
+    /\bData\s+In[ií]cio\s*[:\-]?\s*(\d{1,2}[/.\\-]\d{1,2}[/.\\-]\d{4})/i,
+    /\bData\s+In[ií]cio\s*[:\-]?\s*(\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu,
+  ]);
+  const dataFimTexto = primeiroValor(limpo, [
+    /\bData\s+Fim\s*[:\-]?\s*(\d{1,2}[/.\\-]\d{1,2}[/.\\-]\d{4})/i,
+    /\bData\s+Fim\s*[:\-]?\s*(\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu,
+  ]);
+
+  const linhas = limpo.split("\n").map((linha) => linha.trim()).filter(Boolean);
+  const inicioObjeto = linhas.findIndex((linha) => /^\s*(?:Objeto(?:\s+da\s+Ata)?|Objeto\s+do\s+Registro)\s*[:\-]/i.test(linha));
+  let objeto: string | undefined;
+  if (inicioObjeto >= 0) {
+    const primeiraLinha = linhas[inicioObjeto].replace(/^\s*(?:Objeto(?:\s+da\s+Ata)?|Objeto\s+do\s+Registro)\s*[:\-]\s*/i, "").trim();
+    const partes = primeiraLinha ? [primeiraLinha] : [];
+    const limiteCampos = /^(?:Ata\s*[:#-]|Processo(?:\s*\/\s*Ano|\s+Administrativo)?\s*[:\-]|Sequ[eê]ncia\s*[:\-]|Data\s+(?:In[ií]cio|Fim|da\s+Licita[cç][aã]o)\s*[:\-]|Vig[eê]ncia\s*[:\-]|Fornecedor\s*:|CNPJ\s*:|Assinatura\s*:)/i;
+    for (let i = inicioObjeto + 1; i < linhas.length && i <= inicioObjeto + 12; i += 1) {
+      const linha = linhas[i];
+      if (limiteCampos.test(linha)) break;
+      if (/^(?:PREFEITURA MUNICIPAL|DEPARTAMENTO|DIVIS[AÃ]O|PREG[AÃ]O|ATA DE REGISTRO|PROCESSO ADMINISTRATIVO)/i.test(linha)) continue;
+      partes.push(linha);
+      if (partes.join(" ").length >= 1600) break;
+    }
+    objeto = partes.join(" ").replace(/\s+/g, " ").trim().slice(0, 1600) || undefined;
+  }
+
+  return {
+    ...(numero ? { numero: numero.replace(/\s+/g, "") } : {}),
+    ...(processo ? { processo: processo.replace(/\s+/g, "") } : {}),
+    ...(objeto ? { objeto } : {}),
+    ...(dataDocumentoParaIso(dataInicioTexto) ? { data_homologacao: dataDocumentoParaIso(dataInicioTexto) } : {}),
+    ...(dataDocumentoParaIso(dataFimTexto) ? { data_vencimento: dataDocumentoParaIso(dataFimTexto) } : {}),
+    ...(pregao ? { pregao: pregao.replace(/\s+/g, "") } : {}),
+  };
+}
