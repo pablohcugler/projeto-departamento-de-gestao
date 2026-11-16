@@ -618,7 +618,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             </div>
 
             <div className="rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário.
+              <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário. <em>Desenvolvido por Pablo R. Cugler de Lima.</em>
             </div>
           </section>
         ) : aba === "pca" ? (
