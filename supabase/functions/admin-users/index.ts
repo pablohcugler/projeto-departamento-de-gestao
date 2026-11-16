@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,36 +65,36 @@ async function createClients() {
   const auth = createClient(url, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  return { admin, auth };
+  return { admin, auth, url, publicKey };
 }
 
-async function requireAdmin(req: Request, admin: ReturnType<typeof createClient>, publicKey: string) {
+export async function requireAdmin(req: Request, url: string, publicKey: string, clientFactory: typeof createClient = createClient) {
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.toLowerCase().startsWith("bearer ")) {
     throw new Error("Sessão ausente. Entre novamente no sistema.");
   }
   const token = authorization.slice(7);
-  const caller = createClient(Deno.env.get("SUPABASE_URL")!, publicKey, {
+  const caller = clientFactory(url, publicKey, {
     global: { headers: { Authorization: "Bearer " + token } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: userData, error: userError } = await caller.auth.getUser();
+  const { data: userData, error: userError } = await caller.auth.getUser(token);
   if (userError || !userData.user) throw new Error("Sessão inválida ou expirada. Entre novamente.");
 
   const [{ data: perfil, error: profileError }, { data: role, error: roleError }] = await Promise.all([
-    admin.from("user_profiles").select("suspenso,setor_id").eq("user_id", userData.user.id).maybeSingle(),
-    admin.from("user_roles").select("role").eq("user_id", userData.user.id).eq("role", "admin").maybeSingle(),
+    caller.from("user_profiles").select("suspenso,setor_id").eq("user_id", userData.user.id).maybeSingle(),
+    caller.from("user_roles").select("role").eq("user_id", userData.user.id).eq("role", "admin").maybeSingle(),
   ]);
   if (profileError || roleError) throw new Error(profileError?.message ?? roleError?.message ?? "Não foi possível validar as permissões.");
-  if (!perfil || perfil.suspenso) throw new Error("Seu acesso está suspenso ou não possui setor.");
+  if (!perfil || perfil.suspenso || !perfil.setor_id) throw new Error("Seu acesso está suspenso ou não possui setor.");
   if (!role) throw new Error("Apenas administradores podem executar esta operação.");
   return { user: userData.user, token };
 }
 
 async function handleLoginCpf(
   action: Extract<Action, { action: "login-cpf" }>,
-  admin: ReturnType<typeof createClient>,
-  auth: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
+  auth: SupabaseClient,
 ) {
   const cpf = digits(action.cpf);
   if (!validCpf(cpf) || !action.senha) {
@@ -129,21 +129,19 @@ async function handleLoginCpf(
   });
 }
 
-Deno.serve(async (req) => {
+export async function handleRequest(req: Request) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
 
   try {
     const body = (await req.json()) as Action;
-    const { admin, auth } = await createClients();
-    const url = Deno.env.get("SUPABASE_URL")!;
-    const publicKey = getKeySet("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY");
+    const { admin, auth, url, publicKey } = await createClients();
 
     if (body?.action === "login-cpf") {
       return await handleLoginCpf(body, admin, auth);
     }
 
-    const { user: solicitante } = await requireAdmin(req, admin, publicKey);
+    const { user: solicitante } = await requireAdmin(req, url, publicKey);
 
     if (body.action === "list-users") {
       const perPage = 1000;
@@ -171,7 +169,7 @@ Deno.serve(async (req) => {
       }
       const profilesById = new Map((profiles ?? []).map((p) => [p.user_id, p]));
       const sectorsById = new Map((sectors ?? []).map((s) => [s.id, s.nome]));
-      const rolesById = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
+      const adminIds = new Set((roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
       return json({
         setores: sectors ?? [],
         usuarios: authUsers.map((u) => {
@@ -184,7 +182,7 @@ Deno.serve(async (req) => {
             setor_id: profile?.setor_id ?? "",
             setor_nome: profile ? sectorsById.get(profile.setor_id) ?? "Setor não encontrado" : "Sem setor",
             suspenso: profile?.suspenso ?? false,
-            admin: rolesById.get(u.id) === "admin",
+            admin: adminIds.has(u.id),
             criado_em: u.created_at,
             ultimo_acesso: u.last_sign_in_at ?? null,
           };
@@ -253,9 +251,14 @@ Deno.serve(async (req) => {
       const { data: targetRole, error: targetRoleError } = await admin.from("user_roles").select("id").eq("user_id", userId).eq("role", "admin").maybeSingle();
       if (targetRoleError) throw targetRoleError;
       if (targetRole && (!tornarAdmin || suspenso)) {
-        const { count, error: countError } = await admin.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
+        const { data: adminRoles, error: countError } = await admin.from("user_roles").select("user_id").eq("role", "admin");
         if (countError) throw countError;
-        if ((count ?? 0) <= 1) return json({ error: "O sistema precisa manter pelo menos um administrador ativo." }, 400);
+        const otherAdminIds = (adminRoles ?? []).map((r) => r.user_id).filter((id) => id !== userId);
+        const { data: activeAdmins, error: activeError } = otherAdminIds.length
+          ? await admin.from("user_profiles").select("user_id").in("user_id", otherAdminIds).eq("suspenso", false)
+          : { data: [], error: null };
+        if (activeError) throw activeError;
+        if (!activeAdmins?.length) return json({ error: "O sistema precisa manter pelo menos um administrador ativo." }, 400);
       }
 
       const { data: current, error: currentError } = await admin.auth.admin.getUserById(userId);
@@ -291,7 +294,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("admin-users", message);
-    const status = /sessão ausente|sessão inválida|apenas administradores|acesso suspenso/i.test(message) ? 401 : 400;
+    const status = /sessão ausente|sessão inválida/i.test(message) ? 401
+      : /apenas administradores|acesso está suspenso/i.test(message) ? 403 : 400;
     return json({ error: message }, status);
   }
-});
+}
+
+if (import.meta.main) Deno.serve(handleRequest);
