@@ -250,7 +250,7 @@ function primeiroValor(texto: string, padroes: RegExp[]): string | undefined {
 
 function dataDocumentoParaIso(valor: string | undefined): string | undefined {
   if (!valor) return undefined;
-  const numerica = valor.match(/(\d{1,2})[/.\\-](\d{1,2})[/.\\-](\d{4})/);
+  const numerica = valor.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
   if (numerica) {
     return dataIso(Number(numerica[3]), Number(numerica[2]), Number(numerica[1])) ?? undefined;
   }
@@ -281,15 +281,15 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     /\bProcesso(?:\s+Administrativo)?\s+n[º°o.]?\s*([A-Z0-9][A-Z0-9./-]*)/i,
   ]);
   const pregao = primeiroValor(limpo, [
-    /\bSequ[eê]ncia\s*[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
-    /\bSequencia\s*[:\-]\s*([A-Z0-9][A-Z0-9./-]*)/i,
+    /\bSequ[eê]ncia\s*(?:n[º°o.]?\s*)?[:\-]?\s*([A-Z0-9][A-Z0-9./-]*)/i,
+    /\bSequencia\s*(?:n[º°o.]?\s*)?[:\-]?\s*([A-Z0-9][A-Z0-9./-]*)/i,
   ]);
   const dataInicioTexto = primeiroValor(limpo, [
-    /\bData\s+In[ií]cio\s*[:\-]?\s*(\d{1,2}[/.\\-]\d{1,2}[/.\\-]\d{4})/i,
+    /\bData\s+In[ií]cio\s*[:\-]?\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})/i,
     /\bData\s+In[ií]cio\s*[:\-]?\s*(\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu,
   ]);
   const dataFimTexto = primeiroValor(limpo, [
-    /\bData\s+Fim\s*[:\-]?\s*(\d{1,2}[/.\\-]\d{1,2}[/.\\-]\d{4})/i,
+    /\bData\s+Fim\s*[:\-]?\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})/i,
     /\bData\s+Fim\s*[:\-]?\s*(\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu,
   ]);
 
