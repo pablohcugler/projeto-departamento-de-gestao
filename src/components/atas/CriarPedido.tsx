@@ -295,7 +295,7 @@ export function CriarPedido({
       linha.quantidadePedido > linha.quantidade,
     );
     if (invalido) {
-      toast.error(`A quantidade do item ${invalido.codigo_item || invalido.descricao} ultrapassa o saldo disponível.`);
+      toast.error(`A quantidade do item ${invalido.codigo_produto || invalido.codigo_item || invalido.descricao} ultrapassa o saldo disponível.`);
       return;
     }
     setEtapa("justificativa");
@@ -321,7 +321,8 @@ export function CriarPedido({
       return;
     }
     const itensSnapshot = escolhidas.map((linha) => ({
-      codigo_item: linha.codigo_item || linha.codigo_produto || "",
+      codigo_item: linha.codigo_item || "",
+      codigo_produto: linha.codigo_produto || "",
       descricao: linha.descricao,
       fornecedor: linha.fornecedor,
       unidade: linha.unidade,
@@ -349,10 +350,10 @@ export function CriarPedido({
     const blocosFornecedor = fornecedores.map(([nome, itens]) => `
       <h3>FORNECEDOR: ${escaparHtml(nome)}</h3>
       <table>
-        <thead><tr><th>COD. DO ITEM</th><th>DESCRIÇÃO RESUMIDA</th><th>QUANTIDADE</th><th>VALOR UNITÁRIO</th><th>VALOR TOTAL</th></tr></thead>
+        <thead><tr><th>CÓD. DO PRODUTO</th><th>DESCRIÇÃO RESUMIDA</th><th>QUANTIDADE</th><th>VALOR UNITÁRIO</th><th>VALOR TOTAL</th></tr></thead>
         <tbody>${itens.map((linha) => `
           <tr>
-            <td>${escaparHtml(linha.codigo_item || linha.codigo_produto || "—")}</td>
+            <td>${escaparHtml(linha.codigo_produto || linha.codigo_item || "—")}</td>
             <td>${escaparHtml(linha.descricao)}</td>
             <td class="numero">${linha.quantidadePedido.toLocaleString("pt-BR")}</td>
             <td class="numero">${moeda(linha.preco_unitario)}</td>
@@ -503,9 +504,9 @@ export function CriarPedido({
                 <tbody>
                   {linhasFiltradas.map((linha) => (
                     <tr key={linha.chave} className="border-t">
-                      <td className="p-2"><input type="checkbox" checked={linha.selecionado} onChange={(e) => atualizarLinha(linha.chave, { selecionado: e.target.checked, quantidadePedido: e.target.checked ? (linha.quantidade >= 1 ? 1 : linha.quantidade) : 0 })} aria-label={`Selecionar item ${linha.codigo_item}`} /></td>
+                      <td className="p-2"><input type="checkbox" checked={linha.selecionado} onChange={(e) => atualizarLinha(linha.chave, { selecionado: e.target.checked, quantidadePedido: e.target.checked ? (linha.quantidade >= 1 ? 1 : linha.quantidade) : 0 })} aria-label={`Selecionar produto ${linha.codigo_produto || linha.codigo_item}`} /></td>
                       <td className="p-2">{linha.fornecedor}</td>
-                      <td className="p-2">{linha.codigo_item || linha.codigo_produto}</td>
+                      <td className="p-2">{linha.codigo_produto || linha.codigo_item}</td>
                       <td className="p-2 whitespace-normal">{linha.descricao}</td>
                       <td className="p-2 text-right tabular-nums">{linha.quantidade.toLocaleString("pt-BR")}</td>
                       <td className="w-28 p-2"><Input type="number" min="0" max={linha.quantidade} step="0.001" value={linha.quantidadePedido || ""} disabled={!linha.selecionado} onChange={(e) => atualizarLinha(linha.chave, { quantidadePedido: Number(e.target.value) })} /></td>
@@ -553,11 +554,11 @@ export function CriarPedido({
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[650px] border-collapse text-xs">
                       <thead><tr className="bg-muted">
-                        <th className="border p-2 text-left">COD. DO ITEM</th><th className="border p-2 text-left">DESCRIÇÃO RESUMIDA</th><th className="border p-2 text-right">QUANTIDADE</th><th className="border p-2 text-right">VALOR UNITÁRIO</th><th className="border p-2 text-right">VALOR TOTAL</th>
+                        <th className="border p-2 text-left">CÓD. DO PRODUTO</th><th className="border p-2 text-left">DESCRIÇÃO RESUMIDA</th><th className="border p-2 text-right">QUANTIDADE</th><th className="border p-2 text-right">VALOR UNITÁRIO</th><th className="border p-2 text-right">VALOR TOTAL</th>
                       </tr></thead>
                       <tbody>{itens.map((linha) => (
                         <tr key={linha.chave}>
-                          <td className="border p-2">{linha.codigo_item || linha.codigo_produto || "—"}</td>
+                          <td className="border p-2">{linha.codigo_produto || linha.codigo_item || "—"}</td>
                           <td className="border p-2">{linha.descricao}</td>
                           <td className="border p-2 text-right">{linha.quantidadePedido.toLocaleString("pt-BR")}</td>
                           <td className="border p-2 text-right">{brl(linha.preco_unitario)}</td>
