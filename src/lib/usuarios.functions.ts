@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuthForWorker } from "@/integrations/supabase/auth-middleware-worker";
 
 function apenasDigitos(valor: string) {
   return valor.replace(/\D/g, "");
@@ -30,8 +30,8 @@ export const entrarComCpf = createServerFn({ method: "POST" })
     const email = usuario?.user?.email;
     if (usuarioError || !email) throw new Error("CPF ou senha inválidos.");
 
-    const url = process.env["SUPABASE_URL"];
-    const chave = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const url = process.env["SUPABASE_URL"] || import.meta.env["VITE_SUPABASE_URL"];
+    const chave = process.env["SUPABASE_PUBLISHABLE_KEY"] || import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
     if (!url || !chave) throw new Error("Serviço de autenticação indisponível.");
 
     const clienteAuth = createClient(url, chave, {
