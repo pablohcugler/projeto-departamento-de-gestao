@@ -1,1 +1,6 @@
 project_id = "flbrfqaspynkwhqwlqxg"
+
+[functions.admin-users]
+# Login por CPF acontece antes de existir uma sessão; a função valida
+# manualmente todas as ações administrativas e só permite list/create/update a admins.
+verify_jwt = false
