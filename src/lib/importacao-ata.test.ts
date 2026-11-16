@@ -4,6 +4,7 @@ import {
   extrairDataRelatorioTexto,
   extrairDataRelatorioUltimaPagina,
   extrairItensAtaTexto,
+  extrairItensDocumentoAtaTexto,
   localizarCabecalhoPdf,
   numeroBR,
   reconstruirLinhasPdf,
@@ -145,4 +146,64 @@ describe("leitura do relatório de saldo da ata", () => {
       objeto: "Compra de materiais.",
     });
   });
+
+  it("mapeia Data Fim para vencimento mesmo quando a data aparece na linha seguinte", () => {
+    const texto = [
+      "ATA DE REGISTRO DE PREÇOS Nº 24/2026",
+      "Data Início:",
+      "11/08/2026",
+      "Data Fim:",
+      "11/08/2027",
+      "A presente Ata tem por objeto a aquisição de materiais hospitalares para as unidades municipais.",
+    ].join("\n");
+    expect(extrairDadosAtaTexto(texto)).toMatchObject({
+      data_homologacao: "2026-08-11",
+      data_vencimento: "2027-08-11",
+      objeto: "a aquisição de materiais hospitalares para as unidades municipais",
+    });
+  });
+
+  it("importa os itens com código, descrição, unidade, quantidade, preços e fornecedor", () => {
+    const texto = [
+      "Fornecedor: 123 - EMPRESA COMERCIAL LTDA",
+      "ITEM DESCRIÇÃO UNIDADE QUANTIDADE VALOR UNITÁRIO VALOR TOTAL",
+      "Item 01 ACENDEDOR TIPO FÓSFORO UN 10 3,50 35,00",
+      "02 ARROZ TIPO 1 PACOTE 30 25,50 765,00",
+    ].join("\n");
+    const itens = extrairItensDocumentoAtaTexto(texto);
+    expect(itens).toHaveLength(2);
+    expect(itens[0]).toMatchObject({
+      codigo_item: "01",
+      descricao: "ACENDEDOR TIPO FÓSFORO",
+      unidade: "UN",
+      quantidade: 10,
+      preco_unitario: 3.5,
+      valor_total: 35,
+      fornecedor: "EMPRESA COMERCIAL LTDA",
+    });
+    expect(itens[1]).toMatchObject({
+      codigo_item: "02",
+      descricao: "ARROZ TIPO 1",
+      unidade: "PACOTE",
+      quantidade: 30,
+      preco_unitario: 25.5,
+      valor_total: 765,
+      fornecedor: "EMPRESA COMERCIAL LTDA",
+    });
+  });
+
+  it("aceita item sem fornecedor identificado e sem valor total impresso", () => {
+    const itens = extrairItensDocumentoAtaTexto("01 COPO DESCARTÁVEL PCT 100 5,25");
+    expect(itens).toHaveLength(1);
+    expect(itens[0]).toMatchObject({
+      codigo_item: "01",
+      descricao: "COPO DESCARTÁVEL",
+      unidade: "PCT",
+      quantidade: 100,
+      preco_unitario: 5.25,
+      valor_total: 525,
+      fornecedor: "",
+    });
+  });
+
 });
