@@ -664,7 +664,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     {arquivoPdfAta && <span className="max-w-full truncate text-xs text-muted-foreground">{arquivoPdfAta.name}</span>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    O sistema preencherá número da ata, processo, objeto, Data Início (homologação), Data Fim (vencimento) e Sequência (pregão eletrônico), além de tentar importar todos os itens da tabela. A classificação e os números do 1Doc serão informados pelo usuário.
+                    O sistema preencherá número da ata, processo, objeto, Data da Licitação (homologação), Data Fim (vencimento) e Sequência (pregão eletrônico), além de tentar importar todos os itens da tabela. A classificação e os números do 1Doc serão informados pelo usuário.
                   </p>
                   {arquivoPdfAta && (
                     <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
