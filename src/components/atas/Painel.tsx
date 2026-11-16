@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
 import { CriarPedido } from "./CriarPedido";
+import { Pedidos } from "./Pedidos";
+import { Administracao } from "./Administracao";
 import { TemaToggle } from "./TemaToggle";
 import { ConfigTv } from "@/components/tv/ConfigTv";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
@@ -64,7 +66,8 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
-  const [aba, setAba] = useState<"atas" | "contratos" | "feedbacks">("atas");
+  const [aba, setAba] = useState<"atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("atas");
+  const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
   const extrairDadosAta = useServerFn(extrairDadosAtaPdf);
@@ -78,6 +81,56 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [filtroSituacaoContratos, setFiltroSituacaoContratos] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
+
+  // Restaura a última tela e os filtros deste usuário após F5/recarregamento.
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem("gestao-saude-painel:" + userId);
+      if (salvo) {
+        const estado = JSON.parse(salvo) as {
+          aba?: string;
+          selecionada?: string | null;
+          filtroClasse?: string;
+          filtroSituacao?: string;
+          filtroSituacaoContratos?: string;
+          busca?: string;
+        };
+        if (["atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
+          setAba(estado.aba as typeof aba);
+        }
+        if (typeof estado.selecionada === "string") setSelecionada(estado.selecionada);
+        if (typeof estado.filtroClasse === "string") setFiltroClasse(estado.filtroClasse);
+        if (["todas", "Em andamento", "Vigentes"].includes(estado.filtroSituacao ?? "")) {
+          setFiltroSituacao(estado.filtroSituacao as typeof filtroSituacao);
+        }
+        if (["todas", "Em andamento", "Vigentes"].includes(estado.filtroSituacaoContratos ?? "")) {
+          setFiltroSituacaoContratos(estado.filtroSituacaoContratos as typeof filtroSituacaoContratos);
+        }
+        if (typeof estado.busca === "string") setBusca(estado.busca);
+      }
+    } catch {
+      localStorage.removeItem("gestao-saude-painel:" + userId);
+    } finally {
+      setNavegacaoRestaurada(true);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!navegacaoRestaurada) return;
+    try {
+      localStorage.setItem("gestao-saude-painel:" + userId, JSON.stringify({
+        aba, selecionada, filtroClasse, filtroSituacao, filtroSituacaoContratos, busca,
+      }));
+    } catch {
+      // A navegação continua funcionando mesmo quando o navegador bloqueia armazenamento local.
+    }
+  }, [navegacaoRestaurada, userId, aba, selecionada, filtroClasse, filtroSituacao, filtroSituacaoContratos, busca]);
+
+  useEffect(() => {
+    if (adminQ.isSuccess && !adminQ.data && (aba === "administracao" || aba === "feedbacks")) {
+      setAba("atas");
+    }
+  }, [adminQ.isSuccess, adminQ.data, aba]);
 
   const atasQ = useQuery({
     queryKey: ["atas"],
@@ -406,6 +459,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button size="sm" variant={aba === "pedidos" ? "secondary" : "ghost"} className={aba === "pedidos" ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba("pedidos"); setSelecionada(null); }}>
+              Pedidos
+            </Button>
           </nav>
           <div className="app-header-actions flex items-center gap-2 text-sm">
             <DropdownMenu>
@@ -425,6 +481,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { setAba("administracao"); setSelecionada(null); }}><CircleUserRound className="h-4 w-4" /> Administração de usuários</DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setAba("feedbacks")}><ClipboardList className="h-4 w-4" /> Relatório de feedbacks</DropdownMenuItem>
                 </>}
                 <DropdownMenuSeparator />
@@ -437,7 +494,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </header>
 
       <main className="app-main mx-auto w-full max-w-none py-6 sm:py-9">
-        {aba === "feedbacks" ? (
+        {aba === "administracao" ? (
+          <Administracao />
+        ) : aba === "pedidos" ? (
+          <Pedidos atas={atas} />
+        ) : aba === "feedbacks" ? (
           <div className="space-y-4">
             <Button variant="outline" onClick={() => setAba("atas")}>
               <ArrowLeft className="h-4 w-4" /> Voltar ao painel
@@ -718,7 +779,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />
       <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
-      <CriarPedido aberto={pedidoAberto} onFechar={() => setPedidoAberto(false)} atas={atas.filter((ata) => ata.situacao_cadastro === "Vigentes")} />
+      <CriarPedido aberto={pedidoAberto} onFechar={() => setPedidoAberto(false)} atas={atas.filter((ata) => ata.situacao_cadastro === "Vigentes")} onPedidoSalvo={() => { void qc.invalidateQueries({ queryKey: ["pedidos"] }); }} />
     </div>
   );
 }
