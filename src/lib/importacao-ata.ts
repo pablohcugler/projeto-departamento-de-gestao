@@ -128,18 +128,18 @@ export function extrairItensAtaTexto(texto: string): ItemImportado[] {
   for (const linha of linhas) {
     const nomeFornecedor = linha.match(fornecedorRe);
     if (nomeFornecedor) {
-      fornecedor = nomeFornecedor[1].trim();
+      fornecedor = (nomeFornecedor[1] ?? "").trim();
       continue;
     }
 
     const m = linha.match(itemRe);
     if (m) {
       itens.push({
-        codigo_item: m[1],
-        codigo_produto: m[2],
-        descricao: m[3].trim(),
+        codigo_item: m[1] ?? "",
+        codigo_produto: m[2] ?? "",
+        descricao: (m[3] ?? "").trim(),
         fornecedor,
-        unidade: m[4],
+        unidade: m[4] ?? "",
         preco_unitario: numeroBR(m[5]),
         quantidade: numeroBR(m[6]),
         valor_total: numeroBR(m[7]),
@@ -248,7 +248,7 @@ function dataDocumentoParaIso(valor: string | undefined): string | undefined {
   }
   const extensa = valor.match(/(\d{1,2})\s+de\s+([\p{L}]+)\s+de\s+(\d{4})/iu);
   if (extensa) {
-    const mesNome = extensa[2].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    const mesNome = (extensa[2] ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
     const mes = MESES_PT[mesNome];
     return mes ? dataIso(Number(extensa[3]), mes, Number(extensa[1])) ?? undefined : undefined;
   }
@@ -285,7 +285,7 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     const indice = linhas.findIndex((linha) => rotulo.test(linha));
     if (indice < 0) return undefined;
     const padraoData = /(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu;
-    return linhas[indice]!.match(padraoData)?.[1] ?? linhas[indice + 1]?.match(padraoData)?.[1];
+    return linhas[indice]?.match(padraoData)?.[1] ?? linhas[indice + 1]?.match(padraoData)?.[1];
   };
   const dataLicitacaoTexto =
     lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+da\s+Licita[cç][aã]o\b/i) ??
@@ -297,7 +297,7 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
   );
   let objeto: string | undefined;
   if (inicioObjeto >= 0) {
-    const primeiraLinha = linhas[inicioObjeto]
+    const primeiraLinha = (linhas[inicioObjeto] ?? "")
       .replace(/^\s*(?:Objeto(?:\s+da\s+Ata)?|Objeto\s+do\s+Registro)\s*[:\-]\s*/i, "")
       .trim();
     const partes = primeiraLinha ? [primeiraLinha] : [];
@@ -305,6 +305,7 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
       /^(?:Ata\b|Processo(?:\s*\/\s*Ano|\s+Administrativo)?\b|Sequ[eê]ncia\b|Data\s+(?:In[ií]cio|Fim|da\s+Licita[cç][aã]o)\b|Vig[eê]ncia\b|Fornecedor\s*:|CNPJ\s*:|Assinatura\s*:)/i;
     for (let i = inicioObjeto + 1; i < linhas.length && i <= inicioObjeto + 12; i += 1) {
       const linha = linhas[i];
+      if (linha === undefined) break;
       if (limiteCampos.test(linha)) break;
       if (/^(?:PREFEITURA MUNICIPAL|DEPARTAMENTO|DIVIS[AÃ]O|PREG[AÃ]O|ATA DE REGISTRO|PROCESSO ADMINISTRATIVO)/i.test(linha)) continue;
       partes.push(linha);

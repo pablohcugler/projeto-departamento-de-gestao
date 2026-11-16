@@ -315,7 +315,7 @@ export function CriarPedido({
     setSalvandoPedido(true);
     const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
     if (erroUsuario || !usuarioAtual.user) {
-      janela.close();
+      janela?.close();
       setSalvandoPedido(false);
       toast.error("Sua sessão expirou. Entre novamente para salvar o pedido.");
       return;
@@ -339,7 +339,7 @@ export function CriarPedido({
       data_saldo: dataRelatorio,
     });
     if (erroPedido) {
-      janela.close();
+      janela?.close();
       setSalvandoPedido(false);
       toast.error("Não foi possível salvar o pedido: " + erroPedido.message);
       return;

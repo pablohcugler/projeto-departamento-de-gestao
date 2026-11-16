@@ -28,13 +28,13 @@ export function EnviarFeedback({ aberto, onFechar, userId, nome }: { aberto: boo
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
-    if (!titulo.trim() || !observacao.trim()) return toast.error("Preencha o assunto e a observação.");
+    if (!titulo.trim() || !observacao.trim()) { toast.error("Preencha o assunto e a observação."); return; }
     setEnviando(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await (supabase as any).from("feedbacks_sistema").insert({
         user_id: userId,
-        nome_usuario: nome?.trim() || user?.user_metadata?.nome || user?.email || "Usuário",
+        nome_usuario: nome?.trim() || user?.user_metadata?.["nome"] || user?.email || "Usuário",
         email_usuario: user?.email ?? null,
         categoria,
         titulo: titulo.trim(),
@@ -105,7 +105,7 @@ export function RelatorioFeedbacks() {
   async function atualizar() {
     if (!selecionado) return;
     const { error } = await (supabase as any).from("feedbacks_sistema").update({ status, resposta_admin: resposta.trim() || null }).eq("id", selecionado.id);
-    if (error) return toast.error("Não foi possível atualizar o feedback.");
+    if (error) { toast.error("Não foi possível atualizar o feedback."); return; }
     toast.success("Feedback atualizado."); setSelecionado(null); qc.invalidateQueries({ queryKey: ["feedbacks-sistema"] });
   }
   const dataBR = (s: string) => new Date(s).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });

@@ -776,7 +776,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome} />
+      <EnviarFeedback aberto={feedbackAberto} onFechar={() => setFeedbackAberto(false)} userId={userId} nome={nome ?? null} />
       <NovoUsuario aberto={novoUsuario} onFechar={() => setNovoUsuario(false)} />
       <GerirClasses aberto={gerirClasses} onFechar={() => setGerirClasses(false)} classes={classes} />
       <CriarPedido aberto={pedidoAberto} onFechar={() => setPedidoAberto(false)} atas={atas.filter((ata) => ata.situacao_cadastro === "Vigentes")} onPedidoSalvo={() => { void qc.invalidateQueries({ queryKey: ["pedidos"] }); }} />

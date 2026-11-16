@@ -1,6 +1,8 @@
 # Roadmap
 - [x] Anexos (TR, ETP, Contrato) e campos 1Doc em atas/contratos
 - [x] Campo Nº do Pregão Eletrônico
-- [ ] Corrigir carregamento do brasão original em produção e verificar outras imagens
-- [ ] Validar compilação automática e carregamento das imagens
+- [x] Corrigir o caminho do brasão original e verificar outras imagens (login, painel e TV validados; falta atualizar a hospedagem de produção)
+- [x] Validar compilação automática e carregamento das imagens
 - [ ] Confirmar sincronização com GitHub (depende do status da conexão nas configurações)
+- [x] Renovar LOVABLE_API_KEY (nova chave armazenada e propagada pelo serviço)
+- [ ] Atualizar a hospedagem de produção para carregar a nova chave e a correção (depende de nova publicação)
