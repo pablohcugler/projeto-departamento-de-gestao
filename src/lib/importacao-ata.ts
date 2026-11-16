@@ -281,10 +281,14 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     /\bSequ[eê]ncia\s*(?:n[º°o.]?\s*)?[:\-]?\s*([A-Z0-9][A-Z0-9./-]*)/i,
   )?.[1]?.replace(/\s+/g, "");
 
-  const linhaInicio = linhas.find((linha) => /\bData\s+In[ií]cio\b/i.test(linha));
-  const dataInicioTexto = linhaInicio?.match(/(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu)?.[1];
-  const linhaFim = linhas.find((linha) => /\bData\s+Fim\b/i.test(linha));
-  const dataFimTexto = linhaFim?.match(/(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu)?.[1];
+  const lerDataAoLadoOuNaLinhaSeguinte = (rotulo: RegExp): string | undefined => {
+    const indice = linhas.findIndex((linha) => rotulo.test(linha));
+    if (indice < 0) return undefined;
+    const padraoData = /(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu;
+    return linhas[indice]!.match(padraoData)?.[1] ?? linhas[indice + 1]?.match(padraoData)?.[1];
+  };
+  const dataInicioTexto = lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+In[ií]cio\b/i);
+  const dataFimTexto = lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+Fim\b/i);
 
   const inicioObjeto = linhas.findIndex((linha) =>
     /^\s*(?:Objeto(?:\s+da\s+Ata)?|Objeto\s+do\s+Registro)\s*[:\-]/i.test(linha),
@@ -305,6 +309,20 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
       if (partes.join(" ").length >= 1600) break;
     }
     objeto = partes.join(" ").replace(/\s+/g, " ").trim().slice(0, 1600) || undefined;
+  }
+
+  // Alguns modelos não usam o rótulo isolado "Objeto:". Procuramos então
+  // a frase declaratória do instrumento ou o título "Ata ... para ...".
+  if (!objeto) {
+    const textoCompleto = linhas.join(" ");
+    const declaracao = textoCompleto.match(/(?:tem\s+por\s+objeto|cujo\s+objeto\s+[ée]|objetiva\s+a\s+contrata[cç][aã]o\s+de)\s+(.{20,1200}?)(?=\s+(?:CL[AÁ]USULA|VIG[EÊ]NCIA|DO\s+PRAZO|DAS\s+OBRIGA[CÇ][ÕO]ES|DOS\s+PRE[CÇ]OS)\b|$)/i);
+    if (declaracao?.[1]) {
+      objeto = declaracao[1].replace(/[.;]+$/, "").trim().slice(0, 1600);
+    } else {
+      const titulo = linhas.find((linha) => /\bATA\s+DE\s+REGISTRO\s+DE\s+PRE[CÇ]OS\b.*\bPARA\b/i.test(linha));
+      const aposPara = titulo?.match(/\bPARA\s+(.{20,1000})$/i)?.[1];
+      if (aposPara) objeto = aposPara.replace(/[.;]+$/, "").trim().slice(0, 1600);
+    }
   }
 
   const data_homologacao = dataDocumentoParaIso(dataInicioTexto);
