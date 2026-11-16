@@ -31,16 +31,19 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env['SUPABASE_URL'] || import.meta.env['VITE_SUPABASE_URL'];
-  // A chave service role deve ser configurada como Secret no ambiente do Worker.
-  // Nunca usar VITE_* para esta chave, pois isso a exporia no bundle do navegador.
-  const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  // A chave privilegiada deve ser configurada como Secret no Worker.
+  // SUPABASE_SECRET_KEY usa o padrão atual (sb_secret_...); SERVICE_ROLE_KEY
+  // permanece aceito para projetos que ainda usam a chave legada.
+  // Nunca utilizar VITE_* para esta chave, pois isso a exporia no navegador.
+  const SUPABASE_SERVICE_ROLE_KEY =
+    process.env['SUPABASE_SECRET_KEY'] || process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
       ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
     ];
-    const message = `Variável de ambiente ausente: ${missing.join(', ')}. No Cloudflare, configure SUPABASE_SERVICE_ROLE_KEY em Settings > Variables and Secrets como Secret. A URL usa VITE_SUPABASE_URL do build.`;
+    const message = `Variável de ambiente ausente: ${missing.join(', ')}. No Cloudflare, configure SUPABASE_SECRET_KEY (chave atual sb_secret_...) ou SUPABASE_SERVICE_ROLE_KEY (legada) em Settings > Variables and Secrets como Secret. A URL usa VITE_SUPABASE_URL do build.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
