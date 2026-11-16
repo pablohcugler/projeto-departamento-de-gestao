@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuthForWorker } from "@/integrations/supabase/auth-middleware-worker";
 import { forwardSupabaseAccessToken } from "@/integrations/supabase/auth-client-middleware";
-import { dataAtualSaoPaulo, extrairDadosAtaTexto, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, localizarCabecalhoPdf, reconstruirLinhasPdf, type DadosAtaExtraidos, type ItemImportado } from "@/lib/importacao-ata";
+import { dataAtualSaoPaulo, extrairDadosAtaTexto, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, localizarCabecalhoPdf, reconstruirLinhasPdf, extrairItensDocumentoAtaTexto, type DadosAtaExtraidos, type ItemImportado } from "@/lib/importacao-ata";
 
 export type { ItemImportado } from "@/lib/importacao-ata";
 
@@ -16,19 +16,19 @@ export const extrairDadosAtaPdf = createServerFn({ method: "POST" })
     }
     return input;
   })
-  .handler(async ({ data }): Promise<{ dados: DadosAtaExtraidos; camposEncontrados: string[]; erro?: string }> => {
+  .handler(async ({ data }): Promise<{ dados: DadosAtaExtraidos; camposEncontrados: string[]; itens: ItemImportado[]; itensEncontrados: number; tabelaItensDetectada: boolean; avisoItens?: string; erro?: string }> => {
     let etapa = "abertura do arquivo";
     try {
       const { extractTextItems, getDocumentProxy } = await import("unpdf");
       const bytes = Uint8Array.from(atob(data.base64), (caractere) => caractere.charCodeAt(0));
       const inicioPdf = localizarCabecalhoPdf(bytes);
       if (inicioPdf < 0) {
-        return { dados: {}, camposEncontrados: [], erro: "O arquivo selecionado não contém um cabeçalho PDF válido. Selecione o documento original em PDF." };
+        return { dados: {}, camposEncontrados: [], itens: [], itensEncontrados: 0, tabelaItensDetectada: false, erro: "O arquivo selecionado não contém um cabeçalho PDF válido. Selecione o documento original em PDF." };
       }
 
       const pdf = await getDocumentProxy(inicioPdf === 0 ? bytes : bytes.subarray(inicioPdf), { maxImageSize: 16_777_216 });
       if (pdf.numPages > 100) {
-        return { dados: {}, camposEncontrados: [], erro: "O PDF possui mais de 100 páginas. Divida o documento e tente novamente." };
+        return { dados: {}, camposEncontrados: [], itens: [], itensEncontrados: 0, tabelaItensDetectada: false, erro: "O PDF possui mais de 100 páginas. Divida o documento e tente novamente." };
       }
 
       etapa = "extração do texto do PDF";
@@ -37,6 +37,9 @@ export const extrairDadosAtaPdf = createServerFn({ method: "POST" })
         return {
           dados: {},
           camposEncontrados: [],
+          itens: [],
+          itensEncontrados: 0,
+          tabelaItensDetectada: false,
           erro: "O PDF abriu, mas não contém texto selecionável. Envie uma versão pesquisável do documento, não uma digitalização em imagem.",
         };
       }
@@ -45,21 +48,42 @@ export const extrairDadosAtaPdf = createServerFn({ method: "POST" })
       const texto = reconstruirLinhasPdf(paginas).join("\n");
       const dadosAta = extrairDadosAtaTexto(texto);
       const camposEncontrados = Object.keys(dadosAta);
-      if (camposEncontrados.length === 0) {
+      const itens = extrairItensDocumentoAtaTexto(texto);
+      const tabelaItensDetectada = /\b(?:item|itens|descri[cç][aã]o|especifica[cç][aã]o|quantidade|qtd\.?|valor\s+unit[aá]rio)\b/i.test(texto);
+      const avisoItens = itens.length === 0
+        ? (tabelaItensDetectada
+          ? "Identifiquei indícios de tabela de itens, mas não consegui interpretar as linhas com segurança. Os itens não serão importados automaticamente para evitar cadastro incompleto ou valores incorretos."
+          : "Não identifiquei uma tabela de itens neste PDF. O documento pode conter apenas o instrumento resumido; confira o PDF completo ou importe os itens manualmente.")
+        : undefined;
+
+      if (camposEncontrados.length === 0 && itens.length === 0) {
         return {
           dados: {},
           camposEncontrados: [],
-          erro: "Não identifiquei os campos da ata neste PDF. Confira se anexou o documento da Ata de Registro de Preços, e não o edital ou outro relatório. Você poderá preencher os campos manualmente.",
+          itens: [],
+          itensEncontrados: 0,
+          tabelaItensDetectada,
+          erro: "Não identifiquei dados cadastrais nem itens neste PDF. Confira se anexou o documento completo da Ata de Registro de Preços, e não o edital ou outro relatório.",
         };
       }
 
-      return { dados: dadosAta, camposEncontrados };
+      return {
+        dados: dadosAta,
+        camposEncontrados,
+        itens,
+        itensEncontrados: itens.length,
+        tabelaItensDetectada,
+        ...(avisoItens ? { avisoItens } : {}),
+      };
     } catch (erro) {
       const detalhe = erro instanceof Error ? erro.name + ": " + erro.message : String(erro);
       console.error("extrairDadosAtaPdf - etapa:", etapa, "- erro:", detalhe, erro);
       return {
         dados: {},
         camposEncontrados: [],
+        itens: [],
+        itensEncontrados: 0,
+        tabelaItensDetectada: false,
         erro: "Não foi possível ler a ata na etapa \"" + etapa + "\": " + detalhe.slice(0, 220) + ".",
       };
     }
