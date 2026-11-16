@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { extrairItensPdf, type ItemImportado } from "@/lib/importar.functions";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Json, Tables } from "@/integrations/supabase/types";
 import { brl } from "@/lib/vencimento";
 
 type Ata = Tables<"atas">;
@@ -45,10 +45,12 @@ export function CriarPedido({
   aberto,
   onFechar,
   atas,
+  onPedidoSalvo,
 }: {
   aberto: boolean;
   onFechar: () => void;
   atas: Ata[];
+  onPedidoSalvo?: () => void;
 }) {
   const extrairPdf = useServerFn(extrairItensPdf);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -62,6 +64,7 @@ export function CriarPedido({
   const [justificativa, setJustificativa] = useState("");
   const [lendoPdf, setLendoPdf] = useState(false);
   const [carregandoItens, setCarregandoItens] = useState(false);
+  const [salvandoPedido, setSalvandoPedido] = useState(false);
 
   const ataSelecionada = atas.find((ata) => ata.id === ataId);
   const linhasFiltradas = useMemo(() => {
@@ -306,8 +309,46 @@ export function CriarPedido({
     setEtapa("visualizacao");
   }
 
-  function gerarPdf() {
-    if (!ataSelecionada || !escolhidas.length || !justificativa.trim()) return;
+  async function gerarPdf() {
+    if (!ataSelecionada || !escolhidas.length || !justificativa.trim() || salvandoPedido) return;
+    const janela = window.open("", "_blank");
+    if (!janela) {
+      toast.error("O navegador bloqueou a janela do pedido. Permita pop-ups para este sistema.");
+      return;
+    }
+    setSalvandoPedido(true);
+    const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
+    if (erroUsuario || !usuarioAtual.user) {
+      janela.close();
+      setSalvandoPedido(false);
+      toast.error("Sua sessão expirou. Entre novamente para salvar o pedido.");
+      return;
+    }
+    const itensSnapshot = escolhidas.map((linha) => ({
+      codigo_item: linha.codigo_item || linha.codigo_produto || "",
+      descricao: linha.descricao,
+      fornecedor: linha.fornecedor,
+      unidade: linha.unidade,
+      quantidade: linha.quantidadePedido,
+      preco_unitario: linha.preco_unitario,
+      valor_total: linha.quantidadePedido * linha.preco_unitario,
+    }));
+    const { error: erroPedido } = await supabase.from("pedidos").insert({
+      user_id: usuarioAtual.user.id,
+      setor_id: ataSelecionada.setor_id,
+      ata_id: ataSelecionada.id,
+      justificativa: justificativa.trim(),
+      itens: itensSnapshot as unknown as Json,
+      total: totalPedido,
+      data_saldo: dataRelatorio,
+    });
+    if (erroPedido) {
+      janela.close();
+      setSalvandoPedido(false);
+      toast.error("Não foi possível salvar o pedido: " + erroPedido.message);
+      return;
+    }
+    onPedidoSalvo?.();
     const dataHoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date());
     const blocosFornecedor = fornecedores.map(([nome, itens]) => `
       <h3>FORNECEDOR: ${escaparHtml(nome)}</h3>
@@ -344,16 +385,13 @@ export function CriarPedido({
       <p class="total">VALOR TOTAL DO PEDIDO: ${moeda(totalPedido)}</p>
       </body></html>`;
 
-    const janela = window.open("", "_blank");
-    if (!janela) {
-      toast.error("O navegador bloqueou a janela de impressão. Permita pop-ups para gerar o PDF.");
-      return;
-    }
     janela.document.open();
     janela.document.write(html);
     janela.document.close();
     janela.focus();
     janela.print();
+    setSalvandoPedido(false);
+    toast.success("Pedido salvo na guia Pedidos. O PDF está pronto para impressão ou salvamento.");
   }
 
   return (
@@ -544,7 +582,7 @@ export function CriarPedido({
             {etapa === "ata" && <Button type="button" onClick={() => void avancarAta()} disabled={!ataId || carregandoItens}>{carregandoItens ? <><Loader2 className="h-4 w-4 animate-spin" /> Carregando...</> : <>Continuar <ArrowRight className="h-4 w-4" /></>}</Button>}
             {etapa === "itens" && <Button type="button" onClick={avancarItens}>Continuar <ArrowRight className="h-4 w-4" /></Button>}
             {etapa === "justificativa" && <Button type="button" onClick={avancarJustificativa}>Visualizar pedido <ArrowRight className="h-4 w-4" /></Button>}
-            {etapa === "visualizacao" && <Button type="button" onClick={gerarPdf}><Printer className="h-4 w-4" /> Gerar PDF</Button>}
+            {etapa === "visualizacao" && <Button type="button" onClick={() => void gerarPdf()} disabled={salvandoPedido}><Printer className="h-4 w-4" /> {salvandoPedido ? "Salvando pedido..." : "Salvar pedido e gerar PDF"}</Button>}
           </div>
         </DialogFooter>
       </DialogContent>
