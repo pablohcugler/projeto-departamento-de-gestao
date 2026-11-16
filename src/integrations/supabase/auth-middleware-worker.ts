@@ -75,6 +75,15 @@ export const requireSupabaseAuthForWorker = createMiddleware({ type: "function" 
       throw new Error("Unauthorized: Invalid token.");
     }
 
+    const { data: perfil, error: perfilError } = await supabase
+      .from("user_profiles")
+      .select("suspenso,setor_id")
+      .eq("user_id", data.claims.sub)
+      .maybeSingle();
+    if (perfilError || !perfil || perfil.suspenso || !perfil.setor_id) {
+      throw new Error("Acesso suspenso ou usuário sem setor. Procure o administrador.");
+    }
+
     return next({
       context: {
         supabase,
