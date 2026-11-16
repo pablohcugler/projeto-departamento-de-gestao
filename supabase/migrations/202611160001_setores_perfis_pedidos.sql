@@ -448,6 +448,7 @@ BEGIN
 END;
 $$;
 
+DROP POLICY IF EXISTS "Usuários enviam feedback próprio" ON public.feedbacks_sistema;
 DROP POLICY IF EXISTS "Feedbacks ativos da equipe" ON public.feedbacks_sistema;
 CREATE POLICY "Feedbacks ativos da equipe" ON public.feedbacks_sistema
 FOR INSERT TO authenticated
