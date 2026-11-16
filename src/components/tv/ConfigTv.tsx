@@ -54,8 +54,8 @@ export function ConfigTv({ menuTrigger = false }: { menuTrigger?: boolean }) {
   }, []);
   const abrir = () => {
     try { localStorage.setItem("config-tv", JSON.stringify(c)); } catch { /* ignore */ }
-    // Navegação na própria aba evita bloqueio de pop-up e fechamento imediato da janela.
-    window.location.assign(urlTv(c));
+    // O clique abre a Tela da TV em uma nova aba e mantém o painel principal aberto.
+    window.open(urlTv(c), "_blank", "noopener,noreferrer");
   };
   return (
     <>
