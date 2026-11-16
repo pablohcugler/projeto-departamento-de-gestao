@@ -257,7 +257,7 @@ function dataDocumentoParaIso(valor: string | undefined): string | undefined {
 
 /**
  * Extrai os campos cadastrais de uma Ata de Registro de Preços.
- * Mapeamentos: Data Início -> homologação; Data Fim -> vencimento;
+ * Mapeamentos: Data da Licitação -> homologação; Data Fim -> vencimento;
  * Sequência -> número do Pregão Eletrônico.
  */
 export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
@@ -287,7 +287,9 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     const padraoData = /(\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4})/iu;
     return linhas[indice]!.match(padraoData)?.[1] ?? linhas[indice + 1]?.match(padraoData)?.[1];
   };
-  const dataInicioTexto = lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+In[ií]cio\b/i);
+  const dataLicitacaoTexto =
+    lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+da\s+Licita[cç][aã]o\b/i) ??
+    lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+In[ií]cio\b/i);
   const dataFimTexto = lerDataAoLadoOuNaLinhaSeguinte(/\bData\s+Fim\b/i);
 
   const inicioObjeto = linhas.findIndex((linha) =>
@@ -325,7 +327,7 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     }
   }
 
-  const data_homologacao = dataDocumentoParaIso(dataInicioTexto);
+  const data_homologacao = dataDocumentoParaIso(dataLicitacaoTexto);
   const data_vencimento = dataDocumentoParaIso(dataFimTexto);
   return {
     ...(numero ? { numero } : {}),
