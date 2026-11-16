@@ -395,24 +395,38 @@ export type Database = {
       }
       setores: {
         Row: {
+          acesso_global: boolean
           ativo: boolean
           created_at: string
           id: string
           nome: string
+          parent_id: string | null
         }
         Insert: {
+          acesso_global?: boolean
           ativo?: boolean
           created_at?: string
           id?: string
           nome: string
+          parent_id?: string | null
         }
         Update: {
+          acesso_global?: boolean
           ativo?: boolean
           created_at?: string
           id?: string
           nome?: string
+          parent_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "setores_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
