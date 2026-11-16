@@ -312,10 +312,6 @@ export function CriarPedido({
   async function gerarPdf() {
     if (!ataSelecionada || !escolhidas.length || !justificativa.trim() || salvandoPedido) return;
     const janela = window.open("", "_blank");
-    if (!janela) {
-      toast.error("O navegador bloqueou a janela do pedido. Permita pop-ups para este sistema.");
-      return;
-    }
     setSalvandoPedido(true);
     const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
     if (erroUsuario || !usuarioAtual.user) {
@@ -385,6 +381,11 @@ export function CriarPedido({
       <p class="total">VALOR TOTAL DO PEDIDO: ${moeda(totalPedido)}</p>
       </body></html>`;
 
+    if (!janela) {
+      setSalvandoPedido(false);
+      toast.warning("Pedido salvo na guia Pedidos, mas o navegador bloqueou a janela do PDF. Abra o pedido pela guia Pedidos e permita pop-ups para imprimir.");
+      return;
+    }
     janela.document.open();
     janela.document.write(html);
     janela.document.close();
