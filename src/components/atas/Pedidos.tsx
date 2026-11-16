@@ -14,6 +14,7 @@ type Pedido = Tables<"pedidos">;
 type Ata = Tables<"atas">;
 type ItemPedido = {
   codigo_item: string;
+  codigo_produto: string;
   descricao: string;
   fornecedor: string;
   unidade: string;
@@ -33,6 +34,7 @@ function itensDoPedido(valor: Json): ItemPedido[] {
     const dado = item as Record<string, unknown>;
     return {
       codigo_item: String(dado["codigo_item"] ?? ""),
+      codigo_produto: String(dado["codigo_produto"] ?? dado["codigo_item"] ?? ""),
       descricao: String(dado["descricao"] ?? ""),
       fornecedor: String(dado["fornecedor"] ?? ""),
       unidade: String(dado["unidade"] ?? ""),
@@ -98,11 +100,11 @@ export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: (
     }
     const tabelas = [...grupos.entries()].map(([fornecedor, linhas]) => {
       const linhasHtml = linhas.map((item) =>
-        "<tr><td>" + escapar(item.codigo_item) + "</td><td>" + escapar(item.descricao) + "</td><td class='num'>" +
+        "<tr><td>" + escapar(item.codigo_produto) + "</td><td>" + escapar(item.descricao) + "</td><td class='num'>" +
         item.quantidade.toLocaleString("pt-BR") + "</td><td class='num'>" + brl(item.preco_unitario) +
         "</td><td class='num'>" + brl(item.valor_total) + "</td></tr>",
       ).join("");
-      return "<h3>FORNECEDOR: " + escapar(fornecedor) + "</h3><table><thead><tr><th>COD. DO ITEM</th><th>DESCRIÇÃO RESUMIDA</th><th>QUANTIDADE</th><th>VALOR UNITÁRIO</th><th>VALOR TOTAL</th></tr></thead><tbody>" + linhasHtml + "</tbody></table>";
+      return "<h3>FORNECEDOR: " + escapar(fornecedor) + "</h3><table><thead><tr><th>CÓD. DO PRODUTO</th><th>DESCRIÇÃO RESUMIDA</th><th>QUANTIDADE</th><th>VALOR UNITÁRIO</th><th>VALOR TOTAL</th></tr></thead><tbody>" + linhasHtml + "</tbody></table>";
     }).join("");
     const data = new Date(pedido.created_at).toLocaleDateString("pt-BR");
     const ataHtml = ata ? "<p><strong>Ata:</strong> " + escapar(ata.numero ?? "") + " — " + escapar(ata.objeto) + "</p>" : "";
@@ -182,8 +184,8 @@ export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: (
               </div>
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full min-w-[700px] text-sm">
-                  <thead className="bg-muted text-left"><tr><th className="p-2">Código</th><th className="p-2">Descrição</th><th className="p-2">Fornecedor</th><th className="p-2 text-right">Quantidade</th><th className="p-2 text-right">Unitário</th><th className="p-2 text-right">Total</th></tr></thead>
-                  <tbody>{itensDoPedido(pedidoAberto.itens).map((item, i) => <tr key={i} className="border-t"><td className="p-2">{item.codigo_item}</td><td className="p-2">{item.descricao}</td><td className="p-2">{item.fornecedor}</td><td className="p-2 text-right">{item.quantidade.toLocaleString("pt-BR")}</td><td className="p-2 text-right">{brl(item.preco_unitario)}</td><td className="p-2 text-right">{brl(item.valor_total)}</td></tr>)}</tbody>
+                  <thead className="bg-muted text-left"><tr><th className="p-2">Cód. produto</th><th className="p-2">Descrição</th><th className="p-2">Fornecedor</th><th className="p-2 text-right">Quantidade</th><th className="p-2 text-right">Unitário</th><th className="p-2 text-right">Total</th></tr></thead>
+                  <tbody>{itensDoPedido(pedidoAberto.itens).map((item, i) => <tr key={i} className="border-t"><td className="p-2">{item.codigo_produto}</td><td className="p-2">{item.descricao}</td><td className="p-2">{item.fornecedor}</td><td className="p-2 text-right">{item.quantidade.toLocaleString("pt-BR")}</td><td className="p-2 text-right">{brl(item.preco_unitario)}</td><td className="p-2 text-right">{brl(item.valor_total)}</td></tr>)}</tbody>
                 </table>
               </div>
               <div className="text-right font-semibold">Total: {brl(pedidoAberto.total)}</div>
