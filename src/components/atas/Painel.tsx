@@ -30,6 +30,20 @@ type Ata = Tables<"atas">;
 type Item = Tables<"ata_itens">;
 type Classe = Tables<"classificacoes">;
 
+function nomeIndicaFeminino(nome?: string | null): boolean {
+  const primeiro = nome?.trim().split(/\s+/)[0]?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  if (!primeiro) return false;
+  const femininosSemA = new Set([
+    "aline", "ariadne", "beatriz", "carmen", "cibele", "cristiane", "ester", "esther",
+    "heloise", "ines", "irene", "isabel", "mabel", "mariele", "michele", "miriam",
+    "nicole", "noemi", "ruth", "solange", "suzane", "yasmin",
+  ]);
+  const masculinosComA = new Set(["luca", "luka", "juca", "borja"]);
+  if (femininosSemA.has(primeiro)) return true;
+  if (masculinosComA.has(primeiro)) return false;
+  return primeiro.endsWith("a");
+}
+
 const FASES = ["Não iniciado", "Cotação", "Estudo Técnico Preliminar", "Termo de Referência", "Edital / Licitação", "Publicado", "Concluído"];
 
 const statusInfo: Record<StatusAta, { rotulo: string; cls: string }> = {
@@ -519,7 +533,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   Prefeitura Municipal de Cajati
                 </div>
                 <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Bem-vindo{nome?.trim() ? ", " + nome.trim().split(/\s+/)[0] : ""}.
+                  {nomeIndicaFeminino(nome) ? "Bem-vinda" : "Bem-vindo"}{nome?.trim() ? ", " + nome.trim().split(/\s+/)[0] : ""}.
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-teal-50/85 sm:text-base">
                   Gestão integrada de contratações, atas de registro de preços e contratos da Secretaria Municipal de Saúde.
@@ -534,8 +548,18 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className="app-eyebrow">ÁREAS DO SISTEMA</div>
-                <h2 className="app-page-title">Selecione um painel</h2>
-                <p className="text-sm text-muted-foreground">Acesse o módulo desejado para continuar seu trabalho.</p>
+                <h2 className="app-page-title">Selecione um módulo</h2>
+                <p className="text-sm text-muted-foreground">
+                  Os módulos ainda estão em desenvolvimento, todo{" "}
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackAberto(true)}
+                    className="font-medium text-primary underline decoration-primary/50 underline-offset-2 transition-colors hover:text-primary/80"
+                  >
+                    feedback
+                  </button>{" "}
+                  é bem-vindo.
+                </p>
               </div>
               <span className="text-xs text-muted-foreground">Acesso conforme o setor de lotação</span>
             </div>
