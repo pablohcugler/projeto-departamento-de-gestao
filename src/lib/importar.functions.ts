@@ -1,9 +1,69 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuthForWorker } from "@/integrations/supabase/auth-middleware-worker";
 import { forwardSupabaseAccessToken } from "@/integrations/supabase/auth-client-middleware";
-import { dataAtualSaoPaulo, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, localizarCabecalhoPdf, reconstruirLinhasPdf, type ItemImportado } from "@/lib/importacao-ata";
+import { dataAtualSaoPaulo, extrairDadosAtaTexto, extrairDataRelatorioUltimaPagina, extrairItensAtaTexto, localizarCabecalhoPdf, reconstruirLinhasPdf, type DadosAtaExtraidos, type ItemImportado } from "@/lib/importacao-ata";
 
 export type { ItemImportado } from "@/lib/importacao-ata";
+
+
+
+/** Extrai os dados principais de um documento de Ata de Registro de Preços. */
+export const extrairDadosAtaPdf = createServerFn({ method: "POST" })
+  .middleware([forwardSupabaseAccessToken, requireSupabaseAuthForWorker])
+  .inputValidator((input: { base64: string }) => {
+    if (typeof input?.base64 !== "string" || input.base64.length === 0 || input.base64.length > 15_000_000) {
+      throw new Error("Arquivo PDF vazio, inválido ou muito grande (máx. ~10 MB).");
+    }
+    return input;
+  })
+  .handler(async ({ data }): Promise<{ dados: DadosAtaExtraidos; camposEncontrados: string[]; erro?: string }> => {
+    let etapa = "abertura do arquivo";
+    try {
+      const { extractTextItems, getDocumentProxy } = await import("unpdf");
+      const bytes = Uint8Array.from(atob(data.base64), (caractere) => caractere.charCodeAt(0));
+      const inicioPdf = localizarCabecalhoPdf(bytes);
+      if (inicioPdf < 0) {
+        return { dados: {}, camposEncontrados: [], erro: "O arquivo selecionado não contém um cabeçalho PDF válido. Selecione o documento original em PDF." };
+      }
+
+      const pdf = await getDocumentProxy(inicioPdf === 0 ? bytes : bytes.subarray(inicioPdf), { maxImageSize: 16_777_216 });
+      if (pdf.numPages > 100) {
+        return { dados: {}, camposEncontrados: [], erro: "O PDF possui mais de 100 páginas. Divida o documento e tente novamente." };
+      }
+
+      etapa = "extração do texto do PDF";
+      const { items: paginas } = await extractTextItems(pdf);
+      if (!paginas.length || paginas.every((pagina) => pagina.length === 0)) {
+        return {
+          dados: {},
+          camposEncontrados: [],
+          erro: "O PDF abriu, mas não contém texto selecionável. Envie uma versão pesquisável do documento, não uma digitalização em imagem.",
+        };
+      }
+
+      etapa = "identificação dos campos da ata";
+      const texto = reconstruirLinhasPdf(paginas).join("\n");
+      const dadosAta = extrairDadosAtaTexto(texto);
+      const camposEncontrados = Object.keys(dadosAta);
+      if (camposEncontrados.length === 0) {
+        return {
+          dados: {},
+          camposEncontrados: [],
+          erro: "Não identifiquei os campos da ata neste PDF. Confira se anexou o documento da Ata de Registro de Preços, e não o edital ou outro relatório. Você poderá preencher os campos manualmente.",
+        };
+      }
+
+      return { dados: dadosAta, camposEncontrados };
+    } catch (erro) {
+      const detalhe = erro instanceof Error ? erro.name + ": " + erro.message : String(erro);
+      console.error("extrairDadosAtaPdf - etapa:", etapa, "- erro:", detalhe, erro);
+      return {
+        dados: {},
+        camposEncontrados: [],
+        erro: "Não foi possível ler a ata na etapa \"" + etapa + "\": " + detalhe.slice(0, 220) + ".",
+      };
+    }
+  });
 
 export const extrairItensPdf = createServerFn({ method: "POST" })
   .middleware([forwardSupabaseAccessToken, requireSupabaseAuthForWorker])
