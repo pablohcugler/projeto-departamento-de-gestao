@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -66,7 +66,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
-  const [aba, setAba] = useState<"atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("atas");
+  const [aba, setAba] = useState<"inicio" | "pca" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
@@ -85,7 +85,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   // Restaura a última tela e os filtros deste usuário após F5/recarregamento.
   useEffect(() => {
     try {
-      const salvo = localStorage.getItem("gestao-saude-painel:" + userId);
+      const salvo = localStorage.getItem("gestao-saude-painel-v2:" + userId);
       if (salvo) {
         const estado = JSON.parse(salvo) as {
           aba?: string;
@@ -95,7 +95,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           filtroSituacaoContratos?: string;
           busca?: string;
         };
-        if (["atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
+        if (["inicio", "pca", "atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
           setAba(estado.aba as typeof aba);
         }
         if (typeof estado.selecionada === "string") setSelecionada(estado.selecionada);
@@ -109,7 +109,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         if (typeof estado.busca === "string") setBusca(estado.busca);
       }
     } catch {
-      localStorage.removeItem("gestao-saude-painel:" + userId);
+      localStorage.removeItem("gestao-saude-painel-v2:" + userId);
     } finally {
       setNavegacaoRestaurada(true);
     }
@@ -118,7 +118,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   useEffect(() => {
     if (!navegacaoRestaurada) return;
     try {
-      localStorage.setItem("gestao-saude-painel:" + userId, JSON.stringify({
+      localStorage.setItem("gestao-saude-painel-v2:" + userId, JSON.stringify({
         aba, selecionada, filtroClasse, filtroSituacao, filtroSituacaoContratos, busca,
       }));
     } catch {
@@ -128,7 +128,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
   useEffect(() => {
     if (adminQ.isSuccess && !adminQ.data && (aba === "administracao" || aba === "feedbacks")) {
-      setAba("atas");
+      setAba("inicio");
     }
   }, [adminQ.isSuccess, adminQ.data, aba]);
 
@@ -420,11 +420,18 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     <div className="min-h-screen bg-background app-shell">
       <header className="app-header sticky top-0 z-30">
         <div className="app-header-inner mx-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6 sm:py-4">
-          <div className="app-brand flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            className="app-brand flex min-w-0 items-center gap-3 text-left"
+            onClick={() => { setAba("inicio"); setSelecionada(null); }}
+            aria-label="Voltar ao painel inicial"
+            title="Painel inicial"
+          >
             <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
             <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
-          </div>
-          <nav className="app-nav flex gap-1" aria-label="Navegação por situação">
+          </button>
+          {aba === "inicio" || aba === "pca" ? <div className="flex-1" /> : (
+          <nav className="app-nav flex gap-1" aria-label="Navegação dos módulos">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant={aba === "atas" ? "secondary" : "ghost"} className={aba === "atas" ? "app-nav-active" : "app-nav-item"}>
@@ -463,6 +470,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               Pedidos
             </Button>
           </nav>
+          )}
           <div className="app-header-actions flex items-center gap-2 text-sm">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -494,14 +502,150 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </header>
 
       <main className="app-main mx-auto w-full max-w-none py-6 sm:py-9">
-        {aba === "administracao" ? (
+        {aba === "inicio" ? (
+          <section className="space-y-8">
+            <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#062b36] via-[#07535a] to-[#0e766e] px-6 py-9 text-white shadow-xl sm:px-10 sm:py-12">
+              <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10 bg-white/[0.035]" />
+              <div className="pointer-events-none absolute -bottom-32 right-36 h-64 w-64 rounded-full border border-white/10" />
+              <div className="relative max-w-3xl">
+                <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-100/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-200" />
+                  Prefeitura Municipal de Cajati
+                </div>
+                <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+                  Bem-vindo{nome?.trim() ? ", " + nome.trim().split(/\s+/)[0] : ""}.
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-teal-50/85 sm:text-base">
+                  Gestão integrada de contratações, atas de registro de preços e contratos da Secretaria Municipal de Saúde.
+                </p>
+                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs text-teal-50/90">
+                  <Home className="h-3.5 w-3.5" /> Painel de módulos
+                </div>
+              </div>
+              <FileCheck2 className="pointer-events-none absolute -bottom-9 -right-2 hidden h-64 w-64 rotate-[-12deg] text-white/[0.06] sm:block" strokeWidth={1} />
+            </div>
+
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="app-eyebrow">ÁREAS DO SISTEMA</div>
+                <h2 className="app-page-title">Selecione um painel</h2>
+                <p className="text-sm text-muted-foreground">Acesse o módulo desejado para continuar seu trabalho.</p>
+              </div>
+              <span className="text-xs text-muted-foreground">Acesso conforme o setor de lotação</span>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setAba("pca")}
+                className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-indigo-200/15 bg-gradient-to-br from-[#232c50] via-[#343e6d] to-[#535a91] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2"
+                aria-label="Abrir painel do Plano de Contratações Anual"
+              >
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10 bg-white/[0.04] transition-transform duration-500 group-hover:scale-110" />
+                <div className="pointer-events-none absolute -bottom-16 right-16 h-40 w-40 rounded-full border border-white/10" />
+                <ClipboardList className="pointer-events-none absolute -bottom-5 -right-2 h-36 w-36 text-white/[0.07]" strokeWidth={1} />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                      <ClipboardList className="h-6 w-6" />
+                    </span>
+                    <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">Em construção</span>
+                  </div>
+                  <div className="mt-8">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-100/70">PCA</div>
+                    <h3 className="mt-1 text-2xl font-semibold tracking-tight">Plano de Contratações Anual</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-indigo-50/75">Planejamento e organização das futuras contratações do Departamento.</p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
+                    Conhecer painel <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("todas"); setBusca(""); }}
+                className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-teal-200/20 bg-gradient-to-br from-[#063b46] via-[#075c63] to-[#0b897e] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2"
+                aria-label="Abrir painel de Atas de Registro de Preços e pedidos"
+              >
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10 bg-white/[0.05] transition-transform duration-500 group-hover:scale-110" />
+                <div className="pointer-events-none absolute -bottom-20 right-20 h-44 w-44 rounded-full border border-white/10" />
+                <FileText className="pointer-events-none absolute -bottom-6 -right-1 h-40 w-40 text-white/[0.075]" strokeWidth={1} />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                      <FileText className="h-6 w-6" />
+                    </span>
+                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">Módulo disponível</span>
+                  </div>
+                  <div className="mt-8">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-100/70">ARP</div>
+                    <h3 className="mt-1 text-2xl font-semibold tracking-tight">Ata de Registro de Preços</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-teal-50/80">Gerencie atas, fornecedores, itens, saldos, documentos e pedidos de fornecimento.</p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
+                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setAba("contratos"); setSelecionada(null); setBusca(""); }}
+                className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-sky-200/20 bg-gradient-to-br from-[#153653] via-[#1e5579] to-[#287fa0] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
+                aria-label="Abrir painel de contratos"
+              >
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10 bg-white/[0.05] transition-transform duration-500 group-hover:scale-110" />
+                <div className="pointer-events-none absolute -bottom-16 right-14 h-40 w-40 rounded-full border border-white/10" />
+                <FileCheck2 className="pointer-events-none absolute -bottom-6 -right-2 h-40 w-40 text-white/[0.075]" strokeWidth={1} />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                      <FileCheck2 className="h-6 w-6" />
+                    </span>
+                    <span className="rounded-full border border-sky-100/25 bg-sky-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-50">Módulo disponível</span>
+                  </div>
+                  <div className="mt-8">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-100/70">GESTÃO CONTRATUAL</div>
+                    <h3 className="mt-1 text-2xl font-semibold tracking-tight">Contratos</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-sky-50/80">Acompanhe contratos, contratados, prazos de vigência, valores e documentos.</p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
+                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário.
+            </div>
+          </section>
+        ) : aba === "pca" ? (
+          <section className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center text-center">
+            <Button variant="ghost" className="mb-8 self-start" onClick={() => setAba("inicio")}>
+              <ArrowLeft className="h-4 w-4" /> Voltar ao painel inicial
+            </Button>
+            <div className="w-full rounded-3xl border bg-gradient-to-br from-card via-card to-indigo-50/40 p-8 shadow-sm dark:to-indigo-950/20 sm:p-12">
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200">
+                <Construction className="h-10 w-10" />
+              </div>
+              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">PCA · Plano de Contratações Anual</div>
+              <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">Painel em construção</h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Este painel ainda está em construção. Em breve teremos novidades.
+              </p>
+              <Button className="mt-7" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
+            </div>
+          </section>
+        ) : aba === "administracao" ? (
           <Administracao />
         ) : aba === "pedidos" ? (
           <Pedidos atas={atas} onCriarPedido={() => setPedidoAberto(true)} />
         ) : aba === "feedbacks" ? (
           <div className="space-y-4">
-            <Button variant="outline" onClick={() => setAba("atas")}>
-              <ArrowLeft className="h-4 w-4" /> Voltar ao painel
+            <Button variant="outline" onClick={() => setAba("inicio")}>
+              <ArrowLeft className="h-4 w-4" /> Voltar ao painel inicial
             </Button>
             <RelatorioFeedbacks />
           </div>
