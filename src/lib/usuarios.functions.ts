@@ -50,7 +50,7 @@ export const entrarComCpf = createServerFn({ method: "POST" })
   });
 
 export const criarUsuario = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthForWorker])
   .inputValidator((input: { email: string; senha: string; admin: boolean; setor_id: string; nome?: string }) => {
     if (!/^\S+@\S+\.\S+$/.test(input.email)) throw new Error("E-mail inválido.");
     if (!input.senha || input.senha.length < 8) throw new Error("A senha deve ter pelo menos 8 caracteres.");
@@ -96,7 +96,7 @@ export const criarUsuario = createServerFn({ method: "POST" })
   });
 
 export const listarUsuariosAdministracao = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthForWorker])
   .handler(async ({ context }) => {
     const { data: isAdmin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
     if (!isAdmin) throw new Error("Apenas administradores podem consultar os usuários.");
@@ -136,7 +136,7 @@ export const listarUsuariosAdministracao = createServerFn({ method: "GET" })
   });
 
 export const atualizarUsuarioAdministrativamente = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthForWorker])
   .inputValidator((input: {
     user_id: string;
     email: string;
