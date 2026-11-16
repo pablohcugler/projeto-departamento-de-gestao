@@ -4,3 +4,4 @@
 - [ ] Corrigir carregamento do brasão original em produção e verificar outras imagens
 - [ ] Validar compilação automática e carregamento das imagens
 - [ ] Confirmar sincronização com GitHub (depende do status da conexão nas configurações)
+- [ ] Renovar LOVABLE_API_KEY e atualizar o serviço para utilizar a nova chave
