@@ -6,7 +6,7 @@ import { AuthForm } from "@/components/atas/AuthForm";
 import { CompletarCpf } from "@/components/atas/CompletarCpf";
 import { Painel } from "@/components/atas/Painel";
 
-type PerfilUsuario = { cpf: string | null; setor_id: string; suspenso: boolean };
+type PerfilUsuario = { user_id: string; cpf: string | null; setor_id: string; suspenso: boolean };
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,7 +29,6 @@ function Index() {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
       setSession(novaSessao);
-      setPerfil(undefined);
     });
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     return () => data.subscription.unsubscribe();
@@ -57,14 +56,14 @@ function Index() {
           setPerfil(null);
           return;
         }
-        setPerfil(data);
+        setPerfil({ ...data, user_id: session.user.id });
       });
     return () => { ativo = false; };
   }, [session?.user.id]);
 
   if (session === undefined) return <div className="min-h-screen bg-background" />;
   if (!session) return <AuthForm />;
-  if (perfil === undefined) return <div className="min-h-screen bg-background" />;
+  if (perfil === undefined || (perfil && perfil.user_id !== session.user.id)) return <div className="min-h-screen bg-background" />;
   if (!perfil || !perfil.setor_id) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
