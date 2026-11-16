@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { criarUsuario } from "@/lib/usuarios.functions";
+import { adminApi } from "@/lib/admin-api";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { toast } from "sonner";
 type Setor = Tables<"setores">;
 
 export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
-  const criar = useServerFn(criarUsuario);
   const [email, setEmail] = useState("");
   const [nome, setNome] = useState("");
   const [senha, setSenha] = useState("");
@@ -39,7 +37,7 @@ export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: (
     if (!setorId) { toast.error("Selecione o setor de lotação do usuário."); return; }
     setSalvando(true);
     try {
-      await criar({ data: { email, senha, admin, setor_id: setorId, nome } });
+      await adminApi({ action: "create-user", email, senha, admin, setor_id: setorId, nome });
       toast.success("Usuário cadastrado. No primeiro acesso, ele deverá informar o CPF.");
       limpar();
       onFechar();
