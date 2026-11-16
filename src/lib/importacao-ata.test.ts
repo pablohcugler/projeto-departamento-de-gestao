@@ -116,7 +116,7 @@ describe("leitura do relatório de saldo da ata", () => {
 
   it("localiza cabeçalho PDF no início ou após metadados do gerador", () => {
     expect(localizarCabecalhoPdf(new TextEncoder().encode("%PDF-1.7\\n"))).toBe(0);
-    expect(localizarCabecalhoPdf(new TextEncoder().encode("prefixo\\n%PDF-1.7\\n"))).toBe(8);
+    expect(localizarCabecalhoPdf(new TextEncoder().encode("prefixo\\n%PDF-1.7\\n"))).toBe(9);
     expect(localizarCabecalhoPdf(new TextEncoder().encode("arquivo sem cabeçalho"))).toBe(-1);
   });
 
