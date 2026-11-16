@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Printer, Search, Plus } from "lucide-react";
+import { FileText, Printer, Search, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { brl, dataBR } from "@/lib/vencimento";
 
@@ -45,9 +45,13 @@ function itensDoPedido(valor: Json): ItemPedido[] {
   });
 }
 
-export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: () => void }) {
+export function Pedidos({ atas, userId, isAdmin, onCriarPedido }: { atas: Ata[]; userId: string; isAdmin: boolean; onCriarPedido: () => void }) {
+  const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [pedidoAberto, setPedidoAberto] = useState<Pedido | null>(null);
+  const [pedidoParaExcluir, setPedidoParaExcluir] = useState<Pedido | null>(null);
+  const [senhaExclusao, setSenhaExclusao] = useState("");
+  const [excluindoPedido, setExcluindoPedido] = useState(false);
   const pedidosQ = useQuery({
     queryKey: ["pedidos"],
     queryFn: async () => {
@@ -82,6 +86,41 @@ export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: (
       ].join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(termo);
     });
   }, [pedidos, busca, atasPorId, setoresPorId]);
+
+  async function confirmarExclusaoPedido() {
+    if (!pedidoParaExcluir || excluindoPedido) return;
+    if (!senhaExclusao) {
+      toast.error("Informe sua senha para confirmar a exclusão.");
+      return;
+    }
+    setExcluindoPedido(true);
+    const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
+    if (erroUsuario || !usuarioAtual.user?.email) {
+      setExcluindoPedido(false);
+      toast.error("Não foi possível validar sua sessão. Entre novamente no sistema.");
+      return;
+    }
+    const { error: erroSenha } = await supabase.auth.signInWithPassword({
+      email: usuarioAtual.user.email,
+      password: senhaExclusao,
+    });
+    if (erroSenha) {
+      setExcluindoPedido(false);
+      toast.error("Senha incorreta. O pedido não foi excluído.");
+      return;
+    }
+    const { error } = await supabase.from("pedidos").delete().eq("id", pedidoParaExcluir.id);
+    setExcluindoPedido(false);
+    if (error) {
+      toast.error("Não foi possível excluir o pedido: " + error.message);
+      return;
+    }
+    if (pedidoAberto?.id === pedidoParaExcluir.id) setPedidoAberto(null);
+    setPedidoParaExcluir(null);
+    setSenhaExclusao("");
+    toast.success("Pedido excluído com sucesso.");
+    void qc.invalidateQueries({ queryKey: ["pedidos"] });
+  }
 
   function gerarPdf(pedido: Pedido) {
     const ata = atasPorId.get(pedido.ata_id);
@@ -160,7 +199,23 @@ export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: (
                     <td className="p-3"><div className="max-w-[260px] truncate">{pedido.justificativa}</div></td>
                     <td className="p-3">{itens.length}</td>
                     <td className="p-3 text-right font-medium tabular-nums">{brl(pedido.total)}</td>
-                    <td className="p-3 text-right"><Button size="sm" variant="outline" onClick={() => setPedidoAberto(pedido)}>Visualizar</Button></td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button size="sm" variant="outline" onClick={() => setPedidoAberto(pedido)}>Visualizar</Button>
+                        {(isAdmin || pedido.user_id === userId) && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => { setPedidoParaExcluir(pedido); setSenhaExclusao(""); }}
+                            aria-label={`Excluir pedido da ata ${ata?.numero ?? ""}`}
+                            title="Excluir este pedido"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">Excluir</span>
+                          </Button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -194,6 +249,54 @@ export function Pedidos({ atas, onCriarPedido }: { atas: Ata[]; onCriarPedido: (
           <DialogFooter>
             <Button variant="outline" onClick={() => setPedidoAberto(null)}>Fechar</Button>
             {pedidoAberto && <Button onClick={() => gerarPdf(pedidoAberto)}><Printer className="h-4 w-4" /> Gerar PDF novamente</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pedidoParaExcluir} onOpenChange={(aberto) => {
+        if (!aberto && !excluindoPedido) {
+          setPedidoParaExcluir(null);
+          setSenhaExclusao("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Excluir pedido
+            </DialogTitle>
+          </DialogHeader>
+          {pedidoParaExcluir && (
+            <div className="space-y-4 text-sm">
+              <p>
+                Confirma a exclusão permanente deste pedido da ata
+                <strong> {atasPorId.get(pedidoParaExcluir.ata_id)?.numero ?? "—"} </strong>?
+              </p>
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 font-medium text-destructive">
+                Somente este pedido será excluído. A ata e os demais pedidos permanecerão no sistema.
+                Esta ação não poderá ser desfeita.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="senha-exclusao-pedido">Digite sua senha para confirmar</Label>
+                <Input
+                  id="senha-exclusao-pedido"
+                  type="password"
+                  autoComplete="current-password"
+                  value={senhaExclusao}
+                  onChange={(e) => setSenhaExclusao(e.target.value)}
+                  placeholder="Sua senha de acesso"
+                  disabled={excluindoPedido}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={excluindoPedido} onClick={() => {
+              setPedidoParaExcluir(null);
+              setSenhaExclusao("");
+            }}>Cancelar</Button>
+            <Button variant="destructive" disabled={excluindoPedido || !senhaExclusao} onClick={() => void confirmarExclusaoPedido()}>
+              <Trash2 className="h-4 w-4" /> {excluindoPedido ? "Validando e excluindo..." : "Excluir pedido"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
