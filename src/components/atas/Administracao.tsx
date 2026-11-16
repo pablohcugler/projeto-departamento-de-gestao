@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +49,20 @@ export function Administracao() {
     queryFn: () => adminApi<{ usuarios: Usuario[]; setores: Array<{ id: string; nome: string; ativo: boolean }> }>({ action: "list-users" }),
   });
   const usuarios = (consulta.data?.usuarios ?? []) as Usuario[];
-  const setores = consulta.data?.setores ?? [];
+  const setoresQ = useQuery({
+    queryKey: ["setores-administracao"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("*")
+        .eq("ativo", true)
+        .order("acesso_global", { ascending: false })
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const setores = setoresQ.data ?? [];
   const filtrados = useMemo(() => {
     const termo = busca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     if (!termo) return usuarios;
@@ -166,9 +180,12 @@ export function Administracao() {
               <div className="space-y-1.5 sm:col-span-2"><Label>Setor de lotação *</Label>
                 <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={editando.setor_id} onChange={(e) => setEditando({ ...editando, setor_id: e.target.value })}>
                   <option value="">Selecione...</option>
-                  {setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.nome}</option>)}
+                  {setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.acesso_global ? setor.nome + " — Acesso geral" : "↳ " + setor.nome}</option>)}
                 </select>
               </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Usuários lotados em Gestão podem consultar dados de todos os setores. Isso não concede, por si só, privilégios de administrador.
+              </p>
               <div className="space-y-1.5 sm:col-span-2"><Label>Nova senha (opcional, mínimo 8 caracteres)</Label><Input type="password" autoComplete="new-password" value={editando.nova_senha} onChange={(e) => setEditando({ ...editando, nova_senha: e.target.value })} placeholder="Deixe em branco para manter a senha atual" /><p className="text-xs text-muted-foreground"><KeyRound className="mr-1 inline h-3 w-3" /> A senha será alterada imediatamente.</p></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editando.admin} onChange={(e) => setEditando({ ...editando, admin: e.target.checked })} /> Administrador do sistema</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editando.suspenso} onChange={(e) => setEditando({ ...editando, suspenso: e.target.checked })} /> Suspender acesso</label>
