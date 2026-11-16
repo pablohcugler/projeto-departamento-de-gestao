@@ -97,6 +97,7 @@ export function ImportacaoLoteAtas() {
   const [rascunhos, setRascunhos] = useState<RascunhoAta[]>([]);
   const [analisando, setAnalisando] = useState(false);
   const [salvandoLote, setSalvandoLote] = useState(false);
+  const [novaClassePorAta, setNovaClassePorAta] = useState<Record<string, string>>({});
 
   const setoresQ = useQuery({
     queryKey: ["setores-importacao-lote"],
@@ -186,6 +187,37 @@ export function ImportacaoLoteAtas() {
 
   function remover(id: string) {
     setRascunhos((atuais) => atuais.filter((ata) => ata.id !== id));
+    setNovaClassePorAta((atuais) => {
+      const novas = { ...atuais };
+      delete novas[id];
+      return novas;
+    });
+  }
+
+  async function adicionarClassificacao(ata: RascunhoAta) {
+    const nome = (novaClassePorAta[ata.id] ?? "").trim();
+    if (!nome || !ata.setor_id) {
+      toast.error("Informe o nome da classificação e selecione o setor.");
+      return;
+    }
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      toast.error("Sua sessão expirou. Entre novamente.");
+      return;
+    }
+    const { data, error } = await supabase.from("classificacoes").insert({
+      nome,
+      setor_id: ata.setor_id,
+      user_id: authData.user.id,
+    }).select("id").single();
+    if (error || !data) {
+      toast.error(error?.code === "23505" ? "Essa classificação já existe neste setor." : error?.message ?? "Não foi possível criar a classificação.");
+      return;
+    }
+    await classesQ.refetch();
+    atualizar(ata.id, { classificacao_id: data.id });
+    setNovaClassePorAta((atuais) => ({ ...atuais, [ata.id]: "" }));
+    toast.success("Classificação criada para o setor selecionado.");
   }
 
   async function salvarUm(ata: RascunhoAta) {
@@ -381,6 +413,17 @@ export function ImportacaoLoteAtas() {
                             <option value="">Selecione...</option>
                             {classesDoSetor.map((classe: Classe) => <option key={classe.id} value={classe.id}>{classe.nome}</option>)}
                           </select>
+                          {classesDoSetor.length === 0 && ata.setor_id && ata.status !== "sucesso" && (
+                            <div className="flex gap-2 pt-1">
+                              <Input
+                                value={novaClassePorAta[ata.id] ?? ""}
+                                disabled={salvandoLote}
+                                onChange={(e) => setNovaClassePorAta((atuais) => ({ ...atuais, [ata.id]: e.target.value }))}
+                                placeholder="Criar classificação para este setor"
+                              />
+                              <Button type="button" variant="outline" size="sm" disabled={salvandoLote || !(novaClassePorAta[ata.id] ?? "").trim()} onClick={() => void adicionarClassificacao(ata)}>Adicionar</Button>
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-1"><Label>Memorando (1Doc) *</Label><Input value={ata.memorando_1doc} disabled={ata.status === "sucesso" || salvandoLote} onChange={(e) => atualizar(ata.id, { memorando_1doc: e.target.value })} placeholder="Número do memorando" /></div>
                         <div className="space-y-1"><Label>Processo Administrativo (1Doc) *</Label><Input value={ata.processo_1doc} disabled={ata.status === "sucesso" || salvandoLote} onChange={(e) => atualizar(ata.id, { processo_1doc: e.target.value })} placeholder="Número do processo" /></div>
