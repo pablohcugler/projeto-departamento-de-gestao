@@ -318,3 +318,132 @@ export function extrairDadosAtaTexto(texto: string): DadosAtaExtraidos {
     ...(pregao ? { pregao } : {}),
   };
 }
+
+
+const UNIDADE_ATA_RE =
+  "UNIDADES|UNIDADE|UND|UNID|UN|CAIXA|CX|PACOTE|PCT|KG|GR|G|FRASCO|FRA|FR|ML|LT|L|M2|M²|M3|M³|MT|M|COMPRIMIDOS|COMPRIMIDO|CP|AMPOLA|AMP|PAR|ROLO|RL|BOLSA|BD|SACO|SC|KIT|JOGO|LATA|TUBO|BOBINA|RESMA|FOLHA|HR|H";
+
+function extrairFornecedorAta(linha: string): string | undefined {
+  const m = linha.match(/^(?:Fornecedor|Empresa|Contratada|Detentora(?:\s+da\s+Ata)?|Raz[aã]o\s+Social)\s*[:\-]\s*(?:\d+\s*[-–]\s*)?(.+)$/i);
+  return m?.[1]?.trim() || undefined;
+}
+
+function linhaEhCabecalhoOuRodapeAta(linha: string): boolean {
+  return /^(?:item|lote|c[oó]digo|descri[cç][aã]o|especifica[cç][aã]o|unidade|unid\.?|quantidade|qtd\.?|marca|modelo|valor|pre[cç]o|total|subtotal|valor total|total geral|p[aá]gina|assinatura|testemunha|ata de registro|processo administrativo|preg[aã]o|fornecedor|empresa|cnpj|cpf)\b/i.test(linha);
+}
+
+function numeroItemAta(valor: string): boolean {
+  return /^\d{1,5}(?:[./-]\d{1,4})?$/.test(valor);
+}
+
+/**
+ * Extrai itens de tabelas comuns de Atas de Registro de Preços.
+ * Mantém o parser legado JL Soft como primeira opção. Só aceita linhas nas
+ * quais seja possível identificar unidade, quantidade e preço unitário.
+ */
+export function extrairItensDocumentoAtaTexto(texto: string, fornecedorPadrao = ""): ItemImportado[] {
+  const legado = extrairItensAtaTexto(texto);
+  if (legado.length) return legado;
+
+  const linhas = texto
+    .replace(/\r/g, "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\f/g, "\n")
+    .split(/\n/)
+    .map((linha) => linha.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const itens: ItemImportado[] = [];
+  let fornecedorAtual = fornecedorPadrao;
+
+  const padraoComCodigoProduto = new RegExp(
+    "^\\s*(\\d{1,5}(?:[./-]\\d{1,4})?)\\s+(\\d{2}\\.\\d{5})\\s+(.+?)\\s+(" +
+      UNIDADE_ATA_RE +
+      ")\\s+([\\d.]+,\\d{1,4}|\\d+(?:[.,]\\d+)?)\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2,4}|\\d+(?:[.,]\\d{2,4})?)(?:\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2}|\\d+(?:[.,]\\d{2})?))?\\s*$",
+    "i",
+  );
+  const padraoGenerico = new RegExp(
+    "^\\s*(\\d{1,5}(?:[./-]\\d{1,4})?)\\s+(.+?)\\s+(" +
+      UNIDADE_ATA_RE +
+      ")\\s+([\\d.]+,\\d{1,4}|\\d+(?:[.,]\\d+)?)\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2,4}|\\d+(?:[.,]\\d{2,4})?)(?:\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2}|\\d+(?:[.,]\\d{2})?))?\\s*$",
+    "i",
+  );
+  const padraoQuantidadeAntesUnidade = new RegExp(
+    "^\\s*(\\d{1,5}(?:[./-]\\d{1,4})?)\\s+(.+?)\\s+([\\d.]+,\\d{1,4}|\\d+(?:[.,]\\d+)?)\\s+(" +
+      UNIDADE_ATA_RE +
+      ")\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2,4}|\\d+(?:[.,]\\d{2,4}))(?:\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2}|\\d+(?:[.,]\\d{2})?))?\\s*$",
+    "i",
+  );
+
+  for (const linha of linhas) {
+    const fornecedor = extrairFornecedorAta(linha);
+    if (fornecedor) {
+      fornecedorAtual = fornecedor;
+      continue;
+    }
+    if (linhaEhCabecalhoOuRodapeAta(linha)) continue;
+
+    let item: ItemImportado | undefined;
+    const comCodigoProduto = linha.match(padraoComCodigoProduto);
+    const generico = !comCodigoProduto ? linha.match(padraoGenerico) : null;
+    const quantidadeAntes = !comCodigoProduto && !generico ? linha.match(padraoQuantidadeAntesUnidade) : null;
+
+    if (comCodigoProduto && numeroItemAta(comCodigoProduto[1]!)) {
+      const quantidade = numeroBR(comCodigoProduto[5]);
+      const preco_unitario = numeroBR(comCodigoProduto[6]);
+      item = {
+        codigo_item: comCodigoProduto[1]!,
+        codigo_produto: comCodigoProduto[2]!,
+        descricao: comCodigoProduto[3]!.trim(),
+        fornecedor: fornecedorAtual,
+        unidade: comCodigoProduto[4]!.toUpperCase(),
+        quantidade,
+        preco_unitario,
+        valor_total: comCodigoProduto[7] ? numeroBR(comCodigoProduto[7]) : quantidade * preco_unitario,
+      };
+    } else if (generico && numeroItemAta(generico[1]!)) {
+      const quantidade = numeroBR(generico[4]);
+      const preco_unitario = numeroBR(generico[5]);
+      item = {
+        codigo_item: generico[1]!,
+        codigo_produto: "",
+        descricao: generico[2]!.trim(),
+        fornecedor: fornecedorAtual,
+        unidade: generico[3]!.toUpperCase(),
+        quantidade,
+        preco_unitario,
+        valor_total: generico[6] ? numeroBR(generico[6]) : quantidade * preco_unitario,
+      };
+    } else if (quantidadeAntes && numeroItemAta(quantidadeAntes[1]!)) {
+      const quantidade = numeroBR(quantidadeAntes[3]);
+      const preco_unitario = numeroBR(quantidadeAntes[5]);
+      item = {
+        codigo_item: quantidadeAntes[1]!,
+        codigo_produto: "",
+        descricao: quantidadeAntes[2]!.trim(),
+        fornecedor: fornecedorAtual,
+        unidade: quantidadeAntes[4]!.toUpperCase(),
+        quantidade,
+        preco_unitario,
+        valor_total: quantidadeAntes[6] ? numeroBR(quantidadeAntes[6]) : quantidade * preco_unitario,
+      };
+    }
+
+    if (item && item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario)) {
+      itens.push(item);
+      continue;
+    }
+
+    const ultimo = itens[itens.length - 1];
+    if (
+      ultimo &&
+      linha.length > 5 &&
+      !linhaEhCabecalhoOuRodapeAta(linha) &&
+      !/^(?:data|processo|sequ[eê]ncia|assinatura|vig[eê]ncia)\b/i.test(linha)
+    ) {
+      ultimo.descricao = (ultimo.descricao + " " + linha).replace(/\s+/g, " ").trim();
+    }
+  }
+
+  return itens.filter((item) => item.descricao && item.fornecedor && Number.isFinite(item.quantidade) && Number.isFinite(item.preco_unitario));
+}
