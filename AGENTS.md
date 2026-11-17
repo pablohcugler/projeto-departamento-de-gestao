@@ -32,3 +32,10 @@ use the editor.
 - Item import: PDF text is extracted server-side with unpdf (Workers-safe) then structured by the AI gateway in src/lib/importar.functions.ts; spreadsheets are parsed client-side with xlsx (src/lib/planilha.ts).
 - Embed the original municipal coat of arms as a shared PNG data URL in src/lib/brasao.ts; this preserves the exact uploaded bytes and includes the image in production bundles without depending on Lovable-specific asset proxy paths on external Worker deployments. Keep the original asset pointer intact.
 - Maintain the existing admin-users Edge Function for CPF login and user administration; only login-cpf is public, and all administrative actions validate the caller's session, active profile and protected admin role before using privileged credentials. This preserves the deployed frontend invoke contract without exposing administrative keys.
+
+
+## Versioning and changelog
+- Every production implementation or bug fix must increment the patch version in package.json (for example 1.0.2 -> 1.0.3) and update src/lib/release-notes.ts in the same change.
+- Add one concise Portuguese changelog entry describing the delivered implementation, with the current date and version. Keep newest entries first.
+- The version shown in the user menu and administration panel is sourced from src/lib/release-notes.ts; keep it synchronized with package.json.
+- Do not mark a release as completed until the validation and deployment workflows succeed.
