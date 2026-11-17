@@ -52,6 +52,14 @@ Deno.test("administration accepts only a valid active administrator", async () =
   const result = await requireAdmin(request(), "https://example.test", "test-public", factory({}));
   assert(result.user.id === "test-caller", "Expected verified administrator identity");
 });
+Deno.test("update-system-setting rejects authenticated non-administrators", async () => {
+  const req = new Request("https://example.test", {
+    method: "POST",
+    headers: { Authorization: "Bearer test-session", "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "update-system-setting", key: "integracao_bll", enabled: false }),
+  });
+  await denied(req, factory({ admin: false }), "Apenas administradores");
+});
 Deno.test("function allows CORS preflight and rejects non-POST methods", async () => {
   assert((await handleRequest(new Request("https://example.test", { method: "OPTIONS" }))).status === 200, "Preflight must succeed");
   assert((await handleRequest(new Request("https://example.test"))).status === 405, "GET must be rejected");
