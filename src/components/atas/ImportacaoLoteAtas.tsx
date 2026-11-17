@@ -33,10 +33,10 @@ type RascunhoAta = {
   processo_1doc: string;
   itens: ItemImportado[];
   camposEncontrados: string[];
-  avisoItens?: string;
+  avisoItens?: string | undefined;
   erro?: string;
   status: StatusLinha;
-  resultado?: string;
+  resultado?: string | undefined;
 };
 
 async function lerPdfBase64(arquivo: File): Promise<string> {

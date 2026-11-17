@@ -108,7 +108,7 @@ function Quadro({
 }: {
   titulo: string;
   subtitulo?: string;
-  quantidade?: number;
+  quantidade?: number | undefined;
   icone: ReactNode;
   children: ReactNode;
   className?: string;
