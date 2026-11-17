@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.2";
+export const VERSAO_SISTEMA = "1.0.3";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,16 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.3",
+    data: "16/11/2026",
+    titulo: "Novidades da versão",
+    descricao: "Ajuste do nome do histórico de atualizações no menu do usuário e na janela do changelog.",
+    itens: [
+      "O atalho do menu do usuário agora se chama Novidades da versão.",
+      "O título da janela de histórico foi padronizado com a mesma descrição.",
+    ],
+  },
   {
     versao: "1.0.2",
     data: "16/11/2026",
