@@ -1,16 +1,21 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { strToU8, zipSync } from "npm:fflate@0.8.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "Content-Disposition",
 };
 
 type Action =
   | { action: "login-cpf"; cpf: string; senha: string }
   | { action: "list-users" }
   | { action: "create-user"; email: string; senha: string; admin: boolean; setor_id: string; nome?: string }
-  | { action: "update-user"; user_id: string; email: string; nome: string; setor_id: string; admin: boolean; suspenso: boolean; nova_senha?: string };
+  | { action: "update-user"; user_id: string; email: string; nome: string; setor_id: string; admin: boolean; suspenso: boolean; nova_senha?: string }
+  | { action: "list-atas-admin" }
+  | { action: "delete-atas-admin"; ata_ids: string[] }
+  | { action: "export-backup" };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -129,6 +134,197 @@ async function handleLoginCpf(
   });
 }
 
+
+const BACKUP_TABLES = [
+  "atas",
+  "ata_itens",
+  "anexos",
+  "contratos",
+  "classificacoes",
+  "feedbacks_sistema",
+  "pedidos",
+  "setores",
+  "user_profiles",
+  "user_roles",
+] as const;
+
+async function selectAllRows(admin: SupabaseClient, table: string) {
+  const client = admin as unknown as {
+    from: (name: string) => {
+      select: (columns: string) => {
+        range: (from: number, to: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+      };
+    };
+  };
+  const rows: unknown[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client.from(table).select("*").range(offset, offset + pageSize - 1);
+    if (error) throw new Error(`Falha ao exportar a tabela ${table}: ${error.message}`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+async function listarAtasAdministrativas(admin: SupabaseClient) {
+  const [{ data: atas, error: atasError }, { data: pedidos, error: pedidosError }] = await Promise.all([
+    admin.from("atas").select("id,numero,objeto,data_vencimento,situacao_cadastro,setor_id,created_at").order("created_at", { ascending: false }),
+    admin.from("pedidos").select("ata_id"),
+  ]);
+  if (atasError || pedidosError) {
+    throw new Error(atasError?.message ?? pedidosError?.message ?? "Não foi possível consultar as atas.");
+  }
+  const contagem = new Map<string, number>();
+  for (const pedido of pedidos ?? []) {
+    contagem.set(pedido.ata_id, (contagem.get(pedido.ata_id) ?? 0) + 1);
+  }
+  return (atas ?? []).map((ata) => ({ ...ata, pedidos_vinculados: contagem.get(ata.id) ?? 0 }));
+}
+
+async function excluirAtasAdministrativamente(admin: SupabaseClient, idsRecebidos: string[]) {
+  const ids = [...new Set(idsRecebidos.map((id) => String(id).trim()).filter(Boolean))];
+  if (!ids.length || ids.length > 100) throw new Error("Selecione entre 1 e 100 atas por operação.");
+
+  const { data: existentes, error: atasLookupError } = await admin.from("atas").select("id").in("id", ids);
+  if (atasLookupError) throw atasLookupError;
+  if ((existentes ?? []).length !== ids.length) throw new Error("Uma ou mais atas selecionadas não foram encontradas. Atualize a lista e tente novamente.");
+
+  const [{ data: pedidos, error: pedidosLookupError }, { data: anexos, error: anexosLookupError }] = await Promise.all([
+    admin.from("pedidos").select("id").in("ata_id", ids),
+    admin.from("anexos").select("id,caminho").eq("ref_tipo", "ata").in("ref_id", ids),
+  ]);
+  if (pedidosLookupError || anexosLookupError) {
+    throw new Error(pedidosLookupError?.message ?? anexosLookupError?.message ?? "Não foi possível conferir os vínculos das atas.");
+  }
+
+  const { error: apagarPedidosError } = await admin.from("pedidos").delete().in("ata_id", ids);
+  if (apagarPedidosError) throw new Error("Falha ao excluir pedidos vinculados: " + apagarPedidosError.message);
+
+  const { error: apagarItensError } = await admin.from("ata_itens").delete().in("ata_id", ids);
+  if (apagarItensError) throw new Error("Falha ao excluir itens das atas: " + apagarItensError.message);
+
+  const { error: apagarAnexosError } = await admin.from("anexos").delete().eq("ref_tipo", "ata").in("ref_id", ids);
+  if (apagarAnexosError) throw new Error("Falha ao excluir os registros de anexos: " + apagarAnexosError.message);
+
+  const { error: apagarAtasError } = await admin.from("atas").delete().in("id", ids);
+  if (apagarAtasError) throw new Error("Falha ao excluir as atas: " + apagarAtasError.message);
+
+  const caminhos = (anexos ?? []).map((anexo) => anexo.caminho).filter((path): path is string => !!path);
+  const avisos: string[] = [];
+  let arquivosRemovidos = 0;
+  for (let offset = 0; offset < caminhos.length; offset += 100) {
+    const lote = caminhos.slice(offset, offset + 100);
+    const { data, error } = await admin.storage.from("anexos").remove(lote);
+    if (error) {
+      avisos.push("As atas foram excluídas, mas alguns arquivos físicos não puderam ser removidos do armazenamento: " + error.message);
+      continue;
+    }
+    arquivosRemovidos += data?.length ?? lote.length;
+  }
+
+  return {
+    atas_excluidas: ids.length,
+    pedidos_excluidos: pedidos?.length ?? 0,
+    anexos_excluidos: anexos?.length ?? 0,
+    arquivos_removidos: arquivosRemovidos,
+    avisos,
+  };
+}
+
+async function criarBackupZip(admin: SupabaseClient) {
+  const tabelas: Record<string, unknown[]> = {};
+  for (const tabela of BACKUP_TABLES) {
+    tabelas[tabela] = await selectAllRows(admin, tabela);
+  }
+
+  const usuariosAuth: Array<Record<string, unknown>> = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error("Falha ao exportar os cadastros de autenticação: " + error.message);
+    usuariosAuth.push(...data.users.map((user) => ({
+      id: user.id,
+      email: user.email ?? null,
+      phone: user.phone ?? null,
+      created_at: user.created_at,
+      last_sign_in_at: user.last_sign_in_at ?? null,
+      user_metadata: user.user_metadata ?? {},
+      app_metadata: user.app_metadata ?? {},
+      // Senhas, hashes, tokens e fatores de autenticação nunca são exportados.
+    })));
+    if (data.users.length < 1000) break;
+  }
+
+  const arquivosZip: Record<string, Uint8Array> = {};
+  const arquivosIncluidos: Array<{ caminho: string; tamanho_bytes: number; atualizado_em?: string | null }> = [];
+  const limiteBytes = 180 * 1024 * 1024;
+  let totalArquivosBytes = 0;
+  const bucket = admin.storage.from("anexos");
+
+  async function percorrerPasta(prefixo: string) {
+    for (let offset = 0; ; offset += 100) {
+      const { data, error } = await bucket.list(prefixo, { limit: 100, offset });
+      if (error) throw new Error("Falha ao listar documentos do backup: " + error.message);
+      for (const entrada of data ?? []) {
+        const caminho = prefixo ? prefixo + "/" + entrada.name : entrada.name;
+        if (entrada.id === null) {
+          await percorrerPasta(caminho);
+          continue;
+        }
+        const { data: arquivo, error: downloadError } = await bucket.download(caminho);
+        if (downloadError || !arquivo) {
+          throw new Error(`Falha ao baixar o anexo "${caminho}": ${downloadError?.message ?? "arquivo indisponível"}`);
+        }
+        const bytes = new Uint8Array(await arquivo.arrayBuffer());
+        totalArquivosBytes += bytes.byteLength;
+        if (totalArquivosBytes > limiteBytes) {
+          throw new Error("O backup ultrapassou o limite seguro de 180 MB de anexos. Divida a exportação ou reduza o volume de arquivos.");
+        }
+        arquivosZip["anexos/" + caminho] = bytes;
+        arquivosIncluidos.push({
+          caminho,
+          tamanho_bytes: bytes.byteLength,
+          atualizado_em: entrada.updated_at ?? null,
+        });
+      }
+      if (!data || data.length < 100) break;
+    }
+  }
+
+  await percorrerPasta("");
+
+  const metadata = {
+    sistema: "Gestão em Saúde — Prefeitura Municipal de Cajati",
+    gerado_em: new Date().toISOString(),
+    tabelas_incluidas: BACKUP_TABLES,
+    quantidade_registros: Object.fromEntries(Object.entries(tabelas).map(([nome, linhas]) => [nome, linhas.length])),
+    quantidade_usuarios_autenticacao: usuariosAuth.length,
+    quantidade_arquivos: arquivosIncluidos.length,
+    tamanho_anexos_bytes: totalArquivosBytes,
+    observacao: "Backup de dados e anexos. Por segurança, não inclui senhas, hashes de senha, tokens, fatores de autenticação, chaves ou configurações secretas do projeto. Os usuários podem precisar redefinir suas senhas em uma restauração.",
+  };
+
+  arquivosZip["backup.json"] = strToU8(JSON.stringify({ metadata, tabelas, usuarios_autenticacao: usuariosAuth, arquivos: arquivosIncluidos }, null, 2));
+  arquivosZip["LEIA-ME.txt"] = strToU8(
+    "BACKUP — GESTÃO EM SAÚDE / PREFEITURA DE CAJATI\n\n" +
+    "O arquivo backup.json contém os registros das tabelas e os metadados dos arquivos.\n" +
+    "A pasta anexos/ contém os documentos armazenados no bucket de anexos.\n\n" +
+    "Por segurança, este pacote não contém senhas, hashes de senha, tokens, fatores de autenticação ou chaves secretas.\n" +
+    "Guarde este arquivo em local protegido, pois ele contém dados pessoais e administrativos.\n",
+  );
+  const zip = zipSync(arquivosZip, { level: 6 });
+  const dataNome = new Date().toISOString().slice(0, 10);
+  return new Response(zip, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="backup-gestao-saude-${dataNome}.zip"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function handleRequest(req: Request) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -142,6 +338,18 @@ export async function handleRequest(req: Request) {
     }
 
     const { user: solicitante } = await requireAdmin(req, url, publicKey);
+
+    if (body.action === "export-backup") {
+      return await criarBackupZip(admin);
+    }
+
+    if (body.action === "list-atas-admin") {
+      return json({ atas: await listarAtasAdministrativas(admin) });
+    }
+
+    if (body.action === "delete-atas-admin") {
+      return json(await excluirAtasAdministrativamente(admin, body.ata_ids));
+    }
 
     if (body.action === "list-users") {
       const perPage = 1000;
