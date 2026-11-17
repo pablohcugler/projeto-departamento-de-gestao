@@ -575,7 +575,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <DropdownMenuLabel className="max-w-[220px] truncate">{nome || "Conta do usuário"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <ConfigTv menuTrigger />
-                <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Histórico de atualizações · v{VERSAO_SISTEMA}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Novidades da versão · v{VERSAO_SISTEMA}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
                 {adminQ.data && <>
