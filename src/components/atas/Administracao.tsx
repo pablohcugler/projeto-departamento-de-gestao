@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Search, ShieldCheck, UserRound, Users, KeyRound, Ban, CheckCircle2, RefreshCw,
-  Database, Download, FileArchive, Trash2, AlertTriangle, Cable, Settings2, Power,
+  Database, Download, FileArchive, Trash2, AlertTriangle, Cable, Settings2,
 } from "lucide-react";
 import { ImportacaoLoteAtas } from "@/components/atas/ImportacaoLoteAtas";
 import { VERSAO_SISTEMA } from "@/lib/release-notes";
@@ -447,7 +447,7 @@ export function Administracao() {
                   </div>
                 </div>
                 <label className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3">
-                  <span className="text-sm font-medium">{integracaoBllAtiva ? "Ativar" : "Desativar"}</span>
+                  <span className="text-sm font-medium">{integracaoBllAtiva ? "Desativar" : "Ativar"}</span>
                   <input
                     type="checkbox"
                     className="h-5 w-5 accent-primary"
