@@ -757,7 +757,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-amber-50/80">Painel para gestão e acompanhamento de adiantamentos.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Conhecer painel <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    Em manutenção
                   </div>
                 </div>
               </button>
@@ -779,7 +779,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">Em manutenção</span>
                   </div>
                   <div className="mt-8">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100/70">CORRESPONDÊNCIAS OFICIAIS</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100/70">GESTÃO DE DOCUMENTOS</div>
                     <h3 className="mt-1 text-2xl font-semibold tracking-tight">Ofícios</h3>
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-violet-50/80">Acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público, Câmara.</p>
                   </div>
@@ -806,7 +806,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200">
                 <Mail className="h-10 w-10" />
               </div>
-              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">CORRESPONDÊNCIAS OFICIAIS</div>
+              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">GESTÃO DE DOCUMENTOS</div>
               <span className="mt-3 inline-flex rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning-foreground">Em manutenção</span>
               <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">Ofícios</h2>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
