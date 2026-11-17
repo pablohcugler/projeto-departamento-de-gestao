@@ -1,4 +1,6 @@
 # Roadmap
+- [ ] Aplicar migração configurações BLL e conferir valor inicial ativo
+- [ ] Republicar admin-users preservando ações e validar alternância BLL e permissões
 - [x] Publicar admin-users existente, corrigindo erros de validação sem reaplicar migrações
 - [x] Testar autorização, login CPF e gestão de conta temporária (cadastro, setor, suspensão, reativação e senha; conta temporária removida)
 - [x] Anexos (TR, ETP, Contrato) e campos 1Doc em atas/contratos
