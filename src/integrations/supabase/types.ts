@@ -219,27 +219,6 @@ export type Database = {
           },
         ]
       }
-      configuracoes_sistema: {
-        Row: {
-          atualizado_em: string
-          atualizado_por: string | null
-          chave: string
-          valor: Json
-        }
-        Insert: {
-          atualizado_em?: string
-          atualizado_por?: string | null
-          chave: string
-          valor?: Json
-        }
-        Update: {
-          atualizado_em?: string
-          atualizado_por?: string | null
-          chave?: string
-          valor?: Json
-        }
-        Relationships: []
-      }
       contratos: {
         Row: {
           classificacao_id: string | null
