@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History, Mail } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -83,7 +83,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
-  const [aba, setAba] = useState<"inicio" | "pca" | "adiantamentos" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
+  const [aba, setAba] = useState<"inicio" | "pca" | "adiantamentos" | "oficios" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Ata> | null>(null);
@@ -117,7 +117,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
           filtroSituacaoContratos?: string;
           busca?: string;
         };
-        if (["inicio", "pca", "adiantamentos", "atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
+        if (["inicio", "pca", "adiantamentos", "oficios", "atas", "contratos", "pedidos", "feedbacks", "administracao"].includes(estado.aba ?? "")) {
           setAba(estado.aba as typeof aba);
         }
         if (typeof estado.selecionada === "string") setSelecionada(estado.selecionada);
@@ -153,6 +153,23 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       setAba("inicio");
     }
   }, [adminQ.isSuccess, adminQ.data, aba]);
+
+  const integracaoBllQ = useQuery({
+    queryKey: ["configuracao-sistema", "integracao_bll"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracoes_sistema")
+        .select("valor")
+        .eq("chave", "integracao_bll")
+        .maybeSingle();
+      if (error) throw error;
+      const valor = data?.valor as { ativa?: unknown } | null;
+      return typeof valor?.ativa === "boolean" ? valor.ativa : true;
+    },
+    staleTime: 30_000,
+  });
+  // Mantém a interface atual caso a migração ainda não tenha sido aplicada.
+  const integracaoBllAtiva = integracaoBllQ.data ?? true;
 
   const atasQ = useQuery({
     queryKey: ["atas"],
@@ -350,7 +367,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         : "Preencha o número da Ata, o objeto e a data de vencimento.");
       return;
     }
-    if (ataEmAndamento && editando.fase_processo === "Publicado" && !editando.numero_edital_bll?.trim()) {
+    if (integracaoBllAtiva && ataEmAndamento && editando.fase_processo === "Publicado" && !editando.numero_edital_bll?.trim()) {
       toast.error("Informe o número do edital publicado na BLL.");
       return;
     }
@@ -515,7 +532,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <div className="app-crest"><img src={brasaoMunicipio} alt="Brasão do município" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" /></div>
             <div className="leading-tight"><span className="block font-semibold tracking-tight text-base sm:text-lg">Gestão em Saúde</span><span className="block text-[10px] uppercase tracking-[0.17em] opacity-70">Prefeitura de Cajati</span></div>
           </button>
-          {aba === "inicio" || aba === "pca" || aba === "adiantamentos" ? <div className="flex-1" /> : (
+          {aba === "inicio" || aba === "pca" || aba === "adiantamentos" || aba === "oficios" ? <div className="flex-1" /> : (
           <nav className="app-nav flex gap-1" aria-label="Navegação dos módulos">
             {(aba === "atas" || aba === "pedidos") && (
               <>
@@ -636,7 +653,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <span className="text-xs text-muted-foreground">Acesso conforme o setor de lotação</span>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
               <button
                 type="button"
                 onClick={() => setAba("pca")}
@@ -744,6 +761,33 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   </div>
                 </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setAba("oficios")}
+                className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-violet-200/20 bg-gradient-to-br from-[#30294e] via-[#514178] to-[#7565a6] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+                aria-label="Abrir módulo Ofícios, em manutenção"
+              >
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10 bg-white/[0.05] transition-transform duration-500 group-hover:scale-110" />
+                <div className="pointer-events-none absolute -bottom-16 right-14 h-40 w-40 rounded-full border border-white/10" />
+                <Mail className="pointer-events-none absolute -bottom-6 -right-2 h-40 w-40 text-white/[0.075]" strokeWidth={1} />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                      <Mail className="h-6 w-6" />
+                    </span>
+                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">Em manutenção</span>
+                  </div>
+                  <div className="mt-8">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100/70">CORRESPONDÊNCIAS OFICIAIS</div>
+                    <h3 className="mt-1 text-2xl font-semibold tracking-tight">Ofícios</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-violet-50/80">Acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público, Câmara.</p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
+                    Em manutenção
+                  </div>
+                </div>
+              </button>
             </div>
 
             <div className="rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
@@ -751,6 +795,24 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <span className="font-semibold text-foreground">Gestão em Saúde · Prefeitura de Cajati</span> — os dados exibidos em cada módulo respeitam as permissões do setor do usuário.
               </div>
               <em className="mt-2 block w-full text-center">Desenvolvido por Pablo R. Cugler de Lima.</em>
+            </div>
+          </section>
+        ) : aba === "oficios" ? (
+          <section className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center text-center">
+            <Button variant="ghost" className="mb-8 self-start" onClick={() => setAba("inicio")}>
+              <ArrowLeft className="h-4 w-4" /> Voltar ao painel inicial
+            </Button>
+            <div className="w-full rounded-3xl border bg-gradient-to-br from-card via-card to-violet-50/50 p-8 shadow-sm dark:to-violet-950/20 sm:p-12">
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200">
+                <Mail className="h-10 w-10" />
+              </div>
+              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">CORRESPONDÊNCIAS OFICIAIS</div>
+              <span className="mt-3 inline-flex rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning-foreground">Em manutenção</span>
+              <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">Ofícios</h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público, Câmara.
+              </p>
+              <Button className="mt-7" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
             </div>
           </section>
         ) : aba === "adiantamentos" ? (
@@ -851,7 +913,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
             <div className="app-toolbar mb-4 flex flex-wrap gap-2">
               <Input placeholder="Buscar por número, objeto, fornecedor..." className="w-full sm:max-w-xs" value={busca} onChange={(e) => setBusca(e.target.value)} />
-              {filtroSituacao !== "Vigentes" && editaisParaConsultaBll.length > 0 && (
+              {integracaoBllAtiva && filtroSituacao !== "Vigentes" && editaisParaConsultaBll.length > 0 && (
                 <span className="inline-flex items-center rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
                   Consulta automática da BLL temporariamente indisponível
                 </span>
@@ -881,7 +943,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <th className="px-4 py-3 text-right font-medium">Valor total</th>
                     <th className="px-4 py-3 font-medium">Situação do vencimento</th>
                     <th className="px-4 py-3 font-medium">Fase do processo</th>
-                    {filtroSituacao !== "Vigentes" && <th className="px-4 py-3 font-medium">Status BLL</th>}
+                    {integracaoBllAtiva && filtroSituacao !== "Vigentes" && <th className="px-4 py-3 font-medium">Status BLL</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -902,7 +964,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                       <td data-label="Valor total" className="px-4 py-3 text-right tabular-nums">{brl(totaisQ.data?.m?.[a.id] ?? 0)}</td>
                       <td data-label="Situação do vencimento" className="px-4 py-3">{a.situacao_cadastro === "Vigentes" ? <StatusBadge ata={a} /> : "—"}</td>
                       <td data-label="Fase do processo" className="px-4 py-3">{a.fase_processo ?? "—"}{a.observacoes && <div className="max-w-56 truncate text-xs text-muted-foreground" title={a.observacoes}>{a.observacoes}</div>}</td>
-                      {filtroSituacao !== "Vigentes" && (
+                      {integracaoBllAtiva && filtroSituacao !== "Vigentes" && (
                         <td data-label="Status BLL" className="px-4 py-3">
                           {a.situacao_cadastro !== "Em andamento" || a.fase_processo !== "Publicado" ? "—" : !a.numero_edital_bll ? "Edital não informado" : (
                             <div className="min-w-40 whitespace-normal text-xs">
@@ -1032,7 +1094,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 </select>
               </Campo>
               )}
-              {ataEmAndamento && editando.fase_processo === "Publicado" && (
+              {integracaoBllAtiva && ataEmAndamento && editando.fase_processo === "Publicado" && (
                 <Campo label="Nº do edital na BLL *" full>
                   <Input
                     placeholder="Ex.: PE096/2026CJ"
