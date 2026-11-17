@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.3";
+export const VERSAO_SISTEMA = "1.0.4";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,18 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.4",
+    data: "16/11/2026",
+    titulo: "Gestão do sistema e módulo Ofícios",
+    descricao: "Adiciona controle administrativo da integração BLL e apresenta o novo módulo de Ofícios.",
+    itens: [
+      "Nova área Gestão do sistema no Painel do administrador.",
+      "Controle global para ativar ou desativar a integração BLL, ocultando campos, avisos e status quando desativada.",
+      "Números de edital já cadastrados são preservados ao desativar a integração.",
+      "Novo módulo Ofícios para acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público e Câmara, com status Em manutenção.",
+    ],
+  },
   {
     versao: "1.0.3",
     data: "16/11/2026",
