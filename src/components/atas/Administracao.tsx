@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Search, ShieldCheck, UserRound, Users, KeyRound, Ban, CheckCircle2, RefreshCw,
-  Database, Download, FileArchive, Trash2, AlertTriangle, UsersRound, FileUp,
+  Database, Download, FileArchive, Trash2, AlertTriangle,
 } from "lucide-react";
 import { ImportacaoLoteAtas } from "@/components/atas/ImportacaoLoteAtas";
 import { VERSAO_SISTEMA } from "@/lib/release-notes";
@@ -110,8 +110,12 @@ export function Administracao() {
   const atasFiltradas = useMemo(() => {
     if (!termo) return atas;
     return atas.filter((ata) =>
-      (ata.numero ?? "") + " " + ata.objeto + " " + ata.situacao_cadastro,
-    .normalize?.("NFD")?.replace?.(/[\u0300-\u036f]/g, "")?.toLowerCase?.().includes(termo) ?? false);
+      `${ata.numero ?? ""} ${ata.objeto} ${ata.situacao_cadastro}`
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .includes(termo),
+    );
   }, [atas, termo]);
 
   const pedidosSelecionados = atas
