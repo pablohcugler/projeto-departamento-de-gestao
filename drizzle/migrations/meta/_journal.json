@@ -64,6 +64,13 @@
       "when": 1794673747628,
       "tag": "0008_restringir_leitura_equipe",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794883910723,
+      "tag": "0009_configuracoes_sistema_integracao_bll",
+      "breakpoints": true
     }
   ]
 }
