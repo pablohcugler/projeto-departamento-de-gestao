@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Publicar admin-users existente, corrigindo erros de validação sem reaplicar migrações
-- [ ] Testar autorização, login CPF e gestão de conta temporária (cadastro, setor, suspensão, reativação e senha)
+- [x] Publicar admin-users existente, corrigindo erros de validação sem reaplicar migrações
+- [x] Testar autorização, login CPF e gestão de conta temporária (cadastro, setor, suspensão, reativação e senha; conta temporária removida)
 - [x] Anexos (TR, ETP, Contrato) e campos 1Doc em atas/contratos
 - [x] Campo Nº do Pregão Eletrônico
 - [x] Corrigir o caminho do brasão original e verificar outras imagens (login, painel e TV validados; falta atualizar a hospedagem de produção)
