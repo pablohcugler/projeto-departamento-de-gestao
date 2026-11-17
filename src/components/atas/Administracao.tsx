@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Search, ShieldCheck, UserRound, Users, KeyRound, Ban, CheckCircle2, RefreshCw,
-  Database, Download, FileArchive, Trash2, AlertTriangle,
+  Database, Download, FileArchive, Trash2, AlertTriangle, Cable, Settings2, Power,
 } from "lucide-react";
 import { ImportacaoLoteAtas } from "@/components/atas/ImportacaoLoteAtas";
 import { VERSAO_SISTEMA } from "@/lib/release-notes";
@@ -46,7 +46,7 @@ type AtaAdmin = {
   created_at: string;
   pedidos_vinculados: number;
 };
-type AbaAdmin = "usuarios" | "backup" | "atas";
+type AbaAdmin = "usuarios" | "backup" | "atas" | "sistema";
 
 function formatarCpf(cpf: string | null) {
   if (!cpf) return "Pendente";
@@ -90,6 +90,23 @@ export function Administracao() {
     },
   });
   const setores = setoresQ.data ?? [];
+
+  const integracaoBllQ = useQuery({
+    queryKey: ["configuracao-sistema", "integracao_bll"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracoes_sistema")
+        .select("valor")
+        .eq("chave", "integracao_bll")
+        .maybeSingle();
+      if (error) throw error;
+      const valor = data?.valor as { ativa?: unknown } | null;
+      return typeof valor?.ativa === "boolean" ? valor.ativa : true;
+    },
+    enabled: aba === "sistema",
+  });
+  const [atualizandoIntegracaoBll, setAtualizandoIntegracaoBll] = useState(false);
+  const integracaoBllAtiva = integracaoBllQ.data ?? true;
 
   const atasQ = useQuery({
     queryKey: ["administracao-atas"],
@@ -205,6 +222,27 @@ export function Administracao() {
     }
   }
 
+  async function atualizarIntegracaoBll(ativa: boolean) {
+    if (atualizandoIntegracaoBll) return;
+    setAtualizandoIntegracaoBll(true);
+    try {
+      await adminApi({
+        action: "update-system-setting",
+        key: "integracao_bll",
+        enabled: ativa,
+      });
+      toast.success(ativa ? "Integração com a BLL ativada." : "Integração com a BLL desativada.");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["configuracao-sistema", "integracao_bll"] }),
+        qc.invalidateQueries({ queryKey: ["atas"] }),
+      ]);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível alterar a integração BLL.");
+    } finally {
+      setAtualizandoIntegracaoBll(false);
+    }
+  }
+
   function alternarAta(id: string) {
     setSelecionadas((atuais) => atuais.includes(id) ? atuais.filter((item) => item !== id) : [...atuais, id]);
   }
@@ -280,7 +318,7 @@ export function Administracao() {
         <Badge variant="outline" className="px-3 py-1.5 text-sm">Versão {VERSAO_SISTEMA}</Badge>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <Button variant={aba === "usuarios" ? "default" : "outline"} className="h-auto justify-start gap-3 p-4" onClick={() => setAba("usuarios")}>
           <Users className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão de usuários</span><span className="block text-xs font-normal opacity-75">Contas, CPF, setor e permissões</span></span>
         </Button>
@@ -289,6 +327,9 @@ export function Administracao() {
         </Button>
         <Button variant={aba === "atas" ? "default" : "outline"} className="h-auto justify-start gap-3 p-4" onClick={() => setAba("atas")}>
           <FileArchive className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão de atas</span><span className="block text-xs font-normal opacity-75">Importação em massa e exclusão</span></span>
+        </Button>
+        <Button variant={aba === "sistema" ? "default" : "outline"} className="h-auto justify-start gap-3 p-4" onClick={() => setAba("sistema")}>
+          <Settings2 className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão do sistema</span><span className="block text-xs font-normal opacity-75">Integrações e configurações globais</span></span>
         </Button>
       </div>
 
@@ -371,6 +412,59 @@ export function Administracao() {
               {exportandoBackup ? <><RefreshCw className="h-4 w-4 animate-spin" /> Preparando backup...</> : <><Download className="h-4 w-4" /> Criar backup e baixar arquivo ZIP</>}
             </Button>
           </div>
+        </div>
+      )}
+
+      {aba === "sistema" && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Gestão do sistema</h3>
+            <p className="text-sm text-muted-foreground">Ative ou desative integrações utilizadas pelos módulos do sistema.</p>
+          </div>
+
+          {integracaoBllQ.isLoading ? (
+            <div className="rounded-xl border p-6 text-sm text-muted-foreground">Carregando configurações do sistema...</div>
+          ) : integracaoBllQ.isError ? (
+            <div className="rounded-xl border border-destructive/30 p-5 text-sm text-destructive">
+              Não foi possível carregar as configurações do sistema. Confirme se a migração de configurações foi aplicada no Lovable Cloud.
+              <div className="mt-2 text-xs">{integracaoBllQ.error instanceof Error ? integracaoBllQ.error.message : ""}</div>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-card p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Cable className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold">Integração com o sistema BLL</h4>
+                      <Badge variant={integracaoBllAtiva ? "default" : "secondary"}>{integracaoBllAtiva ? "Ativada" : "Desativada"}</Badge>
+                    </div>
+                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                      Controla a exibição dos campos, avisos e informações de conferência da BLL na gestão de Atas de Registro de Preços.
+                    </p>
+                  </div>
+                </div>
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3">
+                  <span className="text-sm font-medium">{integracaoBllAtiva ? "Ativar" : "Desativar"}</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-primary"
+                    checked={integracaoBllAtiva}
+                    disabled={atualizandoIntegracaoBll}
+                    onChange={(e) => void atualizarIntegracaoBll(e.target.checked)}
+                    aria-label="Ativar integração com o sistema BLL"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                {integracaoBllAtiva
+                  ? "Quando ativada, os campos relacionados à BLL ficam disponíveis nas telas de atas."
+                  : "Quando desativada, os campos de edital, avisos e a coluna de status BLL deixam de aparecer. Os números já cadastrados são preservados."}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
