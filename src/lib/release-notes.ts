@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.4";
+export const VERSAO_SISTEMA = "1.0.5";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,17 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.5",
+    data: "16/11/2026",
+    titulo: "Ajustes de feedback e identificação dos módulos",
+    descricao: "Alinha a versão registrada nos feedbacks à versão oficial do sistema e atualiza os textos dos módulos.",
+    itens: [
+      "O formulário de feedback passa a utilizar a versão oficial compartilhada pelo sistema, evitando divergências.",
+      "O módulo Ofícios passa a exibir a identificação GESTÃO DE DOCUMENTOS.",
+      "O cartão de Adiantamentos passa a exibir Em manutenção.",
+    ],
+  },
   {
     versao: "1.0.4",
     data: "16/11/2026",
