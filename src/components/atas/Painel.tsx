@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -20,6 +20,8 @@ import { Pedidos } from "./Pedidos";
 import { Administracao } from "./Administracao";
 import { TemaToggle } from "./TemaToggle";
 import { ConfigTv } from "@/components/tv/ConfigTv";
+import { ChangelogDialog } from "./Changelog";
+import { VERSAO_SISTEMA } from "@/lib/release-notes";
 import { brl, dataBR, diasParaVencer, statusAta, type StatusAta } from "@/lib/vencimento";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnviarFeedback, RelatorioFeedbacks } from "./Feedbacks";
@@ -73,6 +75,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [novoUsuario, setNovoUsuario] = useState(false);
   const [feedbackAberto, setFeedbackAberto] = useState(false);
   const [relatoriosAberto, setRelatoriosAberto] = useState(false);
+  const [changelogAberto, setChangelogAberto] = useState(false);
   const adminQ = useQuery({
     queryKey: ["admin", userId],
     queryFn: async () => {
@@ -572,12 +575,13 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <DropdownMenuLabel className="max-w-[220px] truncate">{nome || "Conta do usuário"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <ConfigTv menuTrigger />
+                <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Histórico de atualizações · v{VERSAO_SISTEMA}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => { setAba("administracao"); setSelecionada(null); }}><CircleUserRound className="h-4 w-4" /> Administração de usuários</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { setAba("administracao"); setSelecionada(null); }}><CircleUserRound className="h-4 w-4" /> Painel do administrador</DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setAba("feedbacks")}><ClipboardList className="h-4 w-4" /> Relatório de feedbacks</DropdownMenuItem>
                 </>}
                 <DropdownMenuSeparator />
@@ -1112,6 +1116,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         </DialogContent>
       </Dialog>
 
+      <ChangelogDialog aberto={changelogAberto} onFechar={() => setChangelogAberto(false)} />
       <Dialog open={relatoriosAberto} onOpenChange={setRelatoriosAberto}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
