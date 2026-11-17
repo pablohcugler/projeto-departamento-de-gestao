@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.4";
+export const VERSAO_SISTEMA = "1.0.5";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,15 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.5",
+    data: "17/11/2026",
+    titulo: "Configuração BLL no Lovable Cloud",
+    descricao: "Aplicação da configuração global BLL e republicação da função administrativa existente.",
+    itens: [
+      "Configuração BLL inicialmente ativa, consultável por usuários autenticados ativos e alterável somente por administradores.",
+    ],
+  },
   {
     versao: "1.0.4",
     data: "16/11/2026",
