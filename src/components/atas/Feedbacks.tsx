@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import packageJson from "../../../package.json";
+import { VERSAO_SISTEMA } from "@/lib/release-notes";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ type Feedback = {
 };
 const statusOptions: FeedbackStatus[] = ["Novo", "Em análise", "Em andamento", "Concluído", "Não será implementado"];
 const categorias = ["Sugestão", "Problema", "Dúvida", "Elogio", "Outro"];
-const versaoSistema = packageJson.version || "1.0.0";
+const versaoSistema = VERSAO_SISTEMA;
 
 export function EnviarFeedback({ aberto, onFechar, userId, nome }: { aberto: boolean; onFechar: () => void; userId: string; nome?: string | null }) {
   const [categoria, setCategoria] = useState("Sugestão");
