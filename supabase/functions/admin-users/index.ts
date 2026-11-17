@@ -15,7 +15,8 @@ type Action =
   | { action: "update-user"; user_id: string; email: string; nome: string; setor_id: string; admin: boolean; suspenso: boolean; nova_senha?: string }
   | { action: "list-atas-admin" }
   | { action: "delete-atas-admin"; ata_ids: string[] }
-  | { action: "export-backup" };
+  | { action: "export-backup" }
+  | { action: "update-system-setting"; key: "integracao_bll"; enabled: boolean };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -146,6 +147,7 @@ const BACKUP_TABLES = [
   "setores",
   "user_profiles",
   "user_roles",
+  "configuracoes_sistema",
 ] as const;
 
 async function selectAllRows(admin: SupabaseClient, table: string) {
@@ -349,6 +351,20 @@ export async function handleRequest(req: Request) {
 
     if (body.action === "delete-atas-admin") {
       return json(await excluirAtasAdministrativamente(admin, body.ata_ids));
+    }
+
+    if (body.action === "update-system-setting") {
+      if (body.key !== "integracao_bll" || typeof body.enabled !== "boolean") {
+        return json({ error: "Configuração ou valor inválido." }, 400);
+      }
+      const { error } = await admin.from("configuracoes_sistema").upsert({
+        chave: "integracao_bll",
+        valor: { ativa: body.enabled },
+        atualizado_em: new Date().toISOString(),
+        atualizado_por: solicitante.id,
+      }, { onConflict: "chave" });
+      if (error) throw new Error("Não foi possível atualizar a integração BLL: " + error.message);
+      return json({ sucesso: true, chave: "integracao_bll", ativa: body.enabled });
     }
 
     if (body.action === "list-users") {
