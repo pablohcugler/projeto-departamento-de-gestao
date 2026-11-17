@@ -9,7 +9,7 @@ export function ChangelogDialog({ aberto, onFechar }: { aberto: boolean; onFecha
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" /> Histórico de atualizações
+            <History className="h-5 w-5" /> Novidades da versão
           </DialogTitle>
         </DialogHeader>
         <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
