@@ -983,7 +983,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   ))}
                   {filtradas.length === 0 && (
                     <tr>
-                      <td colSpan={filtroSituacao !== "Vigentes" ? 9 : 8} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={integracaoBllAtiva && filtroSituacao !== "Vigentes" ? 9 : 8} className="px-4 py-12 text-center text-muted-foreground">
                         {atasQ.isLoading ? "Carregando..." : "Nenhuma ata encontrada. Clique em “Nova ata” para começar."}
                       </td>
                     </tr>
