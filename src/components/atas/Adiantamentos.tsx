@@ -49,14 +49,21 @@ function moedaBRL(valor: number | null | undefined): string {
 }
 
 function lerValorMonetario(valor: string): number | null {
-  if (!valor.trim()) return null;
-  const numero = Number(valor.replace(",", "."));
+  const limpo = valor.trim().replace(/R\$|\s/g, "");
+  if (!limpo) return null;
+  const normalizado = limpo.includes(",")
+    ? limpo.replace(/\./g, "").replace(",", ".")
+    : limpo;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalizado)) return null;
+  const numero = Number(normalizado);
   if (!Number.isFinite(numero) || numero <= 0) return null;
   return Math.round(numero * 100) / 100;
 }
 
 function valorParaInput(valor: number | null | undefined): string {
-  return valor === null || valor === undefined ? "" : Number(valor).toFixed(2);
+  return valor === null || valor === undefined
+    ? ""
+    : Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function dataHojeLocal(): string {
@@ -582,7 +589,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="nota-valor-recebido">Valor do adiantamento recebido (R$) *</Label>
-                  <Input id="nota-valor-recebido" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="Ex.: 1500,00" required />
+                  <Input id="nota-valor-recebido" type="text" inputMode="decimal" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="Ex.: 1.500,00" required />
                   <p className="text-xs text-muted-foreground">O valor fica vinculado a este processo e será utilizado no resumo da execução financeira.</p>
                 </div>
                 <div className="space-y-1.5">
@@ -599,7 +606,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="nota-valor-despesa">Valor da despesa (R$) *</Label>
-                  <Input id="nota-valor-despesa" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorDespesa} onChange={(e) => setValorDespesa(e.target.value)} placeholder="Ex.: 250,00" required />
+                  <Input id="nota-valor-despesa" type="text" inputMode="decimal" value={valorDespesa} onChange={(e) => setValorDespesa(e.target.value)} placeholder="Ex.: 250,00" required />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="nota-descricao">Descrição sucinta da despesa *</Label>
@@ -661,7 +668,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </DialogHeader>
             <div className="space-y-1.5">
               <Label htmlFor="nota-valor-edicao">Valor da despesa (R$) *</Label>
-              <Input id="nota-valor-edicao" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorDespesaEdicao} onChange={(e) => setValorDespesaEdicao(e.target.value)} placeholder="Ex.: 250,00" disabled={salvandoValorNota} />
+              <Input id="nota-valor-edicao" type="text" inputMode="decimal" value={valorDespesaEdicao} onChange={(e) => setValorDespesaEdicao(e.target.value)} placeholder="Ex.: 250,00" disabled={salvandoValorNota} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" disabled={salvandoValorNota} onClick={() => {
@@ -697,7 +704,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="space-y-1">
                         <Label htmlFor="resumo-valor-recebido" className="text-xs">Informar/ajustar valor (R$)</Label>
-                        <Input id="resumo-valor-recebido" className="w-40" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="0,00" />
+                        <Input id="resumo-valor-recebido" className="w-40" type="text" inputMode="decimal" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="0,00" />
                       </div>
                       <Button type="button" variant="outline" size="sm" onClick={() => void salvarValorRecebido()}>
                         Salvar valor
