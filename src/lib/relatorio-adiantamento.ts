@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFEmbeddedPage, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 import { brasaoMunicipio } from "@/lib/brasao";
+import { logoSaudeCajati } from "@/lib/logo-saude-cajati";
 
 export type AnexoRelatorio = {
   nome: string;
@@ -76,8 +77,8 @@ function bytesFromDataUrl(dataUrl: string): Uint8Array {
 
 function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont) {
   // Timbrado baseado no modelo institucional enviado: identificação da Saúde, brasão, faixas laterais e rodapé.
-  page.drawText("Cajati", { x: 27, y: 800, size: 15, font: italic, color: DARK });
-  page.drawText("SAÚDE", { x: 20, y: 766, size: 34, font: bold, color: rgb(0.0, 0.58, 0.34) });
+  const logoSaude = await page.doc.embedPng(bytesFromDataUrl(logoSaudeCajati));
+  page.drawImage(logoSaude, { x: 22, y: 756, width: 150, height: 55 });
   page.drawText("PREFEITURA DO MUNICÍPIO DE", { x: 185, y: 806, size: 13, font: bold, color: DARK });
   page.drawText("- ESTADO DE SÃO PAULO -", { x: 235, y: 787, size: 10, font: bold, color: DARK });
   page.drawText("SECRETARIA MUNICIPAL DE SAÚDE", { x: 205, y: 768, size: 11, font: bold, color: DARK });
