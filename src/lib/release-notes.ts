@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.12";
+export const VERSAO_SISTEMA = "1.0.13";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,17 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.13",
+    data: "20/11/2026",
+    titulo: "Valor recebido no cadastro de adiantamento",
+    descricao: "O formulário Novo processo passa a solicitar o valor total recebido para o processo.",
+    itens: [
+      "Campo obrigatório para informar o valor do adiantamento recebido em reais.",
+      "O valor é gravado diretamente no processo e reutilizado no resumo da execução financeira e no cadastro das notas.",
+      "Entrada aceita no padrão monetário brasileiro, por exemplo R$ 3.500,00.",
+    ],
+  },
   {
     versao: "1.0.12",
     data: "20/11/2026",
