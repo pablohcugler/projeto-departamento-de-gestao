@@ -72,6 +72,20 @@ BEGIN
     v_adiantamento_id := NEW.adiantamento_id;
   END IF;
 
+  -- Bloqueia alterações na origem e no destino, caso a nota seja
+  -- movimentada entre dois processos.
+  IF TG_OP = 'UPDATE' THEN
+    SELECT a.finalizado
+      INTO v_finalizado
+    FROM public.adiantamentos a
+    WHERE a.id = OLD.adiantamento_id
+    FOR UPDATE;
+
+    IF v_finalizado IS TRUE THEN
+      RAISE EXCEPTION 'As notas deste adiantamento não podem ser alteradas após a finalização.';
+    END IF;
+  END IF;
+
   SELECT a.finalizado
     INTO v_finalizado
   FROM public.adiantamentos a
