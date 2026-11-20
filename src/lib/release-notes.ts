@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.11";
+export const VERSAO_SISTEMA = "1.0.12";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,16 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.12",
+    data: "20/11/2026",
+    titulo: "Destaque visual da finalização do adiantamento",
+    descricao: "Aplica destaque vermelho ao botão de finalização para reforçar que a ação encerra a prestação de contas.",
+    itens: [
+      "O botão Finalizar adiantamento passa a utilizar a cor vermelha.",
+      "Após a finalização, a ação Ver resumo financeiro permanece com aparência neutra.",
+    ],
+  },
   {
     versao: "1.0.11",
     data: "20/11/2026",
