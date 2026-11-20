@@ -429,7 +429,15 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       notaRegistrada = true;
 
       if (arquivosComplementares.length > 0) {
-        const documentosInserir: Tables<"adiantamento_nota_documentos", "Insert">[] = [];
+        const documentosInserir: Array<{
+          id: string;
+          adiantamento_id: string;
+          nota_id: string;
+          arquivo_nome: string;
+          arquivo_caminho: string;
+          arquivo_mime_type: string;
+          arquivo_tamanho_bytes: number;
+        }> = [];
         for (const arquivo of arquivosComplementares) {
           const documentoId = crypto.randomUUID();
           const nomeSeguro = arquivo.name.normalize("NFD").replace(/[^\\w.\\-]+/g, "_");
