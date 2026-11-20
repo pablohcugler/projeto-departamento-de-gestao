@@ -22,6 +22,7 @@ export type DadosRelatorioAdiantamento = {
     data_nota: string;
     fornecedor: string;
     descricao: string;
+    justificativa: string;
     valor_despesa: number | null;
   };
   totalDespesas: number;
@@ -118,10 +119,8 @@ function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest:
   page.drawText(`NF: ${data.nota.numero_nota || "Não informado"}`, { x: 72, y: 682, size: 11, font: bold, color: DARK });
   page.drawText(`RAZÃO SOCIAL: ${data.nota.fornecedor || "Não informado"}`, { x: 72, y: 664, size: 11, font: bold, color: DARK, maxWidth: 485 });
 
-  const partesDescricao = (data.nota.descricao || "").trim().split(/\r?\n/);
-  const temTituloSeparado = partesDescricao.length > 1 && partesDescricao[0].trim().length > 0;
-  const titulo = temTituloSeparado ? partesDescricao.shift()!.trim() : "DESCRIÇÃO DA DESPESA";
-  const justificativa = partesDescricao.join(" ").trim().replace(/^Justificativa\s*:\s*/i, "") || (temTituloSeparado ? "—" : (data.nota.descricao || "—").trim());
+  const titulo = (data.nota.descricao || "DESCRIÇÃO DA DESPESA").trim();
+  const justificativa = (data.nota.justificativa || "—").trim();
 
   page.drawText(titulo.toLocaleUpperCase("pt-BR"), { x: 72, y: 625, size: 12, font: bold, color: DARK, maxWidth: 485 });
   page.drawRectangle({ x: 72, y: 390, width: 490, height: 200, borderColor: DARK, borderWidth: 0.8 });
