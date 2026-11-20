@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.5";
+export const VERSAO_SISTEMA = "1.0.6";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,19 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.6",
+    data: "20/11/2026",
+    titulo: "Módulo de Adiantamentos",
+    descricao: "Inicia o cadastro e acompanhamento dos processos de adiantamento financeiro recebidos.",
+    itens: [
+      "Novo cadastro de processo com número 1Doc, data de recebimento, período de aplicação e número do empenho.",
+      "Cálculo automático do vencimento pela soma da data de recebimento com o período de aplicação em dias.",
+      "Lista pesquisável dos processos cadastrados, com identificação dos vencidos.",
+      "Acesso aos registros limitado conforme as permissões de setor do usuário.",
+      "Inclusão dos registros de adiantamento no backup administrativo do sistema.",
+    ],
+  },
   {
     versao: "1.0.5",
     data: "16/11/2026",
