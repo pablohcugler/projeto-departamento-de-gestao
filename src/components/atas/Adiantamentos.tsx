@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileImage, FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Upload, Wallet, X,
+  FileImage, FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -148,6 +148,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [notaValorEditando, setNotaValorEditando] = useState<NotaDespesa | null>(null);
   const [valorDespesaEdicao, setValorDespesaEdicao] = useState("");
   const [dialogValorNotaAberto, setDialogValorNotaAberto] = useState(false);
+  const [notaExcluindo, setNotaExcluindo] = useState<NotaDespesa | null>(null);
+  const [excluindoNota, setExcluindoNota] = useState(false);
   const [salvandoValorNota, setSalvandoValorNota] = useState(false);
   const [dialogResumoAberto, setDialogResumoAberto] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
@@ -533,6 +535,53 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] });
   }
 
+  async function excluirNota() {
+    if (!notaExcluindo || !processoSelecionado || excluindoNota) return;
+    if (processoSelecionado.finalizado) {
+      toast.error("Não é possível excluir notas de um adiantamento finalizado.");
+      return;
+    }
+
+    setExcluindoNota(true);
+    const nota = notaExcluindo;
+    const documentos = documentosPorNota.get(nota.id) ?? [];
+    const caminhosArquivos = [
+      nota.arquivo_caminho,
+      ...documentos.map((documento) => documento.arquivo_caminho),
+    ].filter((caminho): caminho is string => Boolean(caminho));
+
+    const { error } = await supabase
+      .from("adiantamento_notas")
+      .delete()
+      .eq("id", nota.id)
+      .eq("adiantamento_id", processoSelecionado.id);
+
+    if (error) {
+      setExcluindoNota(false);
+      toast.error("Não foi possível excluir a nota: " + error.message);
+      return;
+    }
+
+    if (caminhosArquivos.length > 0) {
+      const { error: erroArquivos } = await supabase.storage.from("anexos").remove(caminhosArquivos);
+      if (erroArquivos) {
+        console.error("Nota excluída, mas houve falha ao remover um ou mais anexos:", erroArquivos);
+        toast.warning("Nota excluída, mas não foi possível remover todos os arquivos anexados do armazenamento.");
+      } else {
+        toast.success("Nota e respectivos documentos excluídos com sucesso.");
+      }
+    } else {
+      toast.success("Nota excluída com sucesso.");
+    }
+
+    setExcluindoNota(false);
+    setNotaExcluindo(null);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+      qc.invalidateQueries({ queryKey: ["adiantamento-nota-documentos", processoSelecionado.id] }),
+    ]);
+  }
+
   async function salvarValorRecebido() {
     if (!processoSelecionado || processoSelecionado.finalizado) return;
     const valor = lerValorMonetario(valorRecebido);
@@ -847,6 +896,20 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     )}
                     </div>
                   </div>
+                  {!processoSelecionado.finalizado && (
+                    <div className="flex shrink-0 items-start">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setNotaExcluindo(nota)}
+                        aria-label={`Excluir nota nº ${nota.numero_nota}`}
+                      >
+                        <Trash2 className="mr-1 h-4 w-4" /> Excluir nota
+                      </Button>
+                    </div>
+                  )}
                   {nota.arquivo_mime_type?.startsWith("image/") && (
                     <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
                   )}
@@ -859,6 +922,32 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </ol>
           </div>
         )}
+
+        <Dialog open={!!notaExcluindo} onOpenChange={(aberto) => {
+          if (!aberto && !excluindoNota) setNotaExcluindo(null);
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" /> Excluir nota de despesa?
+              </DialogTitle>
+              <DialogDescription>
+                Confirme a exclusão da nota nº {notaExcluindo?.numero_nota ?? ""} — {notaExcluindo?.fornecedor ?? ""}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              Esta ação excluirá permanentemente o cadastro da nota fiscal e seus documentos complementares. Os arquivos anexados também serão removidos do armazenamento.
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNotaExcluindo(null)} disabled={excluindoNota}>
+                Cancelar
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => void excluirNota()} disabled={excluindoNota}>
+                <Trash2 className="h-4 w-4" /> {excluindoNota ? "Excluindo..." : "Sim, excluir nota"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={dialogNotaAberto} onOpenChange={(aberto) => { if (!aberto) fecharDialogNota(); else setDialogNotaAberto(true); }}>
           <DialogContent className="max-w-xl">
