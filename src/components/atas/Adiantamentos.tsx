@@ -333,6 +333,66 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     }
   }
 
+  function abrirEdicaoValorNota(nota: NotaDespesa) {
+    if (processoSelecionado?.finalizado) return;
+    setNotaValorEditando(nota);
+    setValorDespesaEdicao(valorParaInput(nota.valor_despesa));
+    setDialogValorNotaAberto(true);
+  }
+
+  async function salvarValorNota() {
+    if (!notaValorEditando || !processoSelecionado || salvandoValorNota) return;
+    const valor = lerValorMonetario(valorDespesaEdicao);
+    if (valor === null) {
+      toast.error("Informe um valor de despesa válido, maior que zero.");
+      return;
+    }
+    setSalvandoValorNota(true);
+    const { error } = await supabase
+      .from("adiantamento_notas")
+      .update({ valor_despesa: valor })
+      .eq("id", notaValorEditando.id);
+    setSalvandoValorNota(false);
+    if (error) {
+      toast.error("Não foi possível atualizar o valor da nota: " + error.message);
+      return;
+    }
+    setDialogValorNotaAberto(false);
+    setNotaValorEditando(null);
+    setValorDespesaEdicao("");
+    toast.success("Valor da despesa atualizado.");
+    await qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] });
+  }
+
+  async function confirmarFinalizacao() {
+    if (!processoSelecionado || finalizando) return;
+    setFinalizando(true);
+    const { data, error } = await supabase.rpc("finalizar_adiantamento", {
+      p_adiantamento_id: processoSelecionado.id,
+    });
+    setFinalizando(false);
+    if (error) {
+      toast.error("Não foi possível finalizar o adiantamento: " + error.message);
+      return;
+    }
+    const resultado = data as {
+      finalizado?: boolean;
+      finalizado_em?: string;
+      valor_recebido?: number;
+    };
+    setProcessoSelecionado({
+      ...processoSelecionado,
+      finalizado: true,
+      finalizado_em: resultado.finalizado_em ?? new Date().toISOString(),
+    });
+    setDialogResumoAberto(false);
+    toast.success("Adiantamento finalizado. A prestação de contas foi confirmada.");
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
+      qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+    ]);
+  }
+
   async function abrirArquivo(caminho: string) {
     const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
     if (error || !data?.signedUrl) {
@@ -344,6 +404,21 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   if (processoSelecionado) {
     const notas = notasQ.data ?? [];
+    const valoresPendentes = notas.filter((nota) => nota.valor_despesa === null || nota.valor_despesa <= 0);
+    const totalDespesas = notas.reduce((total, nota) => total + (Number(nota.valor_despesa) || 0), 0);
+    const valorRecebidoAtual = processoSelecionado.valor_recebido;
+    const saldoFinanceiro = valorRecebidoAtual === null
+      ? null
+      : Math.round((Number(valorRecebidoAtual) - totalDespesas) * 100) / 100;
+    const valorDevolucao = saldoFinanceiro === null ? null : Math.max(0, saldoFinanceiro);
+    const despesasExcedentes = saldoFinanceiro !== null && saldoFinanceiro < 0 ? Math.abs(saldoFinanceiro) : 0;
+    const podeFinalizar = !processoSelecionado.finalizado
+      && valorRecebidoAtual !== null
+      && Number(valorRecebidoAtual) > 0
+      && valoresPendentes.length === 0
+      && despesasExcedentes === 0
+      && !notasQ.isLoading
+      && !notasQ.isError;
     const diasParaVencer = diferencaDias(processoSelecionado.data_vencimento, hojeLocal);
     const vencido = diasParaVencer < 0;
     const venceHoje = diasParaVencer === 0;
@@ -366,9 +441,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </div>
           </div>
           <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
-            <Button onClick={() => setDialogNotaAberto(true)}>
-              <Plus className="h-4 w-4" /> Nova nota
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              {processoSelecionado.finalizado && <Badge className="self-center"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Finalizado</Badge>}
+              <Button onClick={abrirDialogNovaNota} disabled={processoSelecionado.finalizado}>
+                <Plus className="h-4 w-4" /> Nova nota
+              </Button>
+            </div>
             <div className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-right sm:w-[300px] ${estiloPrazo}`} role="status" aria-live="polite">
               <CalendarClock className="h-4 w-4 shrink-0" />
               <div className="min-w-0 flex-1">
@@ -398,9 +476,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <h3 className="text-lg font-semibold">Notas de despesas</h3>
             <p className="text-sm text-muted-foreground">Cadastre as notas fiscais e os respectivos comprovantes das despesas deste adiantamento.</p>
           </div>
-          <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
-            <RefreshCw className="h-4 w-4" /> Atualizar notas
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
+              <RefreshCw className="h-4 w-4" /> Atualizar notas
+            </Button>
+            <Button onClick={() => setDialogResumoAberto(true)} disabled={notasQ.isLoading || notasQ.isError}>
+              <Calculator className="h-4 w-4" /> {processoSelecionado.finalizado ? "Ver resumo financeiro" : "Finalizar adiantamento"}
+            </Button>
+          </div>
         </div>
 
         {notasQ.isLoading ? (
@@ -433,6 +516,16 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     </div>
                     <div className="text-sm font-medium">{nota.fornecedor}</div>
                     <p className="text-sm text-muted-foreground">{nota.descricao}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-sm font-semibold tabular-nums">
+                        {nota.valor_despesa === null ? "Valor não informado" : moedaBRL(nota.valor_despesa)}
+                      </span>
+                      {!processoSelecionado.finalizado && (
+                        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
+                          <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
+                        </Button>
+                      )}
+                    </div>
                     {nota.arquivo_nome ? (
                       <button type="button" className="inline-flex max-w-full items-center gap-2 text-sm text-primary hover:underline" onClick={() => void abrirArquivo(nota.arquivo_caminho!)}>
                         <Paperclip className="h-4 w-4 shrink-0" /><span className="truncate">{nota.arquivo_nome}</span>
