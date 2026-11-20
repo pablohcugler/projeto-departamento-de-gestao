@@ -839,7 +839,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               {notas.map((nota, indice) => {
                 const docsDaNota = documentosPorNota.get(nota.id) ?? [];
                 return (
-                <li key={nota.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                <li key={nota.id} className="relative flex flex-col gap-3 p-4 pb-14 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground">
                       {indice + 1}
@@ -856,21 +856,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         {nota.valor_despesa === null ? "Valor não informado" : moedaBRL(nota.valor_despesa)}
                       </span>
                       {!processoSelecionado.finalizado && (
-                        <>
-                          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
-                            <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setNotaExcluindo(nota)}
-                            aria-label={`Excluir nota nº ${nota.numero_nota}`}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" /> Excluir nota
-                          </Button>
-                        </>
+                        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
+                          <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
+                        </Button>
                       )}
                     </div>
                     {nota.arquivo_nome ? (
@@ -913,6 +901,18 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   )}
                   {nota.arquivo_mime_type === "application/pdf" && (
                     <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
+                  )}
+                  {!processoSelecionado.finalizado && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="absolute bottom-3 right-4 h-8 gap-1.5 rounded-lg px-3 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setNotaExcluindo(nota)}
+                      aria-label={`Excluir nota nº ${nota.numero_nota}`}
+                    >
+                      <Trash2 className="h-4 w-4" /> Excluir nota
+                    </Button>
                   )}
                 </li>
                 );
