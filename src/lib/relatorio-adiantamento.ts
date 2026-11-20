@@ -115,17 +115,24 @@ function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest:
   drawShell(page, 1, totalPages, crest, bold, regular, italic);
 
   // O relatório individual apresenta somente os campos do modelo fornecido.
-  page.drawText(`DIA: ${dataBR(data.nota.data_nota)}`, { x: 72, y: 700, size: 11, font: bold, color: DARK });
-  page.drawText(`NF: ${data.nota.numero_nota || "Não informado"}`, { x: 72, y: 682, size: 11, font: bold, color: DARK });
-  page.drawText(`RAZÃO SOCIAL: ${data.nota.fornecedor || "Não informado"}`, { x: 72, y: 664, size: 11, font: bold, color: DARK, maxWidth: 485 });
+  // Metadados compactos e hierarquia visual mais próxima, conforme o modelo solicitado.
+  page.drawText(`DIA: ${dataBR(data.nota.data_nota)}`, { x: 72, y: 700, size: 10.5, font: bold, color: DARK });
+  page.drawText(`NF: ${data.nota.numero_nota || "Não informado"}`, { x: 72, y: 684, size: 10.5, font: bold, color: DARK });
+  page.drawText(`RAZÃO SOCIAL: ${data.nota.fornecedor || "Não informado"}`, { x: 72, y: 668, size: 10.5, font: bold, color: DARK, maxWidth: 485 });
 
   const titulo = (data.nota.descricao || "DESCRIÇÃO DA DESPESA").trim();
   const justificativa = (data.nota.justificativa || "—").trim();
 
-  page.drawText(titulo.toLocaleUpperCase("pt-BR"), { x: 72, y: 625, size: 12, font: bold, color: DARK, maxWidth: 485 });
-  page.drawRectangle({ x: 72, y: 390, width: 490, height: 200, borderColor: DARK, borderWidth: 0.8 });
-  page.drawText("Justificativa:", { x: 84, y: 574, size: 10, font: bold, color: DARK });
-  drawJustifiedParagraph(page, justificativa, 84, 555, 466, bold, 10, DARK, 13.5);
+  page.drawText(titulo.toLocaleUpperCase("pt-BR"), { x: 72, y: 638, size: 11.5, font: bold, color: DARK, maxWidth: 485 });
+
+  // Caixa dimensionada conforme o texto, evitando espaço vazio excessivo.
+  const linhasJustificativa = wrapText(justificativa, bold, 9.5, 466);
+  const alturaCaixa = Math.max(112, 43 + linhasJustificativa.length * 12.5);
+  const topoCaixa = 615;
+  const baseCaixa = Math.max(72, topoCaixa - alturaCaixa);
+  page.drawRectangle({ x: 72, y: baseCaixa, width: 490, height: topoCaixa - baseCaixa, borderColor: DARK, borderWidth: 0.8 });
+  page.drawText("Justificativa:", { x: 84, y: topoCaixa - 19, size: 9.5, font: bold, color: DARK });
+  drawJustifiedParagraph(page, justificativa, 84, topoCaixa - 34, 466, bold, 9.5, DARK, 12.5);
 }
 
 type PaginaAnexo =
