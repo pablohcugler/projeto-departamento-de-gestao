@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.6";
+export const VERSAO_SISTEMA = "1.0.7";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,19 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.7",
+    data: "20/11/2026",
+    titulo: "Notas de despesas dos adiantamentos",
+    descricao: "Permite registrar notas fiscais e anexar os respectivos documentos aos processos de adiantamento.",
+    itens: [
+      "Ao abrir um processo de adiantamento, o usuário acessa a área de notas de despesas.",
+      "Novo formulário com número da nota, data, fornecedor e descrição sucinta da despesa.",
+      "Anexação opcional de nota fiscal em PDF ou imagem, com limite de 15 MB.",
+      "Visualização dos registros e abertura segura dos documentos anexados.",
+      "Inclusão dos registros de notas no backup administrativo do sistema.",
+    ],
+  },
   {
     versao: "1.0.6",
     data: "20/11/2026",
