@@ -233,6 +233,7 @@ export type Database = {
           id: string
           numero_nota: string
           user_id: string
+          valor_despesa: number | null
         }
         Insert: {
           adiantamento_id: string
@@ -247,6 +248,7 @@ export type Database = {
           id?: string
           numero_nota: string
           user_id?: string
+          valor_despesa?: number | null
         }
         Update: {
           adiantamento_id?: string
@@ -261,6 +263,7 @@ export type Database = {
           id?: string
           numero_nota?: string
           user_id?: string
+          valor_despesa?: number | null
         }
         Relationships: [
           {
@@ -277,34 +280,43 @@ export type Database = {
           created_at: string
           data_recebimento: string
           data_vencimento: string
+          finalizado: boolean
+          finalizado_em: string | null
           id: string
           numero_empenho: string
           periodo_aplicacao_dias: number
           processo_1doc: string
           setor_id: string
           user_id: string
+          valor_recebido: number | null
         }
         Insert: {
           created_at?: string
           data_recebimento: string
           data_vencimento: string
+          finalizado?: boolean
+          finalizado_em?: string | null
           id?: string
           numero_empenho: string
           periodo_aplicacao_dias: number
           processo_1doc: string
           setor_id?: string
           user_id?: string
+          valor_recebido?: number | null
         }
         Update: {
           created_at?: string
           data_recebimento?: string
           data_vencimento?: string
+          finalizado?: boolean
+          finalizado_em?: string | null
           id?: string
           numero_empenho?: string
           periodo_aplicacao_dias?: number
           processo_1doc?: string
           setor_id?: string
           user_id?: string
+          valor_recebido?: number | null
         }
         Relationships: [
           {
@@ -609,6 +621,10 @@ export type Database = {
         Returns: number
       }
       current_user_setor_id: { Args: never; Returns: string }
+      finalizar_adiantamento: {
+        Args: { p_adiantamento_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
