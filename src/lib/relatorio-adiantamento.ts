@@ -1,10 +1,11 @@
-import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFEmbeddedPage, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 import { brasaoMunicipio } from "@/lib/brasao";
 
 export type AnexoRelatorio = {
   nome: string;
   mimeType: string;
   bytes: Uint8Array;
+  categoria: "nota" | "complementar";
 };
 
 export type DadosRelatorioAdiantamento = {
@@ -83,16 +84,14 @@ function drawWrapped(
   return y - lines.length * lineHeight;
 }
 
-function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crestBytes: Uint8Array, bold: PDFFont, regular: PDFFont, italic: PDFFont) {
+function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont) {
   // Timbrado institucional: identidade visual, brasão, faixas laterais e rodapé.
   page.drawText("Cajati", { x: 27, y: 800, size: 15, font: italic, color: DARK });
   page.drawText("SAÚDE", { x: 20, y: 766, size: 34, font: bold, color: rgb(0.0, 0.58, 0.34) });
   page.drawText("PREFEITURA DO MUNICÍPIO DE", { x: 185, y: 806, size: 13, font: bold, color: DARK });
   page.drawText("- ESTADO DE SÃO PAULO -", { x: 235, y: 787, size: 10, font: bold, color: DARK });
   page.drawText("SECRETARIA MUNICIPAL DE SAÚDE", { x: 205, y: 768, size: 11, font: bold, color: DARK });
-  const crest = page.doc.embedPng(crestBytes);
-  void crest;
-  page.drawImage((page as unknown as { __crest?: never }).__crest as never, { x: 0, y: 0, width: 0, height: 0 });
+  page.drawImage(crest, { x: 468, y: 754, width: 90, height: 66 });
   page.drawRectangle({ x: 18, y: 55, width: 7, height: 675, color: BLUE });
   page.drawRectangle({ x: 35, y: 55, width: 4, height: 675, color: GREEN });
   page.drawText(ADDRESS, { x: 72, y: 30, size: 7.5, font: regular, color: DARK });
@@ -106,9 +105,9 @@ function drawField(page: PDFPage, label: string, value: string, x: number, y: nu
   page.drawText(value || "—", { x, y: y - 17, size: 10, font: regular, color: DARK, maxWidth: width });
 }
 
-function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crestBytes: Uint8Array, bold: PDFFont, regular: PDFFont, italic: PDFFont, totalPages: number) {
+function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont, totalPages: number) {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
-  drawShell(page, 1, totalPages, crestBytes, bold, regular, italic);
+  drawShell(page, 1, totalPages, crest, bold, regular, italic);
 
   page.drawText("RELATÓRIO DE PRESTAÇÃO DE CONTAS", { x: 72, y: 718, size: 15, font: bold, color: BLUE });
   page.drawText("REGISTRO INDIVIDUAL DE DESPESA", { x: 72, y: 700, size: 9, font: bold, color: MUTED });
@@ -162,11 +161,11 @@ export async function gerarRelatorioAdiantamento(data: DadosRelatorioAdiantament
     const mime = anexo.mimeType.toLowerCase();
     if (mime === "application/pdf" || anexo.nome.toLowerCase().endsWith(".pdf")) {
       const pages = await pdf.embedPdf(anexo.bytes);
-      parsedAnnexes.push({ nome: anexo.nome, pages: pages.map((page) => ({ kind: "pdf" as const, page })) });
+      parsedAnnexes.push({ nome: anexo.nome, categoria: anexo.categoria, pages: pages.map((page) => ({ kind: "pdf" as const, page })) });
     } else if (mime === "image/jpeg" || mime === "image/jpg" || /\.(jpe?g)$/i.test(anexo.nome)) {
-      parsedAnnexes.push({ nome: anexo.nome, pages: [{ kind: "image", image: await pdf.embedJpg(anexo.bytes) }] });
+      parsedAnnexes.push({ nome: anexo.nome, categoria: anexo.categoria, pages: [{ kind: "image", image: await pdf.embedJpg(anexo.bytes) }] });
     } else if (mime === "image/png" || /\.png$/i.test(anexo.nome)) {
-      parsedAnnexes.push({ nome: anexo.nome, pages: [{ kind: "image", image: await pdf.embedPng(anexo.bytes) }] });
+      parsedAnnexes.push({ nome: anexo.nome, categoria: anexo.categoria, pages: [{ kind: "image", image: await pdf.embedPng(anexo.bytes) }] });
     } else {
       throw new Error(`O anexo "${anexo.nome}" não é PDF, JPG ou PNG. Converta-o para PDF para incluí-lo no relatório.`);
     }
@@ -197,7 +196,7 @@ export async function gerarRelatorioAdiantamento(data: DadosRelatorioAdiantament
 
   if (parsedAnnexes.length === 0) {
     const page = pdf.addPage([PAGE_W, PAGE_H]);
-    drawShell(page, 2, 2, crestBytes, bold, regular, italic);
+    drawShell(page, 2, 2, crest, bold, regular, italic);
     page.drawText("ANEXO – NOTA FISCAL", { x: 72, y: 718, size: 11, font: bold, color: BLUE });
     page.drawText("Não foi anexado arquivo de nota fiscal a este cadastro.", { x: 72, y: 680, size: 10, font: regular, color: MUTED });
   }
