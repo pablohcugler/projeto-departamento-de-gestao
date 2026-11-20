@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.14";
+export const VERSAO_SISTEMA = "1.0.15";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,20 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.15",
+    data: "20/11/2026",
+    titulo: "Documentos complementares nas notas de despesas",
+    descricao: "Permite anexar vários documentos de apoio, separados da nota fiscal principal, em cada registro de despesa.",
+    itens: [
+      "Novo botão Documentos complementares ao lado do botão Anexar arquivo.",
+      "Seleção múltipla de listas de presença, certificados, comprovantes e relatórios.",
+      "Suporte a PDF, imagens, Word, Excel, PowerPoint e TXT, com limite de 15 MB por arquivo, 20 arquivos e 100 MB por nota.",
+      "Documentos são listados individualmente no registro da nota e abertos por link temporário seguro.",
+      "Arquivos complementares respeitam as permissões do setor e o bloqueio de processos finalizados.",
+      "Novos documentos incluídos no backup administrativo.",
+    ],
+  },
   {
     versao: "1.0.14",
     data: "20/11/2026",
