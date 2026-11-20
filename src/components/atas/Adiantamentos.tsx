@@ -105,6 +105,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [dataRecebimento, setDataRecebimento] = useState("");
   const [periodoAplicacao, setPeriodoAplicacao] = useState("");
   const [numeroEmpenho, setNumeroEmpenho] = useState("");
+  const [valorRecebidoProcesso, setValorRecebidoProcesso] = useState("");
 
   const [dialogNotaAberto, setDialogNotaAberto] = useState(false);
   const [salvandoNota, setSalvandoNota] = useState(false);
@@ -171,6 +172,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     setDataRecebimento("");
     setPeriodoAplicacao("");
     setNumeroEmpenho("");
+    setValorRecebidoProcesso("");
   }
 
   function fecharDialogProcesso() {
@@ -181,8 +183,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   async function salvarProcesso(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!processo1Doc.trim() || !dataRecebimento || !Number.isInteger(dias) || dias <= 0 || !dataVencimento || !numeroEmpenho.trim()) {
-      toast.error("Preencha todos os campos com informações válidas.");
+    const valorRecebidoNovo = lerValorMonetario(valorRecebidoProcesso);
+    if (!processo1Doc.trim() || !dataRecebimento || !Number.isInteger(dias) || dias <= 0 || !dataVencimento || !numeroEmpenho.trim() || valorRecebidoNovo === null) {
+      toast.error("Preencha todos os campos com informações válidas, incluindo o valor recebido.");
       return;
     }
 
@@ -193,6 +196,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       periodo_aplicacao_dias: dias,
       data_vencimento: dataVencimento,
       numero_empenho: numeroEmpenho.trim(),
+      valor_recebido: valorRecebidoNovo,
     });
     setSalvando(false);
 
@@ -940,6 +944,19 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <div className="space-y-1.5">
               <Label htmlFor="adiantamento-empenho">Nº do empenho *</Label>
               <Input id="adiantamento-empenho" value={numeroEmpenho} onChange={(e) => setNumeroEmpenho(e.target.value)} placeholder="Informe o número do empenho" maxLength={80} required />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="adiantamento-valor-recebido">Valor do adiantamento recebido (R$) *</Label>
+              <Input
+                id="adiantamento-valor-recebido"
+                type="text"
+                inputMode="decimal"
+                value={valorRecebidoProcesso}
+                onChange={(e) => setValorRecebidoProcesso(e.target.value)}
+                placeholder="Ex.: 3.500,00"
+                required
+              />
+              <p className="text-xs text-muted-foreground">Informe o valor total creditado para este processo. Ele será utilizado no resumo da execução financeira.</p>
             </div>
           </form>
           <DialogFooter>
