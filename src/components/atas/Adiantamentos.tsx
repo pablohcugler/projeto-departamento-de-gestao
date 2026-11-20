@@ -306,31 +306,25 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               <p className="text-sm text-muted-foreground">Empenho nº {processoSelecionado.numero_empenho}</p>
             </div>
           </div>
-          <Button onClick={() => setDialogNotaAberto(true)}>
-            <Plus className="h-4 w-4" /> Nova nota
-          </Button>
-        </div>
-
-        <div className={`flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${estiloPrazo}`}>
-          <div className="flex items-center gap-3">
-            <CalendarClock className="h-6 w-6 shrink-0" />
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide">Prazo para envio da prestação de contas</div>
-              <div className="mt-1 text-lg font-bold tabular-nums">
-                {vencido
-                  ? `Prazo vencido há ${Math.abs(diasParaVencer)} dia(s)`
-                  : venceHoje
-                    ? "Vence hoje — envie a prestação de contas"
-                    : `Faltam ${diasParaVencer} dia(s) para o vencimento`}
+          <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+            <Button onClick={() => setDialogNotaAberto(true)}>
+              <Plus className="h-4 w-4" /> Nova nota
+            </Button>
+            <div className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-right sm:w-[300px] ${estiloPrazo}`} role="status" aria-live="polite">
+              <CalendarClock className="h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wide">Prazo da prestação de contas</div>
+                <div className="text-sm font-bold tabular-nums">
+                  {vencido
+                    ? `Vencido há ${Math.abs(diasParaVencer)} dia(s)`
+                    : venceHoje
+                      ? "Vence hoje — envie a prestação"
+                      : `Faltam ${diasParaVencer} dia(s) para vencer`}
+                </div>
+                <div className="text-[11px] opacity-80">Até {dataBR(processoSelecionado.data_vencimento)}</div>
               </div>
-              <p className="mt-1 text-xs opacity-80">
-                Data limite: {dataBR(processoSelecionado.data_vencimento)}. O dia do recebimento conta como o 1º dia.
-              </p>
             </div>
           </div>
-          <Badge variant={vencido || venceHoje ? "destructive" : "outline"} className="w-fit shrink-0">
-            {vencido ? "Em atraso" : venceHoje ? "Vence hoje" : diasParaVencer <= 7 ? "Prazo próximo" : "Dentro do prazo"}
-          </Badge>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
