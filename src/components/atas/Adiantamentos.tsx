@@ -440,7 +440,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         }> = [];
         for (const arquivo of arquivosComplementares) {
           const documentoId = crypto.randomUUID();
-          const nomeSeguro = arquivo.name.normalize("NFD").replace(/[^\\w.\\-]+/g, "_");
+          const nomeSeguro = arquivo.name.normalize("NFD").replace(/[^\w.\-]+/g, "_");
           const caminho = `adiantamento/${processoSelecionado.id}/${notaId}/complementares/${documentoId}_${nomeSeguro}`;
           const mime = arquivo.type || "application/octet-stream";
           const { error: erroUpload } = await supabase.storage
