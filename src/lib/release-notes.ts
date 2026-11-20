@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.8";
+export const VERSAO_SISTEMA = "1.0.9";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,17 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.9",
+    data: "20/11/2026",
+    titulo: "Contagem inclusiva do prazo de adiantamento",
+    descricao: "Destaca quantos dias faltam para enviar a prestação de contas e passa a contar o dia do recebimento como o primeiro dia do prazo.",
+    itens: [
+      "Painel de prazo no detalhe do processo, com dias restantes, vencimento hoje ou dias em atraso.",
+      "Cálculo inclusivo da data de vencimento: recebimento + período de aplicação - 1 dia.",
+      "Migração para corrigir os vencimentos dos processos já cadastrados e validar a nova regra no banco.",
+    ],
+  },
   {
     versao: "1.0.8",
     data: "20/11/2026",
