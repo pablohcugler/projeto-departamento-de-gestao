@@ -719,7 +719,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
         if (mimeFinal.startsWith("image/") && !["image/jpeg", "image/jpg", "image/png"].includes(mimeFinal)) {
           try {
-            const imagem = await createImageBitmap(new Blob([bytes], { type: mimeFinal }));
+            const imagem = await createImageBitmap(new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: mimeFinal }));
             const canvas = document.createElement("canvas");
             canvas.width = imagem.width;
             canvas.height = imagem.height;
