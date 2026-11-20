@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileImage, FileText, Paperclip, Pencil, Plus, RefreshCw, Search, Upload, Wallet, X,
+  FileImage, FileText, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Upload, Wallet, X,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -122,6 +122,16 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [salvandoValorNota, setSalvandoValorNota] = useState(false);
   const [dialogResumoAberto, setDialogResumoAberto] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
+  const [dialogReabrirAberto, setDialogReabrirAberto] = useState(false);
+  const [reabrindo, setReabrindo] = useState(false);
+
+  const [dialogEditarProcessoAberto, setDialogEditarProcessoAberto] = useState(false);
+  const [salvandoEdicaoProcesso, setSalvandoEdicaoProcesso] = useState(false);
+  const [edicaoProcesso1Doc, setEdicaoProcesso1Doc] = useState("");
+  const [edicaoDataRecebimento, setEdicaoDataRecebimento] = useState("");
+  const [edicaoPeriodoAplicacao, setEdicaoPeriodoAplicacao] = useState("");
+  const [edicaoNumeroEmpenho, setEdicaoNumeroEmpenho] = useState("");
+  const [edicaoValorRecebido, setEdicaoValorRecebido] = useState("");
 
   const consulta = useQuery({
     queryKey: ["adiantamentos"],
@@ -424,6 +434,88 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     ]);
   }
 
+  async function confirmarReabertura() {
+    if (!processoSelecionado || reabrindo) return;
+    setReabrindo(true);
+    const { data, error } = await supabase.rpc("reabrir_adiantamento", {
+      p_adiantamento_id: processoSelecionado.id,
+    });
+    setReabrindo(false);
+    if (error) {
+      toast.error("Não foi possível abrir o adiantamento para ajustes: " + error.message);
+      return;
+    }
+    const resultado = data as { finalizado?: boolean; reaberto_em?: string };
+    setProcessoSelecionado({
+      ...processoSelecionado,
+      finalizado: false,
+      finalizado_em: null,
+    });
+    setDialogReabrirAberto(false);
+    setDialogResumoAberto(false);
+    toast.success("Adiantamento reaberto. Os dados e as notas foram preservados e já podem ser ajustados.");
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
+      qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+    ]);
+  }
+
+  function abrirEdicaoProcesso() {
+    if (!processoSelecionado || processoSelecionado.finalizado) return;
+    setEdicaoProcesso1Doc(processoSelecionado.processo_1doc);
+    setEdicaoDataRecebimento(processoSelecionado.data_recebimento);
+    setEdicaoPeriodoAplicacao(String(processoSelecionado.periodo_aplicacao_dias));
+    setEdicaoNumeroEmpenho(processoSelecionado.numero_empenho);
+    setEdicaoValorRecebido(valorParaInput(processoSelecionado.valor_recebido));
+    setDialogEditarProcessoAberto(true);
+  }
+
+  async function salvarEdicaoProcesso(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!processoSelecionado || processoSelecionado.finalizado || salvandoEdicaoProcesso) return;
+    const periodo = Number(edicaoPeriodoAplicacao);
+    const vencimento = somarDias(edicaoDataRecebimento, periodo);
+    const valor = lerValorMonetario(edicaoValorRecebido);
+    if (!edicaoProcesso1Doc.trim() || !edicaoDataRecebimento
+      || !Number.isInteger(periodo) || periodo <= 0 || !vencimento
+      || !edicaoNumeroEmpenho.trim() || valor === null) {
+      toast.error("Preencha todos os dados do processo com valores válidos.");
+      return;
+    }
+
+    setSalvandoEdicaoProcesso(true);
+    const { error } = await supabase
+      .from("adiantamentos")
+      .update({
+        processo_1doc: edicaoProcesso1Doc.trim(),
+        data_recebimento: edicaoDataRecebimento,
+        periodo_aplicacao_dias: periodo,
+        data_vencimento: vencimento,
+        numero_empenho: edicaoNumeroEmpenho.trim(),
+        valor_recebido: valor,
+      })
+      .eq("id", processoSelecionado.id);
+    setSalvandoEdicaoProcesso(false);
+
+    if (error) {
+      toast.error("Não foi possível salvar os ajustes: " + error.message);
+      return;
+    }
+
+    setProcessoSelecionado({
+      ...processoSelecionado,
+      processo_1doc: edicaoProcesso1Doc.trim(),
+      data_recebimento: edicaoDataRecebimento,
+      periodo_aplicacao_dias: periodo,
+      data_vencimento: vencimento,
+      numero_empenho: edicaoNumeroEmpenho.trim(),
+      valor_recebido: valor,
+    });
+    setDialogEditarProcessoAberto(false);
+    toast.success("Dados do adiantamento atualizados.");
+    await qc.invalidateQueries({ queryKey: ["adiantamentos"] });
+  }
+
   async function abrirArquivo(caminho: string) {
     const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
     if (error || !data?.signedUrl) {
@@ -473,7 +565,13 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           </div>
           <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
             <div className="flex flex-wrap justify-end gap-2">
-              {processoSelecionado.finalizado && <Badge className="self-center"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Finalizado</Badge>}
+              {processoSelecionado.finalizado ? (
+                <Badge className="self-center"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Finalizado</Badge>
+              ) : (
+                <Button variant="outline" onClick={abrirEdicaoProcesso}>
+                  <Settings2 className="h-4 w-4" /> Editar dados do processo
+                </Button>
+              )}
               <Button onClick={abrirDialogNovaNota} disabled={processoSelecionado.finalizado}>
                 <Plus className="h-4 w-4" /> Nova nota
               </Button>
@@ -803,7 +901,15 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
             <DialogFooter className="flex-col-reverse sm:flex-row">
               {processoSelecionado.finalizado ? (
-                <Button type="button" onClick={() => setDialogResumoAberto(false)}>Fechar</Button>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                  <Button type="button" variant="outline" onClick={() => setDialogResumoAberto(false)}>Fechar</Button>
+                  <Button type="button" onClick={() => {
+                    setDialogResumoAberto(false);
+                    setDialogReabrirAberto(true);
+                  }}>
+                    <RotateCcw className="h-4 w-4" /> Abrir para ajustes
+                  </Button>
+                </div>
               ) : (
                 <>
                   <Button type="button" variant="outline" disabled={finalizando} onClick={() => setDialogResumoAberto(false)}>
@@ -814,6 +920,94 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   </Button>
                 </>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={dialogReabrirAberto} onOpenChange={(aberto) => {
+          if (!reabrindo) {
+            setDialogReabrirAberto(aberto);
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="h-5 w-5" /> Abrir adiantamento para ajustes?
+              </DialogTitle>
+              <DialogDescription>
+                O processo {processoSelecionado.processo_1doc} está finalizado. Confirme se deseja reabri-lo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-amber-900 dark:text-amber-200">
+                <p className="flex items-start gap-2 font-medium">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  Ao reabrir, o processo voltará a permitir alterações.
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>As notas fiscais e os valores já registrados serão preservados.</li>
+                  <li>Será possível incluir novas notas, ajustar valores e editar os dados do processo.</li>
+                  <li>Após os ajustes, será possível gerar um novo resumo e finalizar novamente.</li>
+                </ul>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A reabertura ficará registrada no histórico, com data e identificação do usuário responsável.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={reabrindo} onClick={() => setDialogReabrirAberto(false)}>
+                Cancelar
+              </Button>
+              <Button type="button" disabled={reabrindo} onClick={() => void confirmarReabertura()}>
+                <RotateCcw className="h-4 w-4" /> {reabrindo ? "Reabrindo..." : "Sim, abrir para ajustes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={dialogEditarProcessoAberto} onOpenChange={(aberto) => {
+          if (!salvandoEdicaoProcesso) setDialogEditarProcessoAberto(aberto);
+        }}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5" /> Ajustar dados do adiantamento
+              </DialogTitle>
+              <DialogDescription>
+                Altere os dados do processo. O vencimento será recalculado considerando o dia do recebimento como o primeiro dia do prazo.
+              </DialogDescription>
+            </DialogHeader>
+            <form id="form-editar-adiantamento" onSubmit={(e) => void salvarEdicaoProcesso(e)} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="editar-adiantamento-processo">Nº do processo (1Doc) *</Label>
+                <Input id="editar-adiantamento-processo" value={edicaoProcesso1Doc} onChange={(e) => setEdicaoProcesso1Doc(e.target.value)} maxLength={80} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editar-adiantamento-recebimento">Data do recebimento *</Label>
+                <Input id="editar-adiantamento-recebimento" type="date" value={edicaoDataRecebimento} onChange={(e) => setEdicaoDataRecebimento(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editar-adiantamento-periodo">Período de aplicação (dias) *</Label>
+                <Input id="editar-adiantamento-periodo" type="number" min={1} step={1} value={edicaoPeriodoAplicacao} onChange={(e) => setEdicaoPeriodoAplicacao(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editar-adiantamento-vencimento">Data do vencimento</Label>
+                <Input id="editar-adiantamento-vencimento" type="date" value={somarDias(edicaoDataRecebimento, Number(edicaoPeriodoAplicacao))} readOnly className="bg-muted" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editar-adiantamento-empenho">Nº do empenho *</Label>
+                <Input id="editar-adiantamento-empenho" value={edicaoNumeroEmpenho} onChange={(e) => setEdicaoNumeroEmpenho(e.target.value)} maxLength={80} required />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="editar-adiantamento-valor">Valor do adiantamento recebido (R$) *</Label>
+                <Input id="editar-adiantamento-valor" type="text" inputMode="decimal" value={edicaoValorRecebido} onChange={(e) => setEdicaoValorRecebido(e.target.value)} placeholder="Ex.: 3.500,00" required />
+              </div>
+            </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogEditarProcessoAberto(false)} disabled={salvandoEdicaoProcesso}>Cancelar</Button>
+              <Button type="submit" form="form-editar-adiantamento" disabled={salvandoEdicaoProcesso}>
+                {salvandoEdicaoProcesso ? "Salvando ajustes..." : "Salvar ajustes"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
