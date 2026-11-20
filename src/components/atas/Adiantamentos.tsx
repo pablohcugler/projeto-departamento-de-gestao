@@ -839,38 +839,38 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               {notas.map((nota, indice) => {
                 const docsDaNota = documentosPorNota.get(nota.id) ?? [];
                 return (
-                <li key={nota.id} className="relative flex flex-col gap-3 p-4 pr-28 sm:flex-row sm:items-start sm:justify-between">
+                <li key={nota.id} className="relative flex flex-col gap-2 px-3 py-2.5 pr-28 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold tabular-nums text-foreground">
                       {indice + 1}
                     </span>
-                    <div className="min-w-0 space-y-1">
+                    <div className="min-w-0 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">Nota nº {nota.numero_nota}</span>
-                      <Badge variant="outline">{dataBR(nota.data_nota)}</Badge>
+                      <span className="text-sm font-semibold leading-5">Nota nº {nota.numero_nota}</span>
+                      <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">{dataBR(nota.data_nota)}</Badge>
                     </div>
-                    <div className="text-sm font-medium">{nota.fornecedor}</div>
-                    <p className="text-sm text-muted-foreground">{nota.descricao}</p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-sm font-semibold tabular-nums">
+                    <div className="text-xs font-semibold leading-4">{nota.fornecedor}</div>
+                    <p className="text-xs leading-4 text-muted-foreground">{nota.descricao}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <span className="text-xs font-semibold tabular-nums">
                         {nota.valor_despesa === null ? "Valor não informado" : moedaBRL(nota.valor_despesa)}
                       </span>
                       {!processoSelecionado.finalizado && (
-                        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
+                        <Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-[11px]" onClick={() => abrirEdicaoValorNota(nota)}>
                           <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
                         </Button>
                       )}
                     </div>
                     {nota.arquivo_nome ? (
-                      <button type="button" className="inline-flex max-w-full items-center gap-2 text-sm text-primary hover:underline" onClick={() => void abrirArquivo(nota.arquivo_caminho!)}>
-                        <Paperclip className="h-4 w-4 shrink-0" /><span className="truncate">{nota.arquivo_nome}</span>
+                      <button type="button" className="inline-flex max-w-full items-center gap-1.5 text-xs text-primary hover:underline" onClick={() => void abrirArquivo(nota.arquivo_caminho!)}>
+                        <Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{nota.arquivo_nome}</span>
                         {nota.arquivo_tamanho_bytes ? <span className="shrink-0 text-xs text-muted-foreground">({tamanhoArquivo(nota.arquivo_tamanho_bytes)})</span> : null}
                       </button>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3.5 w-3.5" /> Sem arquivo anexado</span>
                     )}
                     {docsDaNota.length > 0 && (
-                      <div className="mt-2 space-y-1.5 rounded-lg bg-muted/30 p-2.5">
+                      <div className="mt-1.5 space-y-1 rounded-lg bg-muted/30 p-2">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                           <Files className="h-3.5 w-3.5" /> Documentos complementares ({docsDaNota.length})
                         </div>
@@ -896,7 +896,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     )}
                     </div>
                   </div>
-                  <div className="absolute right-4 top-3 flex flex-col items-end gap-2">
+                  <div className="absolute right-3 top-2.5 flex flex-col items-end gap-1.5">
                     {nota.arquivo_mime_type?.startsWith("image/") && (
                       <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
                     )}
@@ -908,7 +908,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-8 gap-1.5 rounded-lg px-3 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="h-7 gap-1 rounded-lg px-2 text-[11px] font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => setNotaExcluindo(nota)}
                         aria-label={`Excluir nota nº ${nota.numero_nota}`}
                       >
