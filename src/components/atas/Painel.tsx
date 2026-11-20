@@ -18,6 +18,7 @@ import { ImportarItens } from "./ImportarItens";
 import { CriarPedido } from "./CriarPedido";
 import { Pedidos } from "./Pedidos";
 import { Administracao } from "./Administracao";
+import { Adiantamentos } from "./Adiantamentos";
 import { TemaToggle } from "./TemaToggle";
 import { ConfigTv } from "@/components/tv/ConfigTv";
 import { ChangelogDialog } from "./Changelog";
@@ -749,7 +750,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <Wallet className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">Em construção</span>
+                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">Módulo disponível</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100/70">ADIANTAMENTOS</div>
@@ -757,7 +758,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-amber-50/80">Painel para gestão e acompanhamento de adiantamentos.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Em manutenção
+                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
@@ -816,22 +817,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             </div>
           </section>
         ) : aba === "adiantamentos" ? (
-          <section className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center text-center">
-            <Button variant="ghost" className="mb-8 self-start" onClick={() => setAba("inicio")}>
-              <ArrowLeft className="h-4 w-4" /> Voltar ao painel inicial
-            </Button>
-            <div className="w-full rounded-3xl border bg-gradient-to-br from-card via-card to-amber-50/50 p-8 shadow-sm dark:to-amber-950/20 sm:p-12">
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                <Construction className="h-10 w-10" />
-              </div>
-              <div className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">ADIANTAMENTOS</div>
-              <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">Painel em construção</h2>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Este painel ainda está em construção. Em breve teremos novidades.
-              </p>
-              <Button className="mt-7" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
-            </div>
-          </section>
+          <Adiantamentos onVoltar={() => setAba("inicio")} />
         ) : aba === "pca" ? (
           <section className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center text-center">
             <Button variant="ghost" className="mb-8 self-start" onClick={() => setAba("inicio")}>
