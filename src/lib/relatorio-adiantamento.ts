@@ -98,9 +98,10 @@ function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest:
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   drawShell(page, 1, totalPages, crest, bold, regular, italic);
   page.drawText("RELATÓRIO DE PRESTAÇÃO DE CONTAS", { x: 72, y: 718, size: 15, font: bold, color: BLUE });
-  page.drawText("REGISTRO INDIVIDUAL DE DESPESA", { x: 72, y: 700, size: 9, font: bold, color: MUTED });
+  page.drawText(`ADIANTAMENTO Nº ${data.processo.processo_1doc}  •  REGISTRO INDIVIDUAL DE DESPESA`, { x: 72, y: 700, size: 8.5, font: bold, color: MUTED });
 
-  page.drawRectangle({ x: 72, y: 572, width: 490, height: 108, color: LIGHT, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
+  // A primeira página reúne os dados administrativos do adiantamento e a identificação da despesa.
+  page.drawRectangle({ x: 72, y: 560, width: 490, height: 120, color: LIGHT, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
   page.drawText("DADOS DO ADIANTAMENTO", { x: 86, y: 660, size: 10, font: bold, color: BLUE });
   drawField(page, "Processo de adiantamento", data.processo.processo_1doc, 86, 640, bold, regular);
   drawField(page, "Empenho", data.processo.numero_empenho, 330, 640, bold, regular);
@@ -108,24 +109,24 @@ function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest:
   drawField(page, "Período de aplicação", `${data.processo.periodo_aplicacao_dias} dia(s)`, 245, 603, bold, regular);
   drawField(page, "Data do vencimento", dataBR(data.processo.data_vencimento), 390, 603, bold, regular);
 
-  page.drawRectangle({ x: 72, y: 435, width: 490, height: 118, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
-  page.drawText("IDENTIFICAÇÃO DA DESPESA", { x: 86, y: 533, size: 10, font: bold, color: BLUE });
-  drawField(page, "Nota fiscal nº", data.nota.numero_nota, 86, 512, bold, regular);
-  drawField(page, "Data da nota", dataBR(data.nota.data_nota), 245, 512, bold, regular);
-  drawField(page, "Valor da despesa", brl(data.nota.valor_despesa), 405, 512, bold, regular);
-  drawField(page, "Fornecedor / razão social", data.nota.fornecedor, 86, 472, bold, regular);
+  page.drawRectangle({ x: 72, y: 410, width: 490, height: 130, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
+  page.drawText("IDENTIFICAÇÃO DA DESPESA", { x: 86, y: 520, size: 10, font: bold, color: BLUE });
+  drawField(page, "Nota fiscal nº", data.nota.numero_nota, 86, 498, bold, regular);
+  drawField(page, "Data da nota", dataBR(data.nota.data_nota), 245, 498, bold, regular);
+  drawField(page, "Valor da despesa", brl(data.nota.valor_despesa), 405, 498, bold, regular);
+  drawField(page, "Fornecedor / razão social", data.nota.fornecedor, 86, 458, bold, regular);
 
-  page.drawRectangle({ x: 72, y: 302, width: 490, height: 115, borderColor: rgb(0.35, 0.35, 0.35), borderWidth: 0.8 });
-  page.drawText("DESCRIÇÃO DA DESPESA", { x: 86, y: 397, size: 9, font: bold, color: DARK });
-  drawWrapped(page, data.nota.descricao, 86, 376, 460, regular, 9, DARK, 13);
+  page.drawRectangle({ x: 72, y: 255, width: 490, height: 135, borderColor: rgb(0.35, 0.35, 0.35), borderWidth: 0.8 });
+  page.drawText("DESCRIÇÃO / JUSTIFICATIVA DA DESPESA", { x: 86, y: 370, size: 9, font: bold, color: DARK });
+  drawWrapped(page, data.nota.descricao, 86, 348, 460, regular, 9, DARK, 13);
 
-  page.drawRectangle({ x: 72, y: 190, width: 490, height: 92, color: LIGHT, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
-  page.drawText("RESUMO FINANCEIRO DO ADIANTAMENTO", { x: 86, y: 263, size: 9, font: bold, color: BLUE });
-  drawField(page, "Valor recebido", brl(data.processo.valor_recebido), 86, 242, bold, regular);
-  drawField(page, "Total das despesas cadastradas", brl(data.totalDespesas), 245, 242, bold, regular);
+  page.drawRectangle({ x: 72, y: 135, width: 490, height: 98, color: LIGHT, borderColor: rgb(0.82, 0.86, 0.89), borderWidth: 0.8 });
+  page.drawText("RESUMO FINANCEIRO DO ADIANTAMENTO", { x: 86, y: 214, size: 9, font: bold, color: BLUE });
+  drawField(page, "Valor recebido", brl(data.processo.valor_recebido), 86, 192, bold, regular);
+  drawField(page, "Total das despesas cadastradas", brl(data.totalDespesas), 245, 192, bold, regular);
   const saldo = data.processo.valor_recebido === null ? null : Number(data.processo.valor_recebido) - data.totalDespesas;
-  drawField(page, "Saldo atual", brl(saldo), 445, 242, bold, regular);
-  page.drawText("Documento emitido pelo sistema Gestão em Saúde – Prefeitura do Município de Cajati.", { x: 72, y: 150, size: 8, font: italic, color: MUTED });
+  drawField(page, "Saldo atual", brl(saldo), 445, 192, bold, regular);
+  page.drawText("Documento emitido pelo sistema Gestão em Saúde – Prefeitura do Município de Cajati.", { x: 72, y: 112, size: 7.5, font: italic, color: MUTED });
 }
 
 type PaginaAnexo =
