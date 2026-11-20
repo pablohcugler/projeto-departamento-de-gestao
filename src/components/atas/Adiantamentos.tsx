@@ -556,6 +556,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </DialogHeader>
             <form id="form-nota-adiantamento" onSubmit={(e) => void salvarNota(e)} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="nota-valor-recebido">Valor do adiantamento recebido (R$) *</Label>
+                  <Input id="nota-valor-recebido" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="Ex.: 1500,00" required />
+                  <p className="text-xs text-muted-foreground">O valor fica vinculado a este processo e será utilizado no resumo da execução financeira.</p>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="nota-numero">Número da Nota *</Label>
                   <Input id="nota-numero" value={numeroNota} onChange={(e) => setNumeroNota(e.target.value)} placeholder="Número da nota fiscal" maxLength={80} required />
@@ -567,6 +572,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="nota-fornecedor">Fornecedor *</Label>
                   <Input id="nota-fornecedor" value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} placeholder="Nome ou razão social do fornecedor" maxLength={180} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="nota-valor-despesa">Valor da despesa (R$) *</Label>
+                  <Input id="nota-valor-despesa" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorDespesa} onChange={(e) => setValorDespesa(e.target.value)} placeholder="Ex.: 250,00" required />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="nota-descricao">Descrição sucinta da despesa *</Label>
@@ -608,6 +617,149 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               <Button type="submit" form="form-nota-adiantamento" disabled={salvandoNota}>
                 {salvandoNota ? "Salvando nota..." : "Salvar nota"}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={dialogValorNotaAberto} onOpenChange={(aberto) => {
+          if (!aberto && !salvandoValorNota) {
+            setDialogValorNotaAberto(false);
+            setNotaValorEditando(null);
+            setValorDespesaEdicao("");
+          }
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Informar valor da despesa</DialogTitle>
+              <DialogDescription>
+                Nota nº {notaValorEditando?.numero_nota}. Informe ou corrija o valor para que o resumo financeiro seja calculado corretamente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="nota-valor-edicao">Valor da despesa (R$) *</Label>
+              <Input id="nota-valor-edicao" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorDespesaEdicao} onChange={(e) => setValorDespesaEdicao(e.target.value)} placeholder="Ex.: 250,00" disabled={salvandoValorNota} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={salvandoValorNota} onClick={() => {
+                setDialogValorNotaAberto(false);
+                setNotaValorEditando(null);
+              }}>Cancelar</Button>
+              <Button type="button" disabled={salvandoValorNota} onClick={() => void salvarValorNota()}>
+                {salvandoValorNota ? "Salvando..." : "Salvar valor"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={dialogResumoAberto} onOpenChange={setDialogResumoAberto}>
+          <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" /> Resumo de execução financeira
+              </DialogTitle>
+              <DialogDescription>
+                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <div className="text-sm text-muted-foreground">Valor do adiantamento recebido</div>
+                <div className="mt-1 text-2xl font-bold tabular-nums">
+                  {moedaBRL(valorRecebidoAtual)}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 font-semibold">Despesas registradas</h3>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-[620px] text-sm">
+                    <thead className="bg-muted text-left">
+                      <tr>
+                        <th className="p-3">Nota</th>
+                        <th className="p-3">Data</th>
+                        <th className="p-3">Fornecedor</th>
+                        <th className="p-3 text-right">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {notas.map((nota, indice) => (
+                        <tr key={nota.id} className="border-t">
+                          <td className="p-3">{indice + 1} · {nota.numero_nota}</td>
+                          <td className="p-3 whitespace-nowrap">{dataBR(nota.data_nota)}</td>
+                          <td className="p-3">{nota.fornecedor}</td>
+                          <td className="p-3 text-right font-medium tabular-nums">
+                            {nota.valor_despesa === null ? "Pendente" : moedaBRL(nota.valor_despesa)}
+                          </td>
+                        </tr>
+                      ))}
+                      {notas.length === 0 && (
+                        <tr><td colSpan={4} className="p-5 text-center text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
+                      )}
+                    </tbody>
+                    <tfoot className="border-t bg-muted/40">
+                      <tr>
+                        <td colSpan={3} className="p-3 text-right font-semibold">Total das despesas</td>
+                        <td className="p-3 text-right font-bold tabular-nums">{moedaBRL(totalDespesas)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-4">
+                <div className="text-sm text-muted-foreground">Valor total a ser devolvido</div>
+                <div className={`mt-1 text-3xl font-bold tabular-nums ${despesasExcedentes > 0 ? "text-destructive" : "text-primary"}`}>
+                  {valorDevolucao === null ? "Não calculado" : moedaBRL(valorDevolucao)}
+                </div>
+                {despesasExcedentes > 0 && (
+                  <p className="mt-2 flex items-start gap-2 text-sm text-destructive">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    As despesas excedem o valor recebido em {moedaBRL(despesasExcedentes)}. Confira os lançamentos antes de finalizar.
+                  </p>
+                )}
+              </div>
+
+              {!valorRecebidoAtual && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-300">
+                  Informe o valor recebido do adiantamento no formulário Nova nota antes de finalizar.
+                </div>
+              )}
+              {valoresPendentes.length > 0 && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-800 dark:text-amber-300">
+                  Existem {valoresPendentes.length} nota(s) sem valor de despesa. Volte ao processo e use “Informar valor” em cada nota pendente.
+                </div>
+              )}
+
+              {processoSelecionado.finalizado ? (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                  <div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" /> Prestação de contas finalizada</div>
+                  <p className="mt-1 text-muted-foreground">Confirmação registrada em {processoSelecionado.finalizado_em ? new Date(processoSelecionado.finalizado_em).toLocaleString("pt-BR") : "data não informada"}.</p>
+                </div>
+              ) : (
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                  <p className="flex items-start gap-2 font-medium">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    Confira se o valor recebido, todas as notas e os valores das despesas estão corretos antes de confirmar a prestação de contas.
+                  </p>
+                  <p className="mt-2 text-muted-foreground">Ao selecionar Sim, o adiantamento será finalizado e não poderá mais receber alterações.</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-col-reverse sm:flex-row">
+              {processoSelecionado.finalizado ? (
+                <Button type="button" onClick={() => setDialogResumoAberto(false)}>Fechar</Button>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" disabled={finalizando} onClick={() => setDialogResumoAberto(false)}>
+                    Não, voltar ao adiantamento
+                  </Button>
+                  <Button type="button" disabled={!podeFinalizar || finalizando} onClick={() => void confirmarFinalizacao()}>
+                    <CheckCircle2 className="h-4 w-4" /> {finalizando ? "Finalizando..." : "Sim, confirmar e finalizar"}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
