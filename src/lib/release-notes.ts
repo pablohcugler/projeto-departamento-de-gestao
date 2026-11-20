@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.10";
+export const VERSAO_SISTEMA = "1.0.11";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,20 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.11",
+    data: "20/11/2026",
+    titulo: "Execução financeira e finalização de adiantamentos",
+    descricao: "Inclui valores recebidos e despesas individuais, com demonstrativo de execução financeira e confirmação do encerramento.",
+    itens: [
+      "Campo para informar o valor recebido no cadastro de cada nova nota.",
+      "Campo de valor individual da despesa e possibilidade de completar valores em notas cadastradas anteriormente.",
+      "Demonstrativo com valor recebido, relação de notas, total executado e valor a devolver.",
+      "Confirmação Sim/Não antes de finalizar; a opção Não retorna ao processo.",
+      "Após a finalização, processo e notas ficam bloqueados para alterações.",
+      "Valores monetários aceitam e exibem o padrão brasileiro (R$).",
+    ],
+  },
   {
     versao: "1.0.10",
     data: "20/11/2026",
