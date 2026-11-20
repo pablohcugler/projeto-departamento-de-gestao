@@ -139,6 +139,7 @@ async function handleLoginCpf(
 const BACKUP_TABLES = [
   "atas",
   "adiantamentos",
+  "adiantamento_notas",
   "ata_itens",
   "anexos",
   "contratos",
