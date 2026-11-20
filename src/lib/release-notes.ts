@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.9";
+export const VERSAO_SISTEMA = "1.0.10";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,16 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.10",
+    data: "20/11/2026",
+    titulo: "Aviso de vencimento no processo de adiantamento",
+    descricao: "Reposiciona a contagem de prazo da prestação de contas logo abaixo do botão Nova nota.",
+    itens: [
+      "Informativo compacto e visível no canto superior direito do processo.",
+      "Mostra dias restantes, vencimento no dia ou dias em atraso e a data limite.",
+    ],
+  },
   {
     versao: "1.0.9",
     data: "20/11/2026",
