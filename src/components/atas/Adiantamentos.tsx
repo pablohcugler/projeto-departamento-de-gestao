@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { gerarRelatorioAdiantamento, type AnexoRelatorio } from "@/lib/relatorio-adiantamento";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileImage, FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X,
+  FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -787,7 +787,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         anexos,
       });
 
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const nomeProcesso = processoSelecionado.processo_1doc.replace(/[^\w.-]+/g, "_");
@@ -797,7 +797,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
       toast.success("Relatório PDF gerado com sucesso.");
     } catch (erro) {
       console.error("Erro ao gerar relatório de prestação de contas:", erro);
