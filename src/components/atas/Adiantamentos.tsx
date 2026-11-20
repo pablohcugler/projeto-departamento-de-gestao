@@ -11,13 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileImage, FileText, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Upload, Wallet, X,
+  FileImage, FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Upload, Wallet, X,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
 type NotaDespesa = Tables<"adiantamento_notas">;
+type DocumentoComplementar = Tables<"adiantamento_nota_documentos">;
 
 const LIMITE_ARQUIVO_BYTES = 15 * 1024 * 1024;
+const LIMITE_DOCUMENTOS_COMPLEMENTARES = 20;
+const LIMITE_TOTAL_COMPLEMENTARES_BYTES = 100 * 1024 * 1024;
 
 function somarDias(data: string, dias: number): string {
   if (!data || !Number.isInteger(dias) || dias <= 0) return "";
@@ -93,9 +96,34 @@ function validarArquivo(file: File): string | null {
   return null;
 }
 
+function validarDocumentoComplementar(file: File): string | null {
+  const extensao = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const extensoesPermitidas = [
+    "pdf", "jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif",
+    "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt",
+  ];
+  const mimePermitido = file.type === "application/pdf"
+    || file.type.startsWith("image/")
+    || file.type === "application/msword"
+    || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    || file.type === "application/vnd.ms-excel"
+    || file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    || file.type === "application/vnd.ms-powerpoint"
+    || file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    || file.type === "text/plain";
+  if (extensao === "svg" || file.type === "image/svg+xml") return "Arquivos SVG não são aceitos.";
+  if (!extensoesPermitidas.includes(extensao) && !mimePermitido) {
+    return "Formato não permitido. Use PDF, imagens, Word, Excel, PowerPoint ou TXT.";
+  }
+  if (file.size <= 0) return "Um dos arquivos selecionados está vazio.";
+  if (file.size > LIMITE_ARQUIVO_BYTES) return `O arquivo ${file.name} ultrapassa o limite de 15 MB.`;
+  return null;
+}
+
 export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const qc = useQueryClient();
   const inputArquivo = useRef<HTMLInputElement>(null);
+  const inputDocumentosComplementares = useRef<HTMLInputElement>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
@@ -114,6 +142,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [fornecedor, setFornecedor] = useState("");
   const [descricaoNota, setDescricaoNota] = useState("");
   const [arquivoNota, setArquivoNota] = useState<File | null>(null);
+  const [arquivosComplementares, setArquivosComplementares] = useState<File[]>([]);
   const [valorRecebido, setValorRecebido] = useState("");
   const [valorDespesa, setValorDespesa] = useState("");
   const [notaValorEditando, setNotaValorEditando] = useState<NotaDespesa | null>(null);
@@ -144,6 +173,31 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       return data as Adiantamento[];
     },
   });
+
+  const documentosQ = useQuery({
+    queryKey: ["adiantamento-nota-documentos", processoSelecionado?.id],
+    enabled: !!processoSelecionado?.id,
+    queryFn: async () => {
+      if (!processoSelecionado?.id) return [];
+      const { data, error } = await supabase
+        .from("adiantamento_nota_documentos")
+        .select("*")
+        .eq("adiantamento_id", processoSelecionado.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as DocumentoComplementar[];
+    },
+  });
+
+  const documentosPorNota = useMemo(() => {
+    const porNota = new Map<string, DocumentoComplementar[]>();
+    for (const documento of documentosQ.data ?? []) {
+      const atuais = porNota.get(documento.nota_id) ?? [];
+      atuais.push(documento);
+      porNota.set(documento.nota_id, atuais);
+    }
+    return porNota;
+  }, [documentosQ.data]);
 
   const notasQ = useQuery({
     queryKey: ["adiantamento-notas", processoSelecionado?.id],
@@ -240,9 +294,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     setFornecedor("");
     setDescricaoNota("");
     setArquivoNota(null);
+    setArquivosComplementares([]);
     setValorRecebido("");
     setValorDespesa("");
     if (inputArquivo.current) inputArquivo.current.value = "";
+    if (inputDocumentosComplementares.current) inputDocumentosComplementares.current.value = "";
   }
 
   function fecharDialogNota() {
@@ -264,6 +320,40 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       return;
     }
     setArquivoNota(file);
+  }
+
+  function selecionarDocumentosComplementares(files: FileList | null) {
+    if (!files?.length) return;
+    const novos = Array.from(files);
+    const combinados = [...arquivosComplementares];
+    for (const arquivo of novos) {
+      const erro = validarDocumentoComplementar(arquivo);
+      if (erro) {
+        toast.error(erro);
+        continue;
+      }
+      const duplicado = combinados.some((existente) =>
+        existente.name === arquivo.name
+        && existente.size === arquivo.size
+        && existente.lastModified === arquivo.lastModified
+      );
+      if (!duplicado) combinados.push(arquivo);
+    }
+    if (combinados.length > LIMITE_DOCUMENTOS_COMPLEMENTARES) {
+      toast.error(`É permitido anexar até ${LIMITE_DOCUMENTOS_COMPLEMENTARES} documentos complementares por nota.`);
+      return;
+    }
+    const tamanhoTotal = combinados.reduce((total, arquivo) => total + arquivo.size, 0);
+    if (tamanhoTotal > LIMITE_TOTAL_COMPLEMENTARES_BYTES) {
+      toast.error("O conjunto de documentos complementares não pode ultrapassar 100 MB.");
+      return;
+    }
+    setArquivosComplementares(combinados);
+    if (inputDocumentosComplementares.current) inputDocumentosComplementares.current.value = "";
+  }
+
+  function removerDocumentoComplementar(indice: number) {
+    setArquivosComplementares((atuais) => atuais.filter((_, i) => i !== indice));
   }
 
   async function salvarNota(e: FormEvent<HTMLFormElement>) {
@@ -295,6 +385,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     const notaId = crypto.randomUUID();
     let caminhoArquivo: string | null = null;
     let mimeArquivo: string | null = null;
+    const caminhosEnviados: string[] = [];
+    let notaRegistrada = false;
 
     try {
       if (arquivoNota) {
@@ -309,6 +401,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             upsert: false,
           });
         if (erroUpload) throw new Error("Falha ao anexar a nota fiscal: " + erroUpload.message);
+        caminhosEnviados.push(caminhoArquivo);
       }
 
       const { error: erroValorRecebido } = await supabase
@@ -333,19 +426,66 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         arquivo_tamanho_bytes: arquivoNota?.size ?? null,
       });
       if (error) throw new Error("Não foi possível registrar a nota: " + error.message);
+      notaRegistrada = true;
 
-      toast.success("Nota de despesa cadastrada com sucesso.");
+      if (arquivosComplementares.length > 0) {
+        const documentosInserir: Tables<"adiantamento_nota_documentos", "Insert">[] = [];
+        for (const arquivo of arquivosComplementares) {
+          const documentoId = crypto.randomUUID();
+          const nomeSeguro = arquivo.name.normalize("NFD").replace(/[^\\w.\\-]+/g, "_");
+          const caminho = `adiantamento/${processoSelecionado.id}/${notaId}/complementares/${documentoId}_${nomeSeguro}`;
+          const mime = arquivo.type || "application/octet-stream";
+          const { error: erroUpload } = await supabase.storage
+            .from("anexos")
+            .upload(caminho, arquivo, {
+              contentType: mime,
+              upsert: false,
+            });
+          if (erroUpload) {
+            throw new Error(`Falha ao anexar o documento complementar "${arquivo.name}": ${erroUpload.message}`);
+          }
+          caminhosEnviados.push(caminho);
+          documentosInserir.push({
+            id: documentoId,
+            adiantamento_id: processoSelecionado.id,
+            nota_id: notaId,
+            arquivo_nome: arquivo.name,
+            arquivo_caminho: caminho,
+            arquivo_mime_type: mime,
+            arquivo_tamanho_bytes: arquivo.size,
+          });
+        }
+
+        const { error: erroDocumentos } = await supabase
+          .from("adiantamento_nota_documentos")
+          .insert(documentosInserir);
+        if (erroDocumentos) {
+          throw new Error("Não foi possível registrar os documentos complementares: " + erroDocumentos.message);
+        }
+      }
+
+      toast.success(arquivosComplementares.length > 0
+        ? `Nota cadastrada com ${arquivosComplementares.length} documento(s) complementar(es).`
+        : "Nota de despesa cadastrada com sucesso.");
       setProcessoSelecionado({ ...processoSelecionado, valor_recebido: valorRecebidoNumerico });
       setDialogNotaAberto(false);
       limparFormularioNota();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+        qc.invalidateQueries({ queryKey: ["adiantamento-nota-documentos", processoSelecionado.id] }),
         qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
       ]);
     } catch (erro) {
-      if (caminhoArquivo) {
-        const { error: erroRemocao } = await supabase.storage.from("anexos").remove([caminhoArquivo]);
-        if (erroRemocao) console.error("Falha ao remover arquivo após erro no registro:", erroRemocao);
+      if (caminhosEnviados.length > 0) {
+        const { error: erroRemocao } = await supabase.storage.from("anexos").remove(caminhosEnviados);
+        if (erroRemocao) console.error("Falha ao remover arquivos após erro no registro:", erroRemocao);
+      }
+      if (notaRegistrada) {
+        const { error: erroNota } = await supabase
+          .from("adiantamento_notas")
+          .delete()
+          .eq("id", notaId);
+        if (erroNota) console.error("Falha ao remover nota após erro em documentos complementares:", erroNota);
       }
       console.error("Erro ao cadastrar nota:", erro);
       toast.error(erro instanceof Error ? erro.message : "Não foi possível cadastrar a nota.");
