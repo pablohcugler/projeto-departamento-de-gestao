@@ -437,7 +437,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   async function confirmarReabertura() {
     if (!processoSelecionado || reabrindo) return;
     setReabrindo(true);
-    const { data, error } = await supabase.rpc("reabrir_adiantamento", {
+    const { error } = await supabase.rpc("reabrir_adiantamento", {
       p_adiantamento_id: processoSelecionado.id,
     });
     setReabrindo(false);
@@ -445,7 +445,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       toast.error("Não foi possível abrir o adiantamento para ajustes: " + error.message);
       return;
     }
-    const resultado = data as { finalizado?: boolean; reaberto_em?: string };
     setProcessoSelecionado({
       ...processoSelecionado,
       finalizado: false,
