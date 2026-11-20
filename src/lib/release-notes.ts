@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.13";
+export const VERSAO_SISTEMA = "1.0.14";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,19 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.14",
+    data: "20/11/2026",
+    titulo: "Reabertura de adiantamentos para ajustes",
+    descricao: "Permite reabrir prestações de contas finalizadas, preservando notas e valores e registrando a operação no histórico.",
+    itens: [
+      "Novo botão Abrir para ajustes no resumo de execução financeira de processos finalizados.",
+      "Confirmação explícita antes de reabrir o processo.",
+      "Reabertura preserva notas fiscais, documentos e valores já informados.",
+      "Após reabrir, o usuário pode incluir notas, ajustar valores e editar os dados do processo.",
+      "Histórico registra a data da finalização anterior, o usuário que reabriu e a data da reabertura.",
+    ],
+  },
   {
     versao: "1.0.13",
     data: "20/11/2026",
