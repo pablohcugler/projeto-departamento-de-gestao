@@ -361,14 +361,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   async function salvarNota(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!processoSelecionado) return;
-    const valorRecebidoNumerico = lerValorMonetario(valorRecebido);
     const valorDespesaNumerico = lerValorMonetario(valorDespesa);
     if (!numeroNota.trim() || !dataNota || !fornecedor.trim() || !descricaoNota.trim()) {
       toast.error("Preencha o número, data, fornecedor e descrição da despesa.");
-      return;
-    }
-    if (valorRecebidoNumerico === null) {
-      toast.error("Informe um valor recebido válido, maior que zero.");
       return;
     }
     if (valorDespesaNumerico === null) {
@@ -404,14 +399,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           });
         if (erroUpload) throw new Error("Falha ao anexar a nota fiscal: " + erroUpload.message);
         caminhosEnviados.push(caminhoArquivo);
-      }
-
-      const { error: erroValorRecebido } = await supabase
-        .from("adiantamentos")
-        .update({ valor_recebido: valorRecebidoNumerico })
-        .eq("id", processoSelecionado.id);
-      if (erroValorRecebido) {
-        throw new Error("Não foi possível salvar o valor recebido: " + erroValorRecebido.message);
       }
 
       const { error } = await supabase.from("adiantamento_notas").insert({
@@ -477,7 +464,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       toast.success(arquivosComplementares.length > 0
         ? `Nota cadastrada com ${arquivosComplementares.length} documento(s) complementar(es).`
         : "Nota de despesa cadastrada com sucesso.");
-      setProcessoSelecionado({ ...processoSelecionado, valor_recebido: valorRecebidoNumerico });
       setDialogNotaAberto(false);
       limparFormularioNota();
       await Promise.all([
@@ -957,11 +943,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </DialogHeader>
             <form id="form-nota-adiantamento" onSubmit={(e) => void salvarNota(e)} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="nota-valor-recebido">Valor do adiantamento recebido (R$) *</Label>
-                  <Input id="nota-valor-recebido" type="text" inputMode="decimal" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="Ex.: 1.500,00" required />
-                  <p className="text-xs text-muted-foreground">O valor fica vinculado a este processo e será utilizado no resumo da execução financeira.</p>
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="nota-numero">Número da Nota *</Label>
                   <Input id="nota-numero" value={numeroNota} onChange={(e) => setNumeroNota(e.target.value)} placeholder="Número da nota fiscal" maxLength={80} required />
