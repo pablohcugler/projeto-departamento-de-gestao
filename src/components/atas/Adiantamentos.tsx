@@ -784,6 +784,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           data_nota: nota.data_nota,
           fornecedor: nota.fornecedor,
           descricao: nota.descricao,
+          justificativa: nota.justificativa || "",
           valor_despesa: nota.valor_despesa,
         },
         totalDespesas,
