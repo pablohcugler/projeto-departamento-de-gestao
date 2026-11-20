@@ -103,8 +103,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         .from("adiantamento_notas")
         .select("*")
         .eq("adiantamento_id", processoSelecionado.id)
-        .order("data_nota", { ascending: false })
-        .order("created_at", { ascending: false });
+        .order("data_nota", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as NotaDespesa[];
     },
@@ -328,10 +328,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border bg-card">
-            <div className="divide-y">
-              {notas.map((nota) => (
-                <article key={nota.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-1">
+            <ol className="divide-y" aria-label="Notas de despesas em ordem cronológica">
+              {notas.map((nota, indice) => (
+                <li key={nota.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground">
+                      {indice + 1}
+                    </span>
+                    <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold">Nota nº {nota.numero_nota}</span>
                       <Badge variant="outline">{dataBR(nota.data_nota)}</Badge>
@@ -346,6 +350,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3.5 w-3.5" /> Sem arquivo anexado</span>
                     )}
+                    </div>
                   </div>
                   {nota.arquivo_mime_type?.startsWith("image/") && (
                     <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
@@ -353,9 +358,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   {nota.arquivo_mime_type === "application/pdf" && (
                     <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
                   )}
-                </article>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         )}
 
