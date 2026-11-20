@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { gerarRelatorioAdiantamento, type AnexoRelatorio } from "@/lib/relatorio-adiantamento";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
   FileImage, FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X,
@@ -150,6 +151,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [dialogValorNotaAberto, setDialogValorNotaAberto] = useState(false);
   const [notaExcluindo, setNotaExcluindo] = useState<NotaDespesa | null>(null);
   const [excluindoNota, setExcluindoNota] = useState(false);
+  const [gerandoRelatorioNotaId, setGerandoRelatorioNotaId] = useState<string | null>(null);
   const [salvandoValorNota, setSalvandoValorNota] = useState(false);
   const [dialogResumoAberto, setDialogResumoAberto] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
@@ -698,6 +700,113 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await qc.invalidateQueries({ queryKey: ["adiantamentos"] });
   }
 
+  async function gerarRelatorioNota(nota: NotaDespesa) {
+    if (!processoSelecionado || gerandoRelatorioNotaId) return;
+    setGerandoRelatorioNotaId(nota.id);
+    try {
+      const documentosAtualizados = await documentosQ.refetch();
+      if (documentosAtualizados.error) throw documentosAtualizados.error;
+
+      const anexos: AnexoRelatorio[] = [];
+      const baixarArquivo = async (caminho: string, nome: string, mimeType: string, categoria: "nota" | "complementar") => {
+        const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
+        if (error || !data?.signedUrl) throw new Error(`Não foi possível acessar o arquivo "${nome}".`);
+        const resposta = await fetch(data.signedUrl);
+        if (!resposta.ok) throw new Error(`Falha ao baixar "${nome}" para montar o relatório.`);
+        let bytes = new Uint8Array(await resposta.arrayBuffer());
+        let mimeFinal = mimeType || "application/octet-stream";
+        let nomeFinal = nome;
+
+        if (mimeFinal.startsWith("image/") && !["image/jpeg", "image/jpg", "image/png"].includes(mimeFinal)) {
+          try {
+            const imagem = await createImageBitmap(new Blob([bytes], { type: mimeFinal }));
+            const canvas = document.createElement("canvas");
+            canvas.width = imagem.width;
+            canvas.height = imagem.height;
+            const contexto = canvas.getContext("2d");
+            if (!contexto) throw new Error("Não foi possível preparar a imagem.");
+            contexto.drawImage(imagem, 0, 0);
+            imagem.close();
+            const png = await new Promise<Blob>((resolve, reject) => {
+              canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Falha ao converter imagem.")), "image/png");
+            });
+            bytes = new Uint8Array(await png.arrayBuffer());
+            mimeFinal = "image/png";
+            nomeFinal = nome.replace(/\.[^.]+$/, "") + ".png";
+          } catch {
+            throw new Error(`A imagem "${nome}" não pôde ser convertida. Converta-a para JPG ou PNG e anexe novamente.`);
+          }
+        }
+
+        anexos.push({ nome: nomeFinal, mimeType: mimeFinal, bytes, categoria });
+      };
+
+      if (nota.arquivo_caminho && nota.arquivo_nome) {
+        await baixarArquivo(
+          nota.arquivo_caminho,
+          nota.arquivo_nome,
+          nota.arquivo_mime_type ?? "",
+          "nota",
+        );
+      }
+
+      for (const documento of documentosAtualizados.data ?? []) {
+        if (documento.nota_id !== nota.id) continue;
+        await baixarArquivo(
+          documento.arquivo_caminho,
+          documento.arquivo_nome,
+          documento.arquivo_mime_type,
+          "complementar",
+        );
+      }
+
+      const notasAtualizadas = await notasQ.refetch();
+      if (notasAtualizadas.error) throw notasAtualizadas.error;
+      const totalDespesas = (notasAtualizadas.data ?? []).reduce(
+        (total, item) => total + (Number(item.valor_despesa) || 0),
+        0,
+      );
+
+      const pdfBytes = await gerarRelatorioAdiantamento({
+        processo: {
+          processo_1doc: processoSelecionado.processo_1doc,
+          numero_empenho: processoSelecionado.numero_empenho,
+          data_recebimento: processoSelecionado.data_recebimento,
+          periodo_aplicacao_dias: processoSelecionado.periodo_aplicacao_dias,
+          data_vencimento: processoSelecionado.data_vencimento,
+          valor_recebido: processoSelecionado.valor_recebido,
+        },
+        nota: {
+          numero_nota: nota.numero_nota,
+          data_nota: nota.data_nota,
+          fornecedor: nota.fornecedor,
+          descricao: nota.descricao,
+          valor_despesa: nota.valor_despesa,
+        },
+        totalDespesas,
+        anexos,
+      });
+
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const nomeProcesso = processoSelecionado.processo_1doc.replace(/[^\w.-]+/g, "_");
+      const nomeNota = nota.numero_nota.replace(/[^\w.-]+/g, "_");
+      link.href = url;
+      link.download = `Prestacao_Contas_Adiantamento_${nomeProcesso}_Nota_${nomeNota}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Relatório PDF gerado com sucesso.");
+    } catch (erro) {
+      console.error("Erro ao gerar relatório de prestação de contas:", erro);
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível gerar o relatório PDF.");
+    } finally {
+      setGerandoRelatorioNotaId(null);
+    }
+  }
+
   async function abrirArquivo(caminho: string) {
     const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
     if (error || !data?.signedUrl) {
@@ -883,12 +992,17 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     </div>
                   </div>
                   <div className="absolute right-3 top-2.5 flex flex-col items-end gap-1.5">
-                    {nota.arquivo_mime_type?.startsWith("image/") && (
-                      <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
-                    )}
-                    {nota.arquivo_mime_type === "application/pdf" && (
-                      <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-6 gap-1 rounded-full px-2.5 text-[11px]"
+                      onClick={() => void gerarRelatorioNota(nota)}
+                      disabled={gerandoRelatorioNotaId !== null}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      {gerandoRelatorioNotaId === nota.id ? "Gerando..." : "PDF"}
+                    </Button>
                     {!processoSelecionado.finalizado && (
                       <Button
                         type="button"
