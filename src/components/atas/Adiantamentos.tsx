@@ -27,6 +27,14 @@ function dataBR(data: string): string {
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
 }
 
+function dataHojeLocal(): string {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
 export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const qc = useQueryClient();
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -50,6 +58,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   });
 
   const lista = consulta.data ?? [];
+  const hojeLocal = dataHojeLocal();
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     if (!termo) return lista;
@@ -132,8 +141,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.length}</div>
         </div>
         <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" /> Próximos vencimentos</div>
-          <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.filter((item) => item.data_vencimento >= new Date().toISOString().slice(0, 10)).length}</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" /> A vencer</div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.filter((item) => item.data_vencimento >= hojeLocal).length}</div>
         </div>
       </div>
 
@@ -164,7 +173,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             </thead>
             <tbody>
               {filtrados.map((item) => {
-                const vencido = item.data_vencimento < new Date().toISOString().slice(0, 10);
+                const vencido = item.data_vencimento < hojeLocal;
                 return (
                   <tr key={item.id} className="border-t">
                     <td className="px-4 py-3 font-medium">{item.processo_1doc}</td>
