@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  ArrowLeft, CalendarClock, FileImage, FileText, Paperclip, Plus, RefreshCw,
-  Search, Upload, Wallet, X,
+  AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
+  FileImage, FileText, Paperclip, Pencil, Plus, RefreshCw, Search, Upload, Wallet, X,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -41,6 +41,22 @@ function diferencaDias(dataFinal: string, dataInicial: string): number {
   const finalUtc = Date.UTC(anoFinal, mesFinal - 1, diaFinal);
   const inicialUtc = Date.UTC(anoInicial, mesInicial - 1, diaInicial);
   return Math.round((finalUtc - inicialUtc) / 86_400_000);
+}
+
+function moedaBRL(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return "Não informado";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor));
+}
+
+function lerValorMonetario(valor: string): number | null {
+  if (!valor.trim()) return null;
+  const numero = Number(valor.replace(",", "."));
+  if (!Number.isFinite(numero) || numero <= 0) return null;
+  return Math.round(numero * 100) / 100;
+}
+
+function valorParaInput(valor: number | null | undefined): string {
+  return valor === null || valor === undefined ? "" : Number(valor).toFixed(2);
 }
 
 function dataHojeLocal(): string {
@@ -90,6 +106,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [fornecedor, setFornecedor] = useState("");
   const [descricaoNota, setDescricaoNota] = useState("");
   const [arquivoNota, setArquivoNota] = useState<File | null>(null);
+  const [valorRecebido, setValorRecebido] = useState("");
+  const [valorDespesa, setValorDespesa] = useState("");
+  const [notaValorEditando, setNotaValorEditando] = useState<NotaDespesa | null>(null);
+  const [valorDespesaEdicao, setValorDespesaEdicao] = useState("");
+  const [dialogValorNotaAberto, setDialogValorNotaAberto] = useState(false);
+  const [salvandoValorNota, setSalvandoValorNota] = useState(false);
+  const [dialogResumoAberto, setDialogResumoAberto] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
 
   const consulta = useQuery({
     queryKey: ["adiantamentos"],
@@ -179,12 +203,24 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await qc.invalidateQueries({ queryKey: ["adiantamentos"] });
   }
 
+  function abrirDialogNovaNota() {
+    if (!processoSelecionado || processoSelecionado.finalizado) {
+      toast.error("Este adiantamento já foi finalizado.");
+      return;
+    }
+    setValorRecebido(valorParaInput(processoSelecionado.valor_recebido));
+    setValorDespesa("");
+    setDialogNotaAberto(true);
+  }
+
   function limparFormularioNota() {
     setNumeroNota("");
     setDataNota("");
     setFornecedor("");
     setDescricaoNota("");
     setArquivoNota(null);
+    setValorRecebido("");
+    setValorDespesa("");
     if (inputArquivo.current) inputArquivo.current.value = "";
   }
 
@@ -212,8 +248,18 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   async function salvarNota(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!processoSelecionado) return;
+    const valorRecebidoNumerico = lerValorMonetario(valorRecebido);
+    const valorDespesaNumerico = lerValorMonetario(valorDespesa);
     if (!numeroNota.trim() || !dataNota || !fornecedor.trim() || !descricaoNota.trim()) {
       toast.error("Preencha o número, data, fornecedor e descrição da despesa.");
+      return;
+    }
+    if (valorRecebidoNumerico === null) {
+      toast.error("Informe um valor recebido válido, maior que zero.");
+      return;
+    }
+    if (valorDespesaNumerico === null) {
+      toast.error("Informe um valor de despesa válido, maior que zero.");
       return;
     }
     if (arquivoNota) {
@@ -244,6 +290,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         if (erroUpload) throw new Error("Falha ao anexar a nota fiscal: " + erroUpload.message);
       }
 
+      const { error: erroValorRecebido } = await supabase
+        .from("adiantamentos")
+        .update({ valor_recebido: valorRecebidoNumerico })
+        .eq("id", processoSelecionado.id);
+      if (erroValorRecebido) {
+        throw new Error("Não foi possível salvar o valor recebido: " + erroValorRecebido.message);
+      }
+
       const { error } = await supabase.from("adiantamento_notas").insert({
         id: notaId,
         adiantamento_id: processoSelecionado.id,
@@ -251,6 +305,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         data_nota: dataNota,
         fornecedor: fornecedor.trim(),
         descricao: descricaoNota.trim(),
+        valor_despesa: valorDespesaNumerico,
         arquivo_nome: arquivoNota?.name ?? null,
         arquivo_caminho: caminhoArquivo,
         arquivo_mime_type: mimeArquivo,
@@ -259,9 +314,13 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       if (error) throw new Error("Não foi possível registrar a nota: " + error.message);
 
       toast.success("Nota de despesa cadastrada com sucesso.");
+      setProcessoSelecionado({ ...processoSelecionado, valor_recebido: valorRecebidoNumerico });
       setDialogNotaAberto(false);
       limparFormularioNota();
-      await qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+        qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
+      ]);
     } catch (erro) {
       if (caminhoArquivo) {
         const { error: erroRemocao } = await supabase.storage.from("anexos").remove([caminhoArquivo]);
