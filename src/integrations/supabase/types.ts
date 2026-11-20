@@ -275,6 +275,41 @@ export type Database = {
           },
         ]
       }
+      adiantamento_reaberturas: {
+        Row: {
+          adiantamento_id: string
+          created_at: string
+          finalizado_em_anterior: string
+          id: string
+          reaberto_em: string
+          reaberto_por: string
+        }
+        Insert: {
+          adiantamento_id: string
+          created_at?: string
+          finalizado_em_anterior: string
+          id?: string
+          reaberto_em?: string
+          reaberto_por: string
+        }
+        Update: {
+          adiantamento_id?: string
+          created_at?: string
+          finalizado_em_anterior?: string
+          id?: string
+          reaberto_em?: string
+          reaberto_por?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_reaberturas_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       adiantamentos: {
         Row: {
           created_at: string
@@ -622,6 +657,10 @@ export type Database = {
       }
       current_user_setor_id: { Args: never; Returns: string }
       finalizar_adiantamento: {
+        Args: { p_adiantamento_id: string }
+        Returns: Json
+      }
+      reabrir_adiantamento: {
         Args: { p_adiantamento_id: string }
         Returns: Json
       }
