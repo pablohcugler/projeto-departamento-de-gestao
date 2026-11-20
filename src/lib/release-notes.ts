@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.7";
+export const VERSAO_SISTEMA = "1.0.8";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,17 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.8",
+    data: "20/11/2026",
+    titulo: "Lista cronológica de notas de despesas",
+    descricao: "Organiza as notas de cada processo de adiantamento em ordem cronológica e com numeração sequencial.",
+    itens: [
+      "Notas exibidas da mais antiga para a mais atual, considerando a data da nota.",
+      "Numeração sequencial iniciada em 1 e recalculada automaticamente conforme novos registros.",
+      "Lista sem cartões independentes, mantendo fornecedor, descrição e acesso ao documento fiscal.",
+    ],
+  },
   {
     versao: "1.0.7",
     data: "20/11/2026",
