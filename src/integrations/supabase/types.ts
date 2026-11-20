@@ -281,6 +281,7 @@ export type Database = {
           data_nota: string
           descricao: string
           fornecedor: string
+          justificativa: string
           id: string
           numero_nota: string
           user_id: string
@@ -296,6 +297,7 @@ export type Database = {
           data_nota: string
           descricao: string
           fornecedor: string
+          justificativa: string
           id?: string
           numero_nota: string
           user_id?: string
