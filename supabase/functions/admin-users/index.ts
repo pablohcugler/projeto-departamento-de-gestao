@@ -140,6 +140,7 @@ const BACKUP_TABLES = [
   "atas",
   "adiantamentos",
   "adiantamento_notas",
+  "adiantamento_reaberturas",
   "ata_itens",
   "anexos",
   "contratos",
