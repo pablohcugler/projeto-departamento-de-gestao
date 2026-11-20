@@ -839,7 +839,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               {notas.map((nota, indice) => {
                 const docsDaNota = documentosPorNota.get(nota.id) ?? [];
                 return (
-                <li key={nota.id} className="relative flex flex-col gap-3 p-4 pb-14 sm:flex-row sm:items-start sm:justify-between">
+                <li key={nota.id} className="relative flex flex-col gap-3 p-4 pr-28 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground">
                       {indice + 1}
@@ -896,24 +896,26 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     )}
                     </div>
                   </div>
-                  {nota.arquivo_mime_type?.startsWith("image/") && (
-                    <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
-                  )}
-                  {nota.arquivo_mime_type === "application/pdf" && (
-                    <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
-                  )}
-                  {!processoSelecionado.finalizado && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="absolute bottom-3 right-4 h-8 gap-1.5 rounded-lg px-3 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => setNotaExcluindo(nota)}
-                      aria-label={`Excluir nota nº ${nota.numero_nota}`}
-                    >
-                      <Trash2 className="h-4 w-4" /> Excluir nota
-                    </Button>
-                  )}
+                  <div className="absolute right-4 top-3 flex flex-col items-end gap-2">
+                    {nota.arquivo_mime_type?.startsWith("image/") && (
+                      <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
+                    )}
+                    {nota.arquivo_mime_type === "application/pdf" && (
+                      <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
+                    )}
+                    {!processoSelecionado.finalizado && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 gap-1.5 rounded-lg px-3 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setNotaExcluindo(nota)}
+                        aria-label={`Excluir nota nº ${nota.numero_nota}`}
+                      >
+                        <Trash2 className="h-4 w-4" /> Excluir nota
+                      </Button>
+                    )}
+                  </div>
                 </li>
                 );
               })}
