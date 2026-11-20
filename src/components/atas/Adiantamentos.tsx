@@ -856,9 +856,21 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         {nota.valor_despesa === null ? "Valor não informado" : moedaBRL(nota.valor_despesa)}
                       </span>
                       {!processoSelecionado.finalizado && (
-                        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
-                          <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
-                        </Button>
+                        <>
+                          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => abrirEdicaoValorNota(nota)}>
+                            <Pencil className="mr-1 h-3 w-3" /> {nota.valor_despesa === null ? "Informar valor" : "Ajustar valor"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setNotaExcluindo(nota)}
+                            aria-label={`Excluir nota nº ${nota.numero_nota}`}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" /> Excluir nota
+                          </Button>
+                        </>
                       )}
                     </div>
                     {nota.arquivo_nome ? (
@@ -896,20 +908,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     )}
                     </div>
                   </div>
-                  {!processoSelecionado.finalizado && (
-                    <div className="flex shrink-0 items-start">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setNotaExcluindo(nota)}
-                        aria-label={`Excluir nota nº ${nota.numero_nota}`}
-                      >
-                        <Trash2 className="mr-1 h-4 w-4" /> Excluir nota
-                      </Button>
-                    </div>
-                  )}
                   {nota.arquivo_mime_type?.startsWith("image/") && (
                     <Badge variant="secondary" className="w-fit shrink-0"><FileImage className="mr-1 h-3.5 w-3.5" /> Imagem</Badge>
                   )}
