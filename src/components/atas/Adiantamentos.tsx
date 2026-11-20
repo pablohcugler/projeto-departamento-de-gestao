@@ -364,6 +364,26 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] });
   }
 
+  async function salvarValorRecebido() {
+    if (!processoSelecionado || processoSelecionado.finalizado) return;
+    const valor = lerValorMonetario(valorRecebido);
+    if (valor === null) {
+      toast.error("Informe um valor recebido válido, maior que zero.");
+      return;
+    }
+    const { error } = await supabase
+      .from("adiantamentos")
+      .update({ valor_recebido: valor })
+      .eq("id", processoSelecionado.id);
+    if (error) {
+      toast.error("Não foi possível salvar o valor recebido: " + error.message);
+      return;
+    }
+    setProcessoSelecionado({ ...processoSelecionado, valor_recebido: valor });
+    toast.success("Valor recebido atualizado.");
+    await qc.invalidateQueries({ queryKey: ["adiantamentos"] });
+  }
+
   async function confirmarFinalizacao() {
     if (!processoSelecionado || finalizando) return;
     setFinalizando(true);
@@ -464,11 +484,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Data do recebimento</div><div className="mt-2 text-lg font-semibold tabular-nums">{dataBR(processoSelecionado.data_recebimento)}</div></div>
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Período de aplicação</div><div className="mt-2 text-lg font-semibold tabular-nums">{processoSelecionado.periodo_aplicacao_dias} dia(s)</div></div>
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Data do vencimento</div><div className="mt-2 flex items-center gap-2 text-lg font-semibold tabular-nums">{dataBR(processoSelecionado.data_vencimento)}{vencido && <Badge variant="destructive">Vencido</Badge>}</div></div>
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Notas cadastradas</div><div className="mt-2 text-lg font-semibold tabular-nums">{notas.length}</div></div>
+          <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Valor recebido</div><div className="mt-2 text-lg font-semibold tabular-nums">{moedaBRL(processoSelecionado.valor_recebido)}</div></div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -480,7 +501,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
               <RefreshCw className="h-4 w-4" /> Atualizar notas
             </Button>
-            <Button onClick={() => setDialogResumoAberto(true)} disabled={notasQ.isLoading || notasQ.isError}>
+            <Button onClick={() => {
+              setValorRecebido(valorParaInput(processoSelecionado.valor_recebido));
+              setDialogResumoAberto(true);
+            }} disabled={notasQ.isLoading || notasQ.isError}>
               <Calculator className="h-4 w-4" /> {processoSelecionado.finalizado ? "Ver resumo financeiro" : "Finalizar adiantamento"}
             </Button>
           </div>
@@ -664,9 +688,22 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
             <div className="space-y-4">
               <div className="rounded-xl border bg-muted/30 p-4">
-                <div className="text-sm text-muted-foreground">Valor do adiantamento recebido</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums">
-                  {moedaBRL(valorRecebidoAtual)}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Valor do adiantamento recebido</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums">{moedaBRL(valorRecebidoAtual)}</div>
+                  </div>
+                  {!processoSelecionado.finalizado && (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="resumo-valor-recebido" className="text-xs">Informar/ajustar valor (R$)</Label>
+                        <Input id="resumo-valor-recebido" className="w-40" type="number" inputMode="decimal" min="0.01" step="0.01" value={valorRecebido} onChange={(e) => setValorRecebido(e.target.value)} placeholder="0,00" />
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => void salvarValorRecebido()}>
+                        Salvar valor
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -679,6 +716,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         <th className="p-3">Nota</th>
                         <th className="p-3">Data</th>
                         <th className="p-3">Fornecedor</th>
+                        <th className="p-3">Descrição da despesa</th>
                         <th className="p-3 text-right">Valor</th>
                       </tr>
                     </thead>
@@ -688,18 +726,19 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                           <td className="p-3">{indice + 1} · {nota.numero_nota}</td>
                           <td className="p-3 whitespace-nowrap">{dataBR(nota.data_nota)}</td>
                           <td className="p-3">{nota.fornecedor}</td>
+                          <td className="p-3">{nota.descricao}</td>
                           <td className="p-3 text-right font-medium tabular-nums">
                             {nota.valor_despesa === null ? "Pendente" : moedaBRL(nota.valor_despesa)}
                           </td>
                         </tr>
                       ))}
                       {notas.length === 0 && (
-                        <tr><td colSpan={4} className="p-5 text-center text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
+                        <tr><td colSpan={5} className="p-5 text-center text-muted-foreground">Nenhuma despesa cadastrada.</td></tr>
                       )}
                     </tbody>
                     <tfoot className="border-t bg-muted/40">
                       <tr>
-                        <td colSpan={3} className="p-3 text-right font-semibold">Total das despesas</td>
+                        <td colSpan={4} className="p-3 text-right font-semibold">Total das despesas</td>
                         <td className="p-3 text-right font-bold tabular-nums">{moedaBRL(totalDespesas)}</td>
                       </tr>
                     </tfoot>
