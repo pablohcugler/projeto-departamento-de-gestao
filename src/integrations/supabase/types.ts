@@ -219,6 +219,50 @@ export type Database = {
           },
         ]
       }
+      adiantamentos: {
+        Row: {
+          created_at: string
+          data_recebimento: string
+          data_vencimento: string
+          id: string
+          numero_empenho: string
+          periodo_aplicacao_dias: number
+          processo_1doc: string
+          setor_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_recebimento: string
+          data_vencimento: string
+          id?: string
+          numero_empenho: string
+          periodo_aplicacao_dias: number
+          processo_1doc: string
+          setor_id?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          data_recebimento?: string
+          data_vencimento?: string
+          id?: string
+          numero_empenho?: string
+          periodo_aplicacao_dias?: number
+          processo_1doc?: string
+          setor_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamentos_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_sistema: {
         Row: {
           atualizado_em: string
