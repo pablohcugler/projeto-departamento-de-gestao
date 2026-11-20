@@ -24,7 +24,8 @@ function somarDias(data: string, dias: number): string {
   const [ano, mes, dia] = data.split("-").map(Number);
   if (!ano || !mes || !dia) return "";
   const resultado = new Date(Date.UTC(ano, mes - 1, dia));
-  resultado.setUTCDate(resultado.getUTCDate() + dias);
+  // O dia do recebimento é o primeiro dia do período.
+  resultado.setUTCDate(resultado.getUTCDate() + dias - 1);
   return resultado.toISOString().slice(0, 10);
 }
 
@@ -32,6 +33,14 @@ function dataBR(data: string): string {
   if (!data) return "—";
   const [ano, mes, dia] = data.split("-");
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : data;
+}
+
+function diferencaDias(dataFinal: string, dataInicial: string): number {
+  const [anoFinal, mesFinal, diaFinal] = dataFinal.split("-").map(Number);
+  const [anoInicial, mesInicial, diaInicial] = dataInicial.split("-").map(Number);
+  const finalUtc = Date.UTC(anoFinal, mesFinal - 1, diaFinal);
+  const inicialUtc = Date.UTC(anoInicial, mesInicial - 1, diaInicial);
+  return Math.round((finalUtc - inicialUtc) / 86_400_000);
 }
 
 function dataHojeLocal(): string {
@@ -276,7 +285,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   if (processoSelecionado) {
     const notas = notasQ.data ?? [];
-    const vencido = processoSelecionado.data_vencimento < hojeLocal;
+    const diasParaVencer = diferencaDias(processoSelecionado.data_vencimento, hojeLocal);
+    const vencido = diasParaVencer < 0;
+    const venceHoje = diasParaVencer === 0;
+    const estiloPrazo = vencido || venceHoje
+      ? "border-destructive/40 bg-destructive/5 text-destructive"
+      : diasParaVencer <= 7
+        ? "border-amber-500/40 bg-amber-500/5 text-amber-800 dark:text-amber-300"
+        : "border-primary/25 bg-primary/5 text-foreground";
     return (
       <section className="space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -293,6 +309,28 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           <Button onClick={() => setDialogNotaAberto(true)}>
             <Plus className="h-4 w-4" /> Nova nota
           </Button>
+        </div>
+
+        <div className={`flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${estiloPrazo}`}>
+          <div className="flex items-center gap-3">
+            <CalendarClock className="h-6 w-6 shrink-0" />
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide">Prazo para envio da prestação de contas</div>
+              <div className="mt-1 text-lg font-bold tabular-nums">
+                {vencido
+                  ? `Prazo vencido há ${Math.abs(diasParaVencer)} dia(s)`
+                  : venceHoje
+                    ? "Vence hoje — envie a prestação de contas"
+                    : `Faltam ${diasParaVencer} dia(s) para o vencimento`}
+              </div>
+              <p className="mt-1 text-xs opacity-80">
+                Data limite: {dataBR(processoSelecionado.data_vencimento)}. O dia do recebimento conta como o 1º dia.
+              </p>
+            </div>
+          </div>
+          <Badge variant={vencido || venceHoje ? "destructive" : "outline"} className="w-fit shrink-0">
+            {vencido ? "Em atraso" : venceHoje ? "Vence hoje" : diasParaVencer <= 7 ? "Prazo próximo" : "Dentro do prazo"}
+          </Badge>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
