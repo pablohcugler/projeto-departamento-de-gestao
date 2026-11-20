@@ -779,7 +779,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         ) : (
           <div className="overflow-hidden rounded-xl border bg-card">
             <ol className="divide-y" aria-label="Notas de despesas em ordem cronológica">
-              {notas.map((nota, indice) => (
+              {notas.map((nota, indice) => {
+                const docsDaNota = documentosPorNota.get(nota.id) ?? [];
+                return (
                 <li key={nota.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground">
@@ -810,6 +812,31 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3.5 w-3.5" /> Sem arquivo anexado</span>
                     )}
+                    {docsDaNota.length > 0 && (
+                      <div className="mt-2 space-y-1.5 rounded-lg bg-muted/30 p-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <Files className="h-3.5 w-3.5" /> Documentos complementares ({docsDaNota.length})
+                        </div>
+                        <ul className="space-y-1">
+                          {docsDaNota.map((documento) => (
+                            <li key={documento.id}>
+                              <button
+                                type="button"
+                                className="inline-flex max-w-full items-center gap-2 text-xs text-primary hover:underline"
+                                onClick={() => void abrirArquivo(documento.arquivo_caminho)}
+                              >
+                                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{documento.arquivo_nome}</span>
+                                <span className="shrink-0 text-muted-foreground">({tamanhoArquivo(documento.arquivo_tamanho_bytes)})</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {documentosQ.isError && (
+                      <p className="text-xs text-destructive">Não foi possível carregar os documentos complementares.</p>
+                    )}
                     </div>
                   </div>
                   {nota.arquivo_mime_type?.startsWith("image/") && (
@@ -819,7 +846,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     <Badge variant="secondary" className="w-fit shrink-0"><FileText className="mr-1 h-3.5 w-3.5" /> PDF</Badge>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ol>
           </div>
         )}
@@ -866,9 +894,21 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif,application/pdf,image/*"
                     onChange={(e) => selecionarArquivo(e.target.files?.[0])}
                   />
+                  <input
+                    ref={inputDocumentosComplementares}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                    onChange={(e) => selecionarDocumentosComplementares(e.target.files)}
+                  />
                   <div className="flex flex-wrap items-center gap-2">
                     <Button type="button" variant="outline" onClick={() => inputArquivo.current?.click()} disabled={salvandoNota}>
                       <Upload className="h-4 w-4" /> Anexar arquivo
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => inputDocumentosComplementares.current?.click()} disabled={salvandoNota}>
+                      <Files className="h-4 w-4" /> Documentos complementares
+                      {arquivosComplementares.length > 0 ? ` (${arquivosComplementares.length})` : ""}
                     </Button>
                     {arquivoNota && (
                       <Button type="button" variant="ghost" size="icon" aria-label="Remover arquivo selecionado" onClick={() => selecionarArquivo(undefined)} disabled={salvandoNota}>
@@ -884,6 +924,27 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">Selecione um PDF ou uma imagem. Tamanho máximo: 15 MB. O anexo é opcional.</p>
+                  )}
+                  {arquivosComplementares.length > 0 ? (
+                    <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                      <div className="text-xs font-semibold text-muted-foreground">
+                        Documentos complementares selecionados ({arquivosComplementares.length})
+                      </div>
+                      <ul className="space-y-2">
+                        {arquivosComplementares.map((arquivo, indice) => (
+                          <li key={`${arquivo.name}-${arquivo.lastModified}-${indice}`} className="flex min-w-0 items-center gap-2 text-sm">
+                            <Files className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 flex-1 truncate">{arquivo.name}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{tamanhoArquivo(arquivo.size)}</span>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={`Remover ${arquivo.name}`} onClick={() => removerDocumentoComplementar(indice)} disabled={salvandoNota}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Use este botão para anexar vários documentos de apoio, como listas de presença, certificados, comprovantes e relatórios. São aceitos PDF, imagens, Word, Excel, PowerPoint e TXT, até 15 MB por arquivo (máximo de 20 arquivos e 100 MB por nota).</p>
                   )}
                 </div>
               </div>
