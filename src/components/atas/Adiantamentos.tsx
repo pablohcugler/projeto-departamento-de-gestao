@@ -508,10 +508,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
               <RefreshCw className="h-4 w-4" /> Atualizar notas
             </Button>
-            <Button onClick={() => {
-              setValorRecebido(valorParaInput(processoSelecionado.valor_recebido));
-              setDialogResumoAberto(true);
-            }} disabled={notasQ.isLoading || notasQ.isError}>
+            <Button
+              variant={processoSelecionado.finalizado ? "outline" : "destructive"}
+              onClick={() => {
+                setValorRecebido(valorParaInput(processoSelecionado.valor_recebido));
+                setDialogResumoAberto(true);
+              }}
+              disabled={notasQ.isLoading || notasQ.isError}
+            >
               <Calculator className="h-4 w-4" /> {processoSelecionado.finalizado ? "Ver resumo financeiro" : "Finalizar adiantamento"}
             </Button>
           </div>
