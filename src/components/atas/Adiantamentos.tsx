@@ -142,6 +142,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [dataNota, setDataNota] = useState("");
   const [fornecedor, setFornecedor] = useState("");
   const [descricaoNota, setDescricaoNota] = useState("");
+  const [justificativaNota, setJustificativaNota] = useState("");
   const [arquivoNota, setArquivoNota] = useState<File | null>(null);
   const [arquivosComplementares, setArquivosComplementares] = useState<File[]>([]);
   const [valorRecebido, setValorRecebido] = useState("");
@@ -297,6 +298,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     setDataNota("");
     setFornecedor("");
     setDescricaoNota("");
+    setJustificativaNota("");
     setArquivoNota(null);
     setArquivosComplementares([]);
     setValorRecebido("");
@@ -364,8 +366,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     e.preventDefault();
     if (!processoSelecionado) return;
     const valorDespesaNumerico = lerValorMonetario(valorDespesa);
-    if (!numeroNota.trim() || !dataNota || !fornecedor.trim() || !descricaoNota.trim()) {
-      toast.error("Preencha o número, data, fornecedor e descrição da despesa.");
+    if (!numeroNota.trim() || !dataNota || !fornecedor.trim() || !descricaoNota.trim() || !justificativaNota.trim()) {
+      toast.error("Preencha o número, data, fornecedor, descrição e justificativa da despesa.");
       return;
     }
     if (valorDespesaNumerico === null) {
@@ -410,6 +412,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         data_nota: dataNota,
         fornecedor: fornecedor.trim(),
         descricao: descricaoNota.trim(),
+        justificativa: justificativaNota.trim(),
         valor_despesa: valorDespesaNumerico,
         arquivo_nome: arquivoNota?.name ?? null,
         arquivo_caminho: caminhoArquivo,
@@ -1074,8 +1077,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   <Input id="nota-valor-despesa" type="text" inputMode="decimal" value={valorDespesa} onChange={(e) => setValorDespesa(e.target.value)} placeholder="Ex.: 250,00" required />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="nota-descricao">Descrição sucinta da despesa *</Label>
-                  <Textarea id="nota-descricao" value={descricaoNota} onChange={(e) => setDescricaoNota(e.target.value)} placeholder="Descreva resumidamente a despesa realizada..." rows={3} maxLength={1500} required />
+                  <Label htmlFor="nota-descricao">Descrição sucinta da despesa (título) *</Label>
+                  <Input id="nota-descricao" value={descricaoNota} onChange={(e) => setDescricaoNota(e.target.value)} placeholder="Ex.: GARRAFAS PLÁSTICAS" maxLength={180} required />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="nota-justificativa">Justificativa da despesa *</Label>
+                  <Textarea id="nota-justificativa" value={justificativaNota} onChange={(e) => setJustificativaNota(e.target.value)} placeholder="Informe a finalidade da aquisição/serviço e sua necessidade para a Administração..." rows={4} maxLength={4000} required />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Nota fiscal (PDF ou imagem)</Label>
