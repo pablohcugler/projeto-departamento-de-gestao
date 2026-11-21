@@ -670,8 +670,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await arquivosPrestacaoQ.refetch();
   }
 
-  async function gerarPrestacaoContas() {
-    if (!processoSelecionado?.finalizado || gerandoPrestacao) return;
+  async function gerarPrestacaoContas(processoInformado?: Adiantamento) {
+    const processoGeracao = processoInformado ?? processoSelecionado;
+    if (!processoGeracao?.finalizado || gerandoPrestacao) return;
     setGerandoPrestacao(true);
     const caminhosEnviados: string[] = [];
     try {
@@ -687,7 +688,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       const docsAtuais = docsResult.data ?? [];
       const arquivosAtuais = arquivosResult.data ?? [];
       const totalDespesas = notasAtuais.reduce((sum, nota) => sum + (Number(nota.valor_despesa) || 0), 0);
-      const recebido = Number(processoSelecionado.valor_recebido) || 0;
+      const recebido = Number(processoGeracao.valor_recebido) || 0;
       const saldo = Math.round((recebido - totalDespesas) * 100) / 100;
       const comprovante = arquivosAtuais.find((item) => item.tipo === "comprovante_devolucao");
       if (saldo > 0 && !comprovante) {
@@ -742,16 +743,16 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         arquivo_tamanho_bytes: number;
       }> = [];
       const geracaoId = crypto.randomUUID();
-      const nomeProcesso = nomeSeguroArquivo(processoSelecionado.processo_1doc);
+      const nomeProcesso = nomeSeguroArquivo(processoGeracao.processo_1doc);
 
       const enviarPdf = async (nome: string, bytes: Uint8Array, tipo: string, notaId?: string) => {
-        const caminho = `adiantamento/${processoSelecionado.id}/prestacao/${geracaoId}/${nome}`;
+        const caminho = `adiantamento/${processoGeracao.id}/prestacao/${geracaoId}/${nome}`;
         const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: "application/pdf" });
         const { error } = await supabase.storage.from("anexos").upload(caminho, blob, { contentType: "application/pdf", upsert: false });
         if (error) throw new Error(`Falha ao armazenar ${nome}: ${error.message}`);
         caminhosEnviados.push(caminho);
         registros.push({
-          adiantamento_id: processoSelecionado.id,
+          adiantamento_id: processoGeracao.id,
           ...(notaId ? { nota_id: notaId } : {}),
           tipo,
           arquivo_nome: nome,
@@ -773,12 +774,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         }
         const pdf = await gerarRelatorioAdiantamento({
           processo: {
-            processo_1doc: processoSelecionado.processo_1doc,
-            numero_empenho: processoSelecionado.numero_empenho,
-            data_recebimento: processoSelecionado.data_recebimento,
-            periodo_aplicacao_dias: processoSelecionado.periodo_aplicacao_dias,
-            data_vencimento: processoSelecionado.data_vencimento,
-            valor_recebido: processoSelecionado.valor_recebido,
+            processo_1doc: processoGeracao.processo_1doc,
+            numero_empenho: processoGeracao.numero_empenho,
+            data_recebimento: processoGeracao.data_recebimento,
+            periodo_aplicacao_dias: processoGeracao.periodo_aplicacao_dias,
+            data_vencimento: processoGeracao.data_vencimento,
+            valor_recebido: processoGeracao.valor_recebido,
           },
           nota: {
             numero_nota: nota.numero_nota,
@@ -796,10 +797,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       }
 
       const anexoII = await gerarAnexoIIDespesas({
-        processo_1doc: processoSelecionado.processo_1doc,
-        numero_empenho: processoSelecionado.numero_empenho,
-        data_recebimento: processoSelecionado.data_recebimento,
-        data_vencimento: processoSelecionado.data_vencimento,
+        processo_1doc: processoGeracao.processo_1doc,
+        numero_empenho: processoGeracao.numero_empenho,
+        data_recebimento: processoGeracao.data_recebimento,
+        data_vencimento: processoGeracao.data_vencimento,
         valor_recebido: recebido,
         despesas: notasAtuais.map((nota, index) => ({
           numero: index + 1,
@@ -820,8 +821,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         if (!response.ok) throw new Error("Falha ao baixar o comprovante de devolução.");
         const proofBytes = new Uint8Array(await response.arrayBuffer());
         const deposito = await gerarDepositoSaldoRemanescente({
-          processo_1doc: processoSelecionado.processo_1doc,
-          numero_empenho: processoSelecionado.numero_empenho,
+          processo_1doc: processoGeracao.processo_1doc,
+          numero_empenho: processoGeracao.numero_empenho,
           data_devolucao: new Date().toISOString().slice(0, 10),
           valor_devolvido: saldo,
         }, {
@@ -834,13 +835,13 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
       const zipBytes = criarArquivoZip(entries);
       const zipName = `PRESTACAO DE CONTAS - PROCESSO ${nomeProcesso}.zip`;
-      const zipPath = `adiantamento/${processoSelecionado.id}/prestacao/${geracaoId}/${zipName}`;
+      const zipPath = `adiantamento/${processoGeracao.id}/prestacao/${geracaoId}/${zipName}`;
       const zipBlob = new Blob([zipBytes.buffer.slice(zipBytes.byteOffset, zipBytes.byteOffset + zipBytes.byteLength) as ArrayBuffer], { type: "application/zip" });
       const { error: zipError } = await supabase.storage.from("anexos").upload(zipPath, zipBlob, { contentType: "application/zip", upsert: false });
       if (zipError) throw new Error("Não foi possível armazenar o arquivo ZIP: " + zipError.message);
       caminhosEnviados.push(zipPath);
       registros.push({
-        adiantamento_id: processoSelecionado.id,
+        adiantamento_id: processoGeracao.id,
         tipo: "pacote_zip",
         arquivo_nome: zipName,
         arquivo_caminho: zipPath,
@@ -923,22 +924,40 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       valor_recebido?: number;
       valor_devolucao?: number;
     };
-    setProcessoSelecionado({
+    const processoFinalizado: Adiantamento = {
       ...processoSelecionado,
       finalizado: true,
       finalizado_em: resultado.finalizado_em ?? new Date().toISOString(),
-    });
+    };
+    setProcessoSelecionado(processoFinalizado);
     setDialogResumoAberto(false);
-    const saldoDevolucao = Number(resultado.valor_devolucao ?? 0);
-    if (saldoDevolucao > 0) {
-      toast.warning(`Adiantamento finalizado. Deverá ser devolvido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante para gerar a prestação de contas.`);
-    } else {
-      toast.success("Adiantamento finalizado. Gere os arquivos da prestação de contas.");
-    }
+
+    // Calcula o saldo com os dados recém-consultados, sem depender do formato
+    // retornado pela RPC. O cálculo é em centavos para evitar diferenças de ponto flutuante.
+    const totalDespesasConfirmadas = (notasParaConferir.data ?? []).reduce(
+      (total, nota) => total + Math.round((Number(nota.valor_despesa) || 0) * 100),
+      0,
+    ) / 100;
+    const saldoCalculado = Math.round(
+      ((Number(processoSelecionado.valor_recebido) || 0) - totalDespesasConfirmadas) * 100,
+    ) / 100;
+    const saldoDevolucao = Math.max(0, Number.isFinite(Number(resultado.valor_devolucao))
+      ? Number(resultado.valor_devolucao)
+      : saldoCalculado);
+
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
       qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
     ]);
+
+    if (saldoDevolucao > 0) {
+      toast.warning(`Adiantamento finalizado. Deverá ser devolvido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante de transferência para gerar o depósito e concluir a prestação de contas.`);
+    } else {
+      toast.success("Adiantamento confirmado. Iniciando automaticamente a geração dos PDFs e do arquivo ZIP.");
+      // Sem saldo a devolver, não há comprovante pendente: gera tudo neste fluxo
+      // e exibe o botão "Arquivos da prestação de contas" ao concluir.
+      await gerarPrestacaoContas(processoFinalizado);
+    }
   }
 
   async function confirmarReabertura() {
