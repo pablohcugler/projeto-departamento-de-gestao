@@ -366,7 +366,7 @@ export function Administracao() {
         <div>
           <div className="app-eyebrow">ACESSO RESTRITO</div>
           <h2 className="app-page-title flex items-center gap-2"><ShieldCheck className="h-6 w-6" /> Painel do administrador</h2>
-          <p className="text-sm text-muted-foreground">Gestão de usuários, cópias de segurança e Atas de Registro de Preços.</p>
+          <p className="text-sm text-muted-foreground">Gestão de usuários, cópias de segurança, módulos e permissões por setor.</p>
         </div>
         <Badge variant="outline" className="px-3 py-1.5 text-sm">Versão {VERSAO_SISTEMA}</Badge>
       </div>
@@ -382,7 +382,7 @@ export function Administracao() {
           <FileArchive className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão de atas</span><span className="block text-xs font-normal opacity-75">Importação em massa e exclusão</span></span>
         </Button>
         <Button variant={aba === "sistema" ? "default" : "outline"} className="h-auto justify-start gap-3 p-4" onClick={() => setAba("sistema")}>
-          <Settings2 className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão do sistema</span><span className="block text-xs font-normal opacity-75">Integrações e configurações globais</span></span>
+          <Settings2 className="h-5 w-5" /><span className="text-left"><span className="block font-semibold">Gestão do sistema</span><span className="block text-xs font-normal opacity-75">Integrações e acesso por setor/lotação</span></span>
         </Button>
       </div>
 
