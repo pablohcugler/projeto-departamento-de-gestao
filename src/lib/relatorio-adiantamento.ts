@@ -76,35 +76,40 @@ function bytesFromDataUrl(dataUrl: string): Uint8Array {
 }
 
 async function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont): Promise<void> {
-  // Timbrado baseado no modelo institucional enviado: identificação da Saúde, brasão, faixas laterais e rodapé.
+  // Timbrado reproduzido a partir do DOCX oficial enviado: logotipo, cabeçalho,
+  // brasão, faixas laterais assimétricas e rodapé institucional.
   const logoSaude = await page.doc.embedPng(bytesFromDataUrl(logoSaudeCajati));
-  page.drawImage(logoSaude, { x: 22, y: 756, width: 150, height: 55 });
-  // Mede o texto e reduz a fonte se necessário. Não usar maxWidth aqui:
-  // o pdf-lib quebra a frase em outra linha e pode ocultar "CAJATI" sob a linha seguinte.
+  page.drawImage(logoSaude, { x: 10, y: 756, width: 164, height: 55 });
+
   const prefeituraTitulo = "PREFEITURA DO MUNICÍPIO DE CAJATI";
-  const larguraCabecalho = 282;
-  const tamanhoBase = 9.5;
+  const larguraCabecalho = 242;
+  const tamanhoBase = 10.5;
   const larguraEmTamanhoBase = bold.widthOfTextAtSize(prefeituraTitulo, tamanhoBase);
   const tamanhoPrefeitura = larguraEmTamanhoBase > larguraCabecalho
     ? tamanhoBase * (larguraCabecalho / larguraEmTamanhoBase)
     : tamanhoBase;
   const larguraTitulo = bold.widthOfTextAtSize(prefeituraTitulo, tamanhoPrefeitura);
   page.drawText(prefeituraTitulo, {
-    x: 180 + (larguraCabecalho - larguraTitulo) / 2,
+    x: 176 + (larguraCabecalho - larguraTitulo) / 2,
     y: 806,
     size: tamanhoPrefeitura,
     font: bold,
     color: DARK,
   });
-  page.drawText("- ESTADO DE SÃO PAULO -", { x: 235, y: 787, size: 10, font: bold, color: DARK });
-  page.drawText("SECRETARIA MUNICIPAL DE SAÚDE", { x: 205, y: 768, size: 11, font: bold, color: DARK });
-  page.drawImage(crest, { x: 468, y: 754, width: 90, height: 66 });
-  page.drawRectangle({ x: 18, y: 55, width: 7, height: 675, color: BLUE });
-  page.drawRectangle({ x: 35, y: 55, width: 4, height: 675, color: GREEN });
-  page.drawText(ADDRESS, { x: 72, y: 30, size: 7.5, font: regular, color: DARK });
-  page.drawText(CONTACT, { x: 72, y: 18, size: 7.5, font: regular, color: DARK });
+  const estado = "- ESTADO DE SÃO PAULO -";
+  page.drawText(estado, { x: 176 + (larguraCabecalho - bold.widthOfTextAtSize(estado, 9.5)) / 2, y: 787, size: 9.5, font: bold, color: DARK });
+  const secretaria = "SECRETARIA MUNICIPAL DE SAÚDE";
+  page.drawText(secretaria, { x: 176 + (larguraCabecalho - bold.widthOfTextAtSize(secretaria, 10) ) / 2, y: 768, size: 10, font: bold, color: DARK });
+  page.drawImage(crest, { x: 450, y: 754, width: 90, height: 66 });
+
+  // No modelo Word, a faixa azul começa mais acima e a verde começa aproximadamente no meio.
+  page.drawRectangle({ x: 18, y: 0, width: 7, height: 710, color: BLUE });
+  page.drawRectangle({ x: 35, y: 0, width: 4, height: 580, color: GREEN });
+
+  page.drawText(ADDRESS, { x: 70, y: 35, size: 7.2, font: regular, color: DARK });
+  page.drawText(CONTACT, { x: 70, y: 23, size: 7.2, font: regular, color: DARK });
   const pageLabel = `Página ${pageNumber} de ${totalPages}`;
-  page.drawText(pageLabel, { x: PAGE_W - 72 - regular.widthOfTextAtSize(pageLabel, 8), y: 24, size: 8, font: regular, color: DARK });
+  page.drawText(pageLabel, { x: PAGE_W - 72 - regular.widthOfTextAtSize(pageLabel, 7.5), y: 23, size: 7.5, font: regular, color: DARK });
 }
 
 function drawField(page: PDFPage, label: string, value: string, x: number, y: number, bold: PDFFont, regular: PDFFont) {
@@ -131,25 +136,28 @@ async function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, 
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   await drawShell(page, 1, totalPages, crest, bold, regular, italic);
 
-  // O relatório individual apresenta somente os campos do modelo fornecido.
-  // Metadados compactos e hierarquia visual mais próxima, conforme o modelo solicitado.
-  page.drawText(`DIA: ${dataBR(data.nota.data_nota)}`, { x: 72, y: 700, size: 10.5, font: bold, color: DARK });
-  page.drawText(`NF: ${data.nota.numero_nota || "Não informado"}`, { x: 72, y: 684, size: 10.5, font: bold, color: DARK });
-  page.drawText(`RAZÃO SOCIAL: ${data.nota.fornecedor || "Não informado"}`, { x: 72, y: 668, size: 10.5, font: bold, color: DARK, maxWidth: 485 });
+  // Dados e quadro de despesa posicionados conforme o modelo Word oficial.
+  page.drawText(`DIA: ${dataBR(data.nota.data_nota)}`, { x: 83, y: 735, size: 10, font: bold, color: DARK });
+  page.drawText(`NF: ${data.nota.numero_nota || "Não informado"}`, { x: 83, y: 720, size: 10, font: bold, color: DARK });
+  page.drawText(`RAZÃO SOCIAL: ${data.nota.fornecedor || "Não informado"}`, { x: 83, y: 705, size: 10, font: bold, color: DARK });
 
-  const titulo = (data.nota.descricao || "DESCRIÇÃO DA DESPESA").trim();
+  const titulo = (data.nota.descricao || "DESCRIÇÃO DA DESPESA").trim().toLocaleUpperCase("pt-BR");
   const justificativa = (data.nota.justificativa || "—").trim();
 
-  page.drawText(titulo.toLocaleUpperCase("pt-BR"), { x: 72, y: 638, size: 11.5, font: bold, color: DARK, maxWidth: 485 });
+  const boxX = 83;
+  const boxW = 465;
+  const boxTop = 684;
+  const titleRowH = 28;
+  const contentTop = boxTop - titleRowH;
+  const linhasJustificativa = wrapText(`Justificativa:  ${justificativa}`, bold, 9.5, boxW - 18);
+  const boxH = Math.max(395, titleRowH + 24 + linhasJustificativa.length * 12.5 + 18);
+  const boxBottom = Math.max(62, boxTop - boxH);
 
-  // Caixa dimensionada conforme o texto, evitando espaço vazio excessivo.
-  const linhasJustificativa = wrapText(justificativa, bold, 9.5, 466);
-  const alturaCaixa = Math.max(112, 43 + linhasJustificativa.length * 12.5);
-  const topoCaixa = 615;
-  const baseCaixa = Math.max(72, topoCaixa - alturaCaixa);
-  page.drawRectangle({ x: 72, y: baseCaixa, width: 490, height: topoCaixa - baseCaixa, borderColor: DARK, borderWidth: 0.8 });
-  page.drawText("Justificativa:", { x: 84, y: topoCaixa - 19, size: 9.5, font: bold, color: DARK });
-  drawJustifiedParagraph(page, justificativa, 84, topoCaixa - 34, 466, bold, 9.5, DARK, 12.5);
+  page.drawRectangle({ x: boxX, y: boxBottom, width: boxW, height: boxTop - boxBottom, borderColor: DARK, borderWidth: 0.8 });
+  page.drawLine({ start: { x: boxX, y: contentTop }, end: { x: boxX + boxW, y: contentTop }, thickness: 0.8, color: DARK });
+  const titleWidth = bold.widthOfTextAtSize(titulo, 10.5);
+  page.drawText(titulo, { x: boxX + (boxW - titleWidth) / 2, y: boxTop - 18, size: 10.5, font: bold, color: DARK });
+  drawJustifiedParagraph(page, `Justificativa:  ${justificativa}`, boxX + 9, contentTop - 13, boxW - 18, bold, 9.5, DARK, 12.5);
 }
 
 type PaginaAnexo =
