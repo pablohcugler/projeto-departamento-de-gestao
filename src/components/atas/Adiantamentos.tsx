@@ -928,6 +928,24 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       toast.error("Não foi possível abrir o adiantamento para ajustes: " + error.message);
       return;
     }
+    // Os documentos gerados representam a versão anterior da prestação.
+    // Ao reabrir, remove os arquivos finais e o comprovante para exigir nova conferência.
+    const arquivosAntigos = await supabase
+      .from("adiantamento_prestacao_arquivos")
+      .select("id, arquivo_caminho")
+      .eq("adiantamento_id", processoSelecionado.id);
+    if (!arquivosAntigos.error && (arquivosAntigos.data?.length ?? 0) > 0) {
+      const caminhosAntigos = arquivosAntigos.data.map((item) => item.arquivo_caminho);
+      const { error: erroStorage } = await supabase.storage.from("anexos").remove(caminhosAntigos);
+      if (erroStorage) console.error("Falha ao remover arquivos antigos da prestação:", erroStorage);
+      const { error: erroMetadados } = await supabase
+        .from("adiantamento_prestacao_arquivos")
+        .delete()
+        .eq("adiantamento_id", processoSelecionado.id);
+      if (erroMetadados) console.error("Falha ao invalidar registros antigos da prestação:", erroMetadados);
+    }
+    setComprovanteDevolucao(null);
+    if (inputComprovanteDevolucao.current) inputComprovanteDevolucao.current.value = "";
     setProcessoSelecionado({
       ...processoSelecionado,
       finalizado: false,
