@@ -616,6 +616,272 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     await qc.invalidateQueries({ queryKey: ["adiantamentos"] });
   }
 
+  function nomeSeguroArquivo(valor: string): string {
+    return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") || "FORNECEDOR";
+  }
+
+  async function salvarComprovanteDevolucao() {
+    if (!processoSelecionado?.finalizado || !comprovanteDevolucao || enviandoComprovante) return;
+    const ext = comprovanteDevolucao.name.split(".").pop()?.toLowerCase() ?? "";
+    const mime = comprovanteDevolucao.type.toLowerCase();
+    const permitido = mime === "application/pdf" || ["pdf", "jpg", "jpeg", "png"].includes(ext);
+    if (!permitido) {
+      toast.error("Anexe o comprovante em PDF, JPG ou PNG.");
+      return;
+    }
+    if (comprovanteDevolucao.size <= 0 || comprovanteDevolucao.size > LIMITE_ARQUIVO_BYTES) {
+      toast.error("O comprovante deve ter até 15 MB.");
+      return;
+    }
+
+    setEnviandoComprovante(true);
+    const id = crypto.randomUUID();
+    const nome = comprovanteDevolucao.name;
+    const caminho = `adiantamento/${processoSelecionado.id}/prestacao/comprovante_devolucao_${id}_${nomeSeguroArquivo(nome)}`;
+    const { error: uploadError } = await supabase.storage.from("anexos").upload(caminho, comprovanteDevolucao, {
+      contentType: mime || (ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : "image/jpeg"),
+      upsert: false,
+    });
+    if (uploadError) {
+      setEnviandoComprovante(false);
+      toast.error("Não foi possível enviar o comprovante: " + uploadError.message);
+      return;
+    }
+
+    const { error: insertError } = await supabase.from("adiantamento_prestacao_arquivos").insert({
+      adiantamento_id: processoSelecionado.id,
+      tipo: "comprovante_devolucao",
+      arquivo_nome: nome,
+      arquivo_caminho: caminho,
+      arquivo_mime_type: mime || (ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : "image/jpeg"),
+      arquivo_tamanho_bytes: comprovanteDevolucao.size,
+    });
+    if (insertError) {
+      await supabase.storage.from("anexos").remove([caminho]);
+      setEnviandoComprovante(false);
+      toast.error("O arquivo foi enviado, mas não foi possível registrar o comprovante: " + insertError.message);
+      return;
+    }
+
+    setComprovanteDevolucao(null);
+    if (inputComprovanteDevolucao.current) inputComprovanteDevolucao.current.value = "";
+    setEnviandoComprovante(false);
+    toast.success("Comprovante de devolução anexado. Agora você pode gerar a prestação de contas.");
+    await arquivosPrestacaoQ.refetch();
+  }
+
+  async function gerarPrestacaoContas() {
+    if (!processoSelecionado?.finalizado || gerandoPrestacao) return;
+    setGerandoPrestacao(true);
+    const caminhosEnviados: string[] = [];
+    try {
+      const [notasResult, docsResult, arquivosResult] = await Promise.all([
+        notasQ.refetch(),
+        documentosQ.refetch(),
+        arquivosPrestacaoQ.refetch(),
+      ]);
+      if (notasResult.error) throw notasResult.error;
+      if (docsResult.error) throw docsResult.error;
+      if (arquivosResult.error) throw arquivosResult.error;
+      const notasAtuais = notasResult.data ?? [];
+      const docsAtuais = docsResult.data ?? [];
+      const arquivosAtuais = arquivosResult.data ?? [];
+      const totalDespesas = notasAtuais.reduce((sum, nota) => sum + (Number(nota.valor_despesa) || 0), 0);
+      const recebido = Number(processoSelecionado.valor_recebido) || 0;
+      const saldo = Math.round((recebido - totalDespesas) * 100) / 100;
+      const comprovante = arquivosAtuais.find((item) => item.tipo === "comprovante_devolucao");
+      if (saldo > 0 && !comprovante) {
+        throw new Error(`É obrigatório anexar o comprovante da devolução de ${moedaBRL(saldo)} ao Fundo Municipal de Saúde antes de gerar a prestação de contas.`);
+      }
+      if (arquivosAtuais.some((item) => item.tipo === "pacote_zip")) {
+        toast.info("Os arquivos desta prestação de contas já foram gerados. Consulte Arquivos da prestação de contas.");
+        setGerandoPrestacao(false);
+        return;
+      }
+
+      const baixarAnexo = async (caminho: string, nome: string, mimeType: string, categoria: "nota" | "complementar"): Promise<AnexoRelatorio> => {
+        const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
+        if (error || !data?.signedUrl) throw new Error(`Não foi possível acessar o arquivo "${nome}".`);
+        const resposta = await fetch(data.signedUrl);
+        if (!resposta.ok) throw new Error(`Falha ao baixar "${nome}" para montar o relatório.`);
+        let bytes = new Uint8Array(await resposta.arrayBuffer());
+        let mimeFinal = (mimeType || "").toLowerCase();
+        let nomeFinal = nome;
+        if (mimeFinal.startsWith("image/") && !["image/jpeg", "image/jpg", "image/png"].includes(mimeFinal)) {
+          try {
+            const imagem = await createImageBitmap(new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: mimeFinal }));
+            const canvas = document.createElement("canvas");
+            canvas.width = imagem.width;
+            canvas.height = imagem.height;
+            const contexto = canvas.getContext("2d");
+            if (!contexto) throw new Error("Não foi possível preparar a imagem.");
+            contexto.drawImage(imagem, 0, 0);
+            imagem.close();
+            const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Falha ao converter imagem.")), "image/png"));
+            bytes = new Uint8Array(await png.arrayBuffer());
+            mimeFinal = "image/png";
+            nomeFinal = nome.replace(/\.[^.]+$/, "") + ".png";
+          } catch {
+            throw new Error(`A imagem "${nome}" não pôde ser convertida. Converta-a para JPG ou PNG e anexe novamente.`);
+          }
+        }
+        if (!(mimeFinal === "application/pdf" || mimeFinal === "image/jpeg" || mimeFinal === "image/jpg" || mimeFinal === "image/png" || /\.(pdf|jpe?g|png)$/i.test(nomeFinal))) {
+          throw new Error(`O documento complementar "${nome}" precisa ser convertido para PDF, JPG ou PNG antes de gerar os arquivos finais.`);
+        }
+        return { nome: nomeFinal, mimeType: mimeFinal, bytes, categoria };
+      };
+
+      const entries: Array<{ name: string; bytes: Uint8Array }> = [];
+      const registros: Array<{
+        adiantamento_id: string;
+        nota_id?: string;
+        tipo: string;
+        arquivo_nome: string;
+        arquivo_caminho: string;
+        arquivo_mime_type: string;
+        arquivo_tamanho_bytes: number;
+      }> = [];
+      const geracaoId = crypto.randomUUID();
+      const nomeProcesso = nomeSeguroArquivo(processoSelecionado.processo_1doc);
+
+      const enviarPdf = async (nome: string, bytes: Uint8Array, tipo: string, notaId?: string) => {
+        const caminho = `adiantamento/${processoSelecionado.id}/prestacao/${geracaoId}/${nome}`;
+        const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: "application/pdf" });
+        const { error } = await supabase.storage.from("anexos").upload(caminho, blob, { contentType: "application/pdf", upsert: false });
+        if (error) throw new Error(`Falha ao armazenar ${nome}: ${error.message}`);
+        caminhosEnviados.push(caminho);
+        registros.push({
+          adiantamento_id: processoSelecionado.id,
+          ...(notaId ? { nota_id: notaId } : {}),
+          tipo,
+          arquivo_nome: nome,
+          arquivo_caminho: caminho,
+          arquivo_mime_type: "application/pdf",
+          arquivo_tamanho_bytes: bytes.byteLength,
+        });
+        entries.push({ name: nome, bytes });
+      };
+
+      for (let index = 0; index < notasAtuais.length; index++) {
+        const nota = notasAtuais[index];
+        const anexos: AnexoRelatorio[] = [];
+        if (nota.arquivo_caminho && nota.arquivo_nome) {
+          anexos.push(await baixarAnexo(nota.arquivo_caminho, nota.arquivo_nome, nota.arquivo_mime_type ?? "", "nota"));
+        }
+        for (const documento of docsAtuais.filter((doc) => doc.nota_id === nota.id)) {
+          anexos.push(await baixarAnexo(documento.arquivo_caminho, documento.arquivo_nome, documento.arquivo_mime_type, "complementar"));
+        }
+        const pdf = await gerarRelatorioAdiantamento({
+          processo: {
+            processo_1doc: processoSelecionado.processo_1doc,
+            numero_empenho: processoSelecionado.numero_empenho,
+            data_recebimento: processoSelecionado.data_recebimento,
+            periodo_aplicacao_dias: processoSelecionado.periodo_aplicacao_dias,
+            data_vencimento: processoSelecionado.data_vencimento,
+            valor_recebido: processoSelecionado.valor_recebido,
+          },
+          nota: {
+            numero_nota: nota.numero_nota,
+            data_nota: nota.data_nota,
+            fornecedor: nota.fornecedor,
+            descricao: nota.descricao,
+            justificativa: nota.justificativa || "",
+            valor_despesa: nota.valor_despesa,
+          },
+          totalDespesas,
+          anexos,
+        });
+        const nomeNota = `${String(index + 1).padStart(2, "0")} - ${nomeSeguroArquivo(nota.fornecedor).toUpperCase()}.pdf`;
+        await enviarPdf(nomeNota, pdf, "relatorio_nota", nota.id);
+      }
+
+      const anexoII = await gerarAnexoIIDespesas({
+        processo_1doc: processoSelecionado.processo_1doc,
+        numero_empenho: processoSelecionado.numero_empenho,
+        data_recebimento: processoSelecionado.data_recebimento,
+        data_vencimento: processoSelecionado.data_vencimento,
+        valor_recebido: recebido,
+        despesas: notasAtuais.map((nota, index) => ({
+          numero: index + 1,
+          numero_nota: nota.numero_nota,
+          data_nota: nota.data_nota,
+          fornecedor: nota.fornecedor,
+          descricao: nota.descricao,
+          valor_despesa: Number(nota.valor_despesa) || 0,
+        })),
+      });
+      await enviarPdf("ANEXO II - RELATORIO DE DESPESAS.pdf", anexoII, "anexo_ii");
+
+      if (saldo > 0) {
+        if (!comprovante) throw new Error("Comprovante de devolução não localizado.");
+        const { data: signed, error } = await supabase.storage.from("anexos").createSignedUrl(comprovante.arquivo_caminho, 300);
+        if (error || !signed?.signedUrl) throw new Error("Não foi possível acessar o comprovante de devolução.");
+        const response = await fetch(signed.signedUrl);
+        if (!response.ok) throw new Error("Falha ao baixar o comprovante de devolução.");
+        const proofBytes = new Uint8Array(await response.arrayBuffer());
+        const deposito = await gerarDepositoSaldoRemanescente({
+          processo_1doc: processoSelecionado.processo_1doc,
+          numero_empenho: processoSelecionado.numero_empenho,
+          data_devolucao: new Date().toISOString().slice(0, 10),
+          valor_devolvido: saldo,
+        }, {
+          nome: comprovante.arquivo_nome,
+          mimeType: comprovante.arquivo_mime_type,
+          bytes: proofBytes,
+        });
+        await enviarPdf("DEPOSITO DE SALDO REMANESCENTE.pdf", deposito, "deposito_saldo");
+      }
+
+      const zipBytes = criarArquivoZip(entries);
+      const zipName = `PRESTACAO DE CONTAS - PROCESSO ${nomeProcesso}.zip`;
+      const zipPath = `adiantamento/${processoSelecionado.id}/prestacao/${geracaoId}/${zipName}`;
+      const zipBlob = new Blob([zipBytes.buffer.slice(zipBytes.byteOffset, zipBytes.byteOffset + zipBytes.byteLength) as ArrayBuffer], { type: "application/zip" });
+      const { error: zipError } = await supabase.storage.from("anexos").upload(zipPath, zipBlob, { contentType: "application/zip", upsert: false });
+      if (zipError) throw new Error("Não foi possível armazenar o arquivo ZIP: " + zipError.message);
+      caminhosEnviados.push(zipPath);
+      registros.push({
+        adiantamento_id: processoSelecionado.id,
+        tipo: "pacote_zip",
+        arquivo_nome: zipName,
+        arquivo_caminho: zipPath,
+        arquivo_mime_type: "application/zip",
+        arquivo_tamanho_bytes: zipBytes.byteLength,
+      });
+
+      const { error: metadataError } = await supabase.from("adiantamento_prestacao_arquivos").insert(registros);
+      if (metadataError) throw new Error("Os arquivos foram preparados, mas não foi possível registrar a prestação de contas: " + metadataError.message);
+
+      toast.success("Prestação de contas gerada. O ZIP contém o ANEXO II e os relatórios individuais das notas.");
+      await arquivosPrestacaoQ.refetch();
+      setDialogArquivosPrestacao(true);
+    } catch (error) {
+      if (caminhosEnviados.length) {
+        const { error: cleanupError } = await supabase.storage.from("anexos").remove(caminhosEnviados);
+        if (cleanupError) console.error("Falha ao limpar arquivos de uma geração incompleta:", cleanupError);
+      }
+      console.error("Erro ao gerar prestação de contas:", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível gerar a prestação de contas.");
+    } finally {
+      setGerandoPrestacao(false);
+    }
+  }
+
+  async function baixarArquivoPrestacao(arquivo: ArquivoPrestacao) {
+    const { data, error } = await supabase.storage.from("anexos").createSignedUrl(arquivo.arquivo_caminho, 300);
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível acessar o arquivo da prestação de contas.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = data.signedUrl;
+    link.download = arquivo.arquivo_nome;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   async function confirmarFinalizacao() {
     if (!processoSelecionado || finalizando) return;
     setFinalizando(true);
