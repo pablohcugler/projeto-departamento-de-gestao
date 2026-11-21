@@ -32,6 +32,8 @@ DROP POLICY IF EXISTS "sector reads adiantamento prestacao files"
   ON public.adiantamento_prestacao_arquivos;
 DROP POLICY IF EXISTS "sector inserts adiantamento prestacao files"
   ON public.adiantamento_prestacao_arquivos;
+DROP POLICY IF EXISTS "sector deletes adiantamento prestacao files"
+  ON public.adiantamento_prestacao_arquivos;
 
 CREATE POLICY "sector reads adiantamento prestacao files"
 ON public.adiantamento_prestacao_arquivos
@@ -58,6 +60,23 @@ WITH CHECK (
     FROM public.adiantamentos a
     WHERE a.id = adiantamento_prestacao_arquivos.adiantamento_id
       AND a.finalizado = true
+      AND public.usuario_pode_acessar_setor(a.setor_id)
+  )
+);
+
+
+-- Ao reabrir o adiantamento para correções, permite invalidar os arquivos
+-- da geração anterior; a prestação deverá ser gerada novamente após a nova confirmação.
+CREATE POLICY "sector deletes adiantamento prestacao files"
+ON public.adiantamento_prestacao_arquivos
+FOR DELETE TO authenticated
+USING (
+  public.usuario_ativo(auth.uid())
+  AND EXISTS (
+    SELECT 1
+    FROM public.adiantamentos a
+    WHERE a.id = adiantamento_prestacao_arquivos.adiantamento_id
+      AND a.finalizado = false
       AND public.usuario_pode_acessar_setor(a.setor_id)
   )
 );
