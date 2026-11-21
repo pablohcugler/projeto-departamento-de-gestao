@@ -897,6 +897,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       finalizado?: boolean;
       finalizado_em?: string;
       valor_recebido?: number;
+      valor_devolucao?: number;
     };
     setProcessoSelecionado({
       ...processoSelecionado,
@@ -904,7 +905,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       finalizado_em: resultado.finalizado_em ?? new Date().toISOString(),
     });
     setDialogResumoAberto(false);
-    toast.success("Adiantamento finalizado. A prestação de contas foi confirmada.");
+    const saldoDevolucao = Number(resultado.valor_devolucao ?? 0);
+    if (saldoDevolucao > 0) {
+      toast.warning(`Adiantamento finalizado. Deverá ser devolvido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante para gerar a prestação de contas.`);
+    } else {
+      toast.success("Adiantamento finalizado. Gere os arquivos da prestação de contas.");
+    }
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
       qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
