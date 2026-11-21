@@ -686,25 +686,23 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       if (arquivosResult.error) throw arquivosResult.error;
       const notasAtuais = notasResult.data ?? [];
       const docsAtuais = docsResult.data ?? [];
-      const arquivosAtuais = arquivosResult.data ?? [];
+      let arquivosAtuais = arquivosResult.data ?? [];
       const totalDespesas = notasAtuais.reduce((sum, nota) => sum + (Number(nota.valor_despesa) || 0), 0);
       const recebido = Number(processoGeracao.valor_recebido) || 0;
       const saldo = Math.round((recebido - totalDespesas) * 100) / 100;
       const comprovante = arquivosAtuais.find((item) => item.tipo === "comprovante_devolucao");
-      if (saldo > 0 && !comprovante) {
-        throw new Error(`É obrigatório anexar o comprovante da devolução de ${moedaBRL(saldo)} ao Fundo Municipal de Saúde antes de gerar a prestação de contas.`);
-      }
+
       if (arquivosAtuais.some((item) => item.tipo === "pacote_zip")) {
         toast.info("Os arquivos desta prestação de contas já foram gerados. Consulte Arquivos da prestação de contas.");
-        setGerandoPrestacao(false);
+        setDialogArquivosPrestacao(true);
         return;
       }
 
       const baixarAnexo = async (caminho: string, nome: string, mimeType: string, categoria: "nota" | "complementar"): Promise<AnexoRelatorio> => {
         const { data, error } = await supabase.storage.from("anexos").createSignedUrl(caminho, 300);
-        if (error || !data?.signedUrl) throw new Error(`Não foi possível acessar o arquivo "${nome}".`);
+        if (error || !data?.signedUrl) throw new Error('Não foi possível acessar o arquivo "' + nome + '".');
         const resposta = await fetch(data.signedUrl);
-        if (!resposta.ok) throw new Error(`Falha ao baixar "${nome}" para montar o relatório.`);
+        if (!resposta.ok) throw new Error('Falha ao baixar "' + nome + '" para montar o relatório.');
         let bytes = new Uint8Array(await resposta.arrayBuffer());
         let mimeFinal = (mimeType || "").toLowerCase();
         let nomeFinal = nome;
@@ -723,11 +721,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             mimeFinal = "image/png";
             nomeFinal = nome.replace(/\.[^.]+$/, "") + ".png";
           } catch {
-            throw new Error(`A imagem "${nome}" não pôde ser convertida. Converta-a para JPG ou PNG e anexe novamente.`);
+            throw new Error('A imagem "' + nome + '" não pôde ser convertida. Converta-a para JPG ou PNG e anexe novamente.');
           }
         }
         if (!(mimeFinal === "application/pdf" || mimeFinal === "image/jpeg" || mimeFinal === "image/jpg" || mimeFinal === "image/png" || /\.(pdf|jpe?g|png)$/i.test(nomeFinal))) {
-          throw new Error(`O documento complementar "${nome}" precisa ser convertido para PDF, JPG ou PNG antes de gerar os arquivos finais.`);
+          throw new Error('O documento complementar "' + nome + '" precisa ser convertido para PDF, JPG ou PNG antes de gerar os arquivos finais.');
         }
         return { nome: nomeFinal, mimeType: mimeFinal, bytes, categoria };
       };
@@ -746,10 +744,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       const nomeProcesso = nomeSeguroArquivo(processoGeracao.processo_1doc);
 
       const enviarPdf = async (nome: string, bytes: Uint8Array, tipo: string, notaId?: string) => {
-        const caminho = `adiantamento/${processoGeracao.id}/prestacao/${geracaoId}/${nome}`;
+        const caminho = "adiantamento/" + processoGeracao.id + "/prestacao/" + geracaoId + "/" + nome;
         const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: "application/pdf" });
         const { error } = await supabase.storage.from("anexos").upload(caminho, blob, { contentType: "application/pdf", upsert: false });
-        if (error) throw new Error(`Falha ao armazenar ${nome}: ${error.message}`);
+        if (error) throw new Error("Falha ao armazenar " + nome + ": " + error.message);
         caminhosEnviados.push(caminho);
         registros.push({
           adiantamento_id: processoGeracao.id,
@@ -763,79 +761,148 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         entries.push({ name: nome, bytes });
       };
 
-      for (let index = 0; index < notasAtuais.length; index++) {
-        const nota = notasAtuais[index];
-        const anexos: AnexoRelatorio[] = [];
-        if (nota.arquivo_caminho && nota.arquivo_nome) {
-          anexos.push(await baixarAnexo(nota.arquivo_caminho, nota.arquivo_nome, nota.arquivo_mime_type ?? "", "nota"));
+      const baixarPdfGerado = async (arquivo: ArquivoPrestacao) => {
+        const { data, error } = await supabase.storage.from("anexos").createSignedUrl(arquivo.arquivo_caminho, 300);
+        if (error || !data?.signedUrl) throw new Error('Não foi possível acessar o PDF já gerado "' + arquivo.arquivo_nome + '".');
+        const response = await fetch(data.signedUrl);
+        if (!response.ok) throw new Error('Falha ao baixar o PDF "' + arquivo.arquivo_nome + '" para montar o ZIP.');
+        entries.push({ name: arquivo.arquivo_nome, bytes: new Uint8Array(await response.arrayBuffer()) });
+      };
+
+      // Primeira etapa: gerar e registrar o ANEXO II e todos os relatórios individuais,
+      // mesmo quando houver saldo a devolver. O comprovante só é exigido para o depósito e ZIP final.
+      let arquivosBase = arquivosAtuais.filter((item) => item.tipo === "anexo_ii" || item.tipo === "relatorio_nota");
+      const baseCompleta = arquivosBase.some((item) => item.tipo === "anexo_ii")
+        && notasAtuais.every((nota) => arquivosBase.some((item) => item.tipo === "relatorio_nota" && item.nota_id === nota.id));
+
+      if (!baseCompleta) {
+        if (arquivosBase.length > 0) {
+          const caminhosParciais = arquivosBase.map((item) => item.arquivo_caminho);
+          const { error: remocaoErro } = await supabase.storage.from("anexos").remove(caminhosParciais);
+          if (remocaoErro) throw new Error("Não foi possível substituir os relatórios parciais: " + remocaoErro.message);
+          const { error: exclusaoErro } = await supabase
+            .from("adiantamento_prestacao_arquivos")
+            .delete()
+            .in("id", arquivosBase.map((item) => item.id));
+          if (exclusaoErro) throw new Error("Não foi possível atualizar o registro dos relatórios: " + exclusaoErro.message);
+          arquivosAtuais = arquivosAtuais.filter((item) => !arquivosBase.some((base) => base.id === item.id));
+          arquivosBase = [];
         }
-        for (const documento of docsAtuais.filter((doc) => doc.nota_id === nota.id)) {
-          anexos.push(await baixarAnexo(documento.arquivo_caminho, documento.arquivo_nome, documento.arquivo_mime_type, "complementar"));
+
+        for (let index = 0; index < notasAtuais.length; index++) {
+          const nota = notasAtuais[index];
+          const anexos: AnexoRelatorio[] = [];
+          if (nota.arquivo_caminho && nota.arquivo_nome) {
+            anexos.push(await baixarAnexo(nota.arquivo_caminho, nota.arquivo_nome, nota.arquivo_mime_type ?? "", "nota"));
+          }
+          for (const documento of docsAtuais.filter((doc) => doc.nota_id === nota.id)) {
+            anexos.push(await baixarAnexo(documento.arquivo_caminho, documento.arquivo_nome, documento.arquivo_mime_type, "complementar"));
+          }
+          const pdf = await gerarRelatorioAdiantamento({
+            processo: {
+              processo_1doc: processoGeracao.processo_1doc,
+              numero_empenho: processoGeracao.numero_empenho,
+              data_recebimento: processoGeracao.data_recebimento,
+              periodo_aplicacao_dias: processoGeracao.periodo_aplicacao_dias,
+              data_vencimento: processoGeracao.data_vencimento,
+              valor_recebido: processoGeracao.valor_recebido,
+            },
+            nota: {
+              numero_nota: nota.numero_nota,
+              data_nota: nota.data_nota,
+              fornecedor: nota.fornecedor,
+              descricao: nota.descricao,
+              justificativa: nota.justificativa || "",
+              valor_despesa: nota.valor_despesa,
+            },
+            totalDespesas,
+            anexos,
+          });
+          const nomeNota = String(index + 1).padStart(2, "0") + " - " + nomeSeguroArquivo(nota.fornecedor).toUpperCase() + ".pdf";
+          await enviarPdf(nomeNota, pdf, "relatorio_nota", nota.id);
         }
-        const pdf = await gerarRelatorioAdiantamento({
-          processo: {
-            processo_1doc: processoGeracao.processo_1doc,
-            numero_empenho: processoGeracao.numero_empenho,
-            data_recebimento: processoGeracao.data_recebimento,
-            periodo_aplicacao_dias: processoGeracao.periodo_aplicacao_dias,
-            data_vencimento: processoGeracao.data_vencimento,
-            valor_recebido: processoGeracao.valor_recebido,
-          },
-          nota: {
+
+        const anexoII = await gerarAnexoIIDespesas({
+          processo_1doc: processoGeracao.processo_1doc,
+          numero_empenho: processoGeracao.numero_empenho,
+          data_recebimento: processoGeracao.data_recebimento,
+          data_vencimento: processoGeracao.data_vencimento,
+          valor_recebido: recebido,
+          despesas: notasAtuais.map((nota, index) => ({
+            numero: index + 1,
             numero_nota: nota.numero_nota,
             data_nota: nota.data_nota,
             fornecedor: nota.fornecedor,
             descricao: nota.descricao,
-            justificativa: nota.justificativa || "",
-            valor_despesa: nota.valor_despesa,
-          },
-          totalDespesas,
-          anexos,
+            valor_despesa: Number(nota.valor_despesa) || 0,
+          })),
         });
-        const nomeNota = `${String(index + 1).padStart(2, "0")} - ${nomeSeguroArquivo(nota.fornecedor).toUpperCase()}.pdf`;
-        await enviarPdf(nomeNota, pdf, "relatorio_nota", nota.id);
+        await enviarPdf("ANEXO II - RELATORIO DE DESPESAS.pdf", anexoII, "anexo_ii");
+
+        const { error: baseInsertError } = await supabase.from("adiantamento_prestacao_arquivos").insert(registros);
+        if (baseInsertError) throw new Error("Os relatórios foram preparados, mas não foi possível registrá-los no banco: " + baseInsertError.message);
+        // A partir daqui os PDFs-base estão persistidos; não remover em caso de falha
+        // posterior no depósito ou no ZIP. Uma nova tentativa poderá reutilizá-los.
+        caminhosEnviados.splice(0, caminhosEnviados.length);
+        registros.splice(0, registros.length);
+        await arquivosPrestacaoQ.refetch();
+        arquivosBase = (await arquivosPrestacaoQ.refetch()).data ?? [];
+      } else {
+        for (const nota of notasAtuais) {
+          const arquivo = arquivosBase.find((item) => item.tipo === "relatorio_nota" && item.nota_id === nota.id);
+          if (!arquivo) throw new Error("Relatório individual ausente para a nota " + nota.numero_nota + ".");
+          await baixarPdfGerado(arquivo);
+        }
+        const anexoExistente = arquivosBase.find((item) => item.tipo === "anexo_ii");
+        if (!anexoExistente) throw new Error("ANEXO II não localizado entre os arquivos gerados.");
+        await baixarPdfGerado(anexoExistente);
       }
 
-      const anexoII = await gerarAnexoIIDespesas({
-        processo_1doc: processoGeracao.processo_1doc,
-        numero_empenho: processoGeracao.numero_empenho,
-        data_recebimento: processoGeracao.data_recebimento,
-        data_vencimento: processoGeracao.data_vencimento,
-        valor_recebido: recebido,
-        despesas: notasAtuais.map((nota, index) => ({
-          numero: index + 1,
-          numero_nota: nota.numero_nota,
-          data_nota: nota.data_nota,
-          fornecedor: nota.fornecedor,
-          descricao: nota.descricao,
-          valor_despesa: Number(nota.valor_despesa) || 0,
-        })),
-      });
-      await enviarPdf("ANEXO II - RELATORIO DE DESPESAS.pdf", anexoII, "anexo_ii");
-
-      if (saldo > 0) {
-        if (!comprovante) throw new Error("Comprovante de devolução não localizado.");
-        const { data: signed, error } = await supabase.storage.from("anexos").createSignedUrl(comprovante.arquivo_caminho, 300);
-        if (error || !signed?.signedUrl) throw new Error("Não foi possível acessar o comprovante de devolução.");
-        const response = await fetch(signed.signedUrl);
-        if (!response.ok) throw new Error("Falha ao baixar o comprovante de devolução.");
-        const proofBytes = new Uint8Array(await response.arrayBuffer());
-        const deposito = await gerarDepositoSaldoRemanescente({
-          processo_1doc: processoGeracao.processo_1doc,
-          numero_empenho: processoGeracao.numero_empenho,
-          data_devolucao: new Date().toISOString().slice(0, 10),
-          valor_devolvido: saldo,
-        }, {
-          nome: comprovante.arquivo_nome,
-          mimeType: comprovante.arquivo_mime_type,
-          bytes: proofBytes,
-        });
-        await enviarPdf("DEPOSITO DE SALDO REMANESCENTE.pdf", deposito, "deposito_saldo");
+      // Havendo devolução, a primeira etapa termina aqui. Exibe os PDFs-base e
+      // mantém o comprovante obrigatório antes de produzir o depósito e o ZIP.
+      if (saldo > 0 && !comprovante) {
+        toast.warning(
+          "ANEXO II e relatórios individuais gerados. Deverá ser devolvido " + moedaBRL(saldo) +
+          " ao Fundo Municipal de Saúde. Anexe o comprovante para gerar o depósito de saldo remanescente e o ZIP completo."
+        );
+        await arquivosPrestacaoQ.refetch();
+        setDialogArquivosPrestacao(true);
+        return;
       }
 
-      const zipBytes = criarArquivoZip(entries);
-      const zipName = `PRESTACAO DE CONTAS - PROCESSO ${nomeProcesso}.zip`;
-      const zipPath = `adiantamento/${processoGeracao.id}/prestacao/${geracaoId}/${zipName}`;
+      // Segunda etapa: com o comprovante, gera o documento de depósito e fecha o ZIP.
+      if (saldo > 0 && comprovante) {
+        const depositoExistente = arquivosAtuais.find((item) => item.tipo === "deposito_saldo");
+        if (depositoExistente) {
+          await baixarPdfGerado(depositoExistente);
+        } else {
+          const { data: signed, error } = await supabase.storage.from("anexos").createSignedUrl(comprovante.arquivo_caminho, 300);
+          if (error || !signed?.signedUrl) throw new Error("Não foi possível acessar o comprovante de devolução.");
+          const response = await fetch(signed.signedUrl);
+          if (!response.ok) throw new Error("Falha ao baixar o comprovante de devolução.");
+          const proofBytes = new Uint8Array(await response.arrayBuffer());
+          const deposito = await gerarDepositoSaldoRemanescente({
+            processo_1doc: processoGeracao.processo_1doc,
+            numero_empenho: processoGeracao.numero_empenho,
+            data_devolucao: new Date().toISOString().slice(0, 10),
+            valor_devolvido: saldo,
+          }, {
+            nome: comprovante.arquivo_nome,
+            mimeType: comprovante.arquivo_mime_type,
+            bytes: proofBytes,
+          });
+          await enviarPdf("DEPOSITO DE SALDO REMANESCENTE.pdf", deposito, "deposito_saldo");
+        }
+      }
+
+      const ordemZip = [
+        ...entries.filter((item) => item.name.startsWith("ANEXO II")),
+        ...entries.filter((item) => item.name.startsWith("DEPOSITO")),
+        ...entries.filter((item) => !item.name.startsWith("ANEXO II") && !item.name.startsWith("DEPOSITO")),
+      ];
+      const zipBytes = criarArquivoZip(ordemZip);
+      const zipName = "PRESTACAO DE CONTAS - PROCESSO " + nomeProcesso + ".zip";
+      const zipPath = "adiantamento/" + processoGeracao.id + "/prestacao/" + geracaoId + "/" + zipName;
       const zipBlob = new Blob([zipBytes.buffer.slice(zipBytes.byteOffset, zipBytes.byteOffset + zipBytes.byteLength) as ArrayBuffer], { type: "application/zip" });
       const { error: zipError } = await supabase.storage.from("anexos").upload(zipPath, zipBlob, { contentType: "application/zip", upsert: false });
       if (zipError) throw new Error("Não foi possível armazenar o arquivo ZIP: " + zipError.message);
@@ -850,9 +917,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       });
 
       const { error: metadataError } = await supabase.from("adiantamento_prestacao_arquivos").insert(registros);
-      if (metadataError) throw new Error("Os arquivos foram preparados, mas não foi possível registrar a prestação de contas: " + metadataError.message);
+      if (metadataError) throw new Error("Os arquivos foram preparados, mas não foi possível registrar a etapa final da prestação: " + metadataError.message);
 
-      toast.success("Prestação de contas gerada. O ZIP contém o ANEXO II e os relatórios individuais das notas.");
+      toast.success("Prestação de contas completa gerada. O ZIP contém o ANEXO II, o depósito (quando aplicável) e todos os relatórios individuais.");
       await arquivosPrestacaoQ.refetch();
       setDialogArquivosPrestacao(true);
     } catch (error) {
@@ -866,7 +933,6 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       setGerandoPrestacao(false);
     }
   }
-
   async function baixarArquivoPrestacao(arquivo: ArquivoPrestacao) {
     const { data, error } = await supabase.storage.from("anexos").createSignedUrl(arquivo.arquivo_caminho, 300);
     if (error || !data?.signedUrl) {
@@ -962,11 +1028,13 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     ]);
 
     if (saldoDevolucao > 0) {
-      toast.warning(`Adiantamento finalizado. Etapa de devolução aberta: deverá ser transferido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante nesta tela para liberar a geração do depósito, do ANEXO II, dos relatórios individuais e do ZIP.`);
+      toast.warning(`Adiantamento finalizado. Deverá ser transferido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Gerando agora o ANEXO II e os relatórios individuais; o comprovante será exigido para o depósito e o ZIP final.`);
     } else {
-      toast.success("Adiantamento confirmado. Iniciando automaticamente a geração dos PDFs e do arquivo ZIP.");
-      await gerarPrestacaoContas(processoFinalizado);
+      toast.success("Adiantamento confirmado. Gerando os documentos da prestação de contas.");
     }
+    // Não interromper a geração quando houver saldo: os relatórios individuais
+    // e o ANEXO II são produzidos imediatamente; somente depósito e ZIP aguardam o comprovante.
+    await gerarPrestacaoContas(processoFinalizado);
   }
 
   async function confirmarReabertura() {
@@ -1190,6 +1258,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     const arquivosPrestacao = arquivosPrestacaoQ.data ?? [];
     const comprovanteSalvo = arquivosPrestacao.find((arquivo) => arquivo.tipo === "comprovante_devolucao");
     const prestacaoGerada = arquivosPrestacao.some((arquivo) => arquivo.tipo === "pacote_zip");
+    const relatoriosIniciaisGerados = arquivosPrestacao.some((arquivo) => arquivo.tipo === "anexo_ii")
+      && notas.every((nota) => arquivosPrestacao.some((arquivo) => arquivo.tipo === "relatorio_nota" && arquivo.nota_id === nota.id));
     const valoresPendentes = notas.filter((nota) => nota.valor_despesa === null || nota.valor_despesa <= 0);
     const totalDespesas = notas.reduce((total, nota) => total + (Number(nota.valor_despesa) || 0), 0);
     const valorRecebidoAtual = processoSelecionado.valor_recebido;
@@ -1326,7 +1396,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 )}
               </div>
             )}
-            {prestacaoGerada && (
+            {relatoriosIniciaisGerados && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
                 <span className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-4 w-4 text-primary" /> Arquivos da prestação de contas disponíveis.</span>
                 <Button onClick={() => setDialogArquivosPrestacao(true)}>
