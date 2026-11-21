@@ -2167,7 +2167,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><FileText className="h-4 w-4" /> Processos cadastrados</div>
           <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.length}</div>
@@ -2175,6 +2175,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" /> A vencer</div>
           <div className="mt-2 text-2xl font-semibold tabular-nums">{lista.filter((item) => item.data_vencimento >= hojeLocal).length}</div>
+        </div>
+        <div className="rounded-xl border border-emerald-600/25 bg-emerald-600/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" /> Em execução</div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{lista.filter((item) => !item.finalizado).length}</div>
+        </div>
+        <div className="rounded-xl border border-red-600/25 bg-red-600/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400"><CheckCircle2 className="h-4 w-4" /> Finalizados</div>
+          <div className="mt-2 text-2xl font-semibold tabular-nums text-red-700 dark:text-red-400">{lista.filter((item) => item.finalizado).length}</div>
         </div>
       </div>
 
@@ -2201,6 +2209,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 <th className="px-4 py-3 font-medium">Período de aplicação</th>
                 <th className="px-4 py-3 font-medium">Data do vencimento</th>
                 <th className="px-4 py-3 font-medium">Nº do empenho</th>
+                <th className="px-4 py-3 font-medium">Classificação</th>
                 <th className="px-4 py-3 text-right font-medium">Ação</th>
               </tr>
             </thead>
@@ -2227,6 +2236,17 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                       </div>
                     </td>
                     <td className="px-4 py-3 tabular-nums">{item.numero_empenho}</td>
+                    <td className="px-4 py-3">
+                      {item.finalizado ? (
+                        <Badge variant="outline" className="border-red-600/30 bg-red-600/10 text-red-700 dark:text-red-400">
+                          Finalizado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
+                          Em execução
+                        </Badge>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setProcessoSelecionado(item); }}>
                         Abrir processo
@@ -2236,7 +2256,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 );
               })}
               {filtrados.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                   {busca ? "Nenhum processo corresponde à pesquisa." : "Nenhum adiantamento cadastrado. Clique em Novo processo para começar."}
                 </td></tr>
               )}
