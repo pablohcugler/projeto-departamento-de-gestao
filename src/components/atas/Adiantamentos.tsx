@@ -941,8 +941,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     const saldoCalculado = Math.round(
       ((Number(processoSelecionado.valor_recebido) || 0) - totalDespesasConfirmadas) * 100,
     ) / 100;
-    const saldoDevolucao = Math.max(0, Number.isFinite(Number(resultado.valor_devolucao))
-      ? Number(resultado.valor_devolucao)
+    const valorDevolucaoRpc = resultado.valor_devolucao;
+    const saldoDevolucao = Math.max(0, valorDevolucaoRpc !== undefined && valorDevolucaoRpc !== null && Number.isFinite(Number(valorDevolucaoRpc))
+      ? Number(valorDevolucaoRpc)
       : saldoCalculado);
 
     await Promise.all([
