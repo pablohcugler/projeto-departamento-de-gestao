@@ -14,6 +14,258 @@ export type Database = {
   }
   public: {
     Tables: {
+      adiantamento_nota_documentos: {
+        Row: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at: string
+          id: string
+          nota_id: string
+          user_id: string
+        }
+        Insert: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at?: string
+          id?: string
+          nota_id: string
+          user_id?: string
+        }
+        Update: {
+          adiantamento_id?: string
+          arquivo_caminho?: string
+          arquivo_mime_type?: string
+          arquivo_nome?: string
+          arquivo_tamanho_bytes?: number
+          created_at?: string
+          id?: string
+          nota_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_nota_documentos_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adiantamento_nota_documentos_nota_id_fkey"
+            columns: ["nota_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamento_notas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adiantamento_notas: {
+        Row: {
+          adiantamento_id: string
+          arquivo_caminho: string | null
+          arquivo_mime_type: string | null
+          arquivo_nome: string | null
+          arquivo_tamanho_bytes: number | null
+          created_at: string
+          data_nota: string
+          descricao: string
+          fornecedor: string
+          id: string
+          justificativa: string
+          numero_nota: string
+          user_id: string
+          valor_despesa: number | null
+        }
+        Insert: {
+          adiantamento_id: string
+          arquivo_caminho?: string | null
+          arquivo_mime_type?: string | null
+          arquivo_nome?: string | null
+          arquivo_tamanho_bytes?: number | null
+          created_at?: string
+          data_nota: string
+          descricao: string
+          fornecedor: string
+          id?: string
+          justificativa?: string
+          numero_nota: string
+          user_id?: string
+          valor_despesa?: number | null
+        }
+        Update: {
+          adiantamento_id?: string
+          arquivo_caminho?: string | null
+          arquivo_mime_type?: string | null
+          arquivo_nome?: string | null
+          arquivo_tamanho_bytes?: number | null
+          created_at?: string
+          data_nota?: string
+          descricao?: string
+          fornecedor?: string
+          id?: string
+          justificativa?: string
+          numero_nota?: string
+          user_id?: string
+          valor_despesa?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_notas_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adiantamento_prestacao_arquivos: {
+        Row: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at: string
+          id: string
+          nota_id: string | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type?: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at?: string
+          id?: string
+          nota_id?: string | null
+          tipo: string
+          user_id?: string
+        }
+        Update: {
+          adiantamento_id?: string
+          arquivo_caminho?: string
+          arquivo_mime_type?: string
+          arquivo_nome?: string
+          arquivo_tamanho_bytes?: number
+          created_at?: string
+          id?: string
+          nota_id?: string | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_prestacao_arquivos_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adiantamento_prestacao_arquivos_nota_id_fkey"
+            columns: ["nota_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamento_notas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adiantamento_reaberturas: {
+        Row: {
+          adiantamento_id: string
+          created_at: string
+          finalizado_em_anterior: string
+          id: string
+          reaberto_em: string
+          reaberto_por: string
+        }
+        Insert: {
+          adiantamento_id: string
+          created_at?: string
+          finalizado_em_anterior: string
+          id?: string
+          reaberto_em?: string
+          reaberto_por: string
+        }
+        Update: {
+          adiantamento_id?: string
+          created_at?: string
+          finalizado_em_anterior?: string
+          id?: string
+          reaberto_em?: string
+          reaberto_por?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_reaberturas_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adiantamentos: {
+        Row: {
+          created_at: string
+          data_recebimento: string
+          data_vencimento: string
+          finalizado: boolean
+          finalizado_em: string | null
+          id: string
+          numero_empenho: string
+          periodo_aplicacao_dias: number
+          processo_1doc: string
+          setor_id: string
+          user_id: string
+          valor_recebido: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_recebimento: string
+          data_vencimento: string
+          finalizado?: boolean
+          finalizado_em?: string | null
+          id?: string
+          numero_empenho: string
+          periodo_aplicacao_dias: number
+          processo_1doc: string
+          setor_id?: string
+          user_id?: string
+          valor_recebido?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_recebimento?: string
+          data_vencimento?: string
+          finalizado?: boolean
+          finalizado_em?: string | null
+          id?: string
+          numero_empenho?: string
+          periodo_aplicacao_dias?: number
+          processo_1doc?: string
+          setor_id?: string
+          user_id?: string
+          valor_recebido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamentos_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anexos: {
         Row: {
           caminho: string
@@ -212,257 +464,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classificacoes_setor_id_fkey"
-            columns: ["setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      adiantamento_nota_documentos: {
-        Row: {
-          adiantamento_id: string
-          arquivo_caminho: string
-          arquivo_mime_type: string
-          arquivo_nome: string
-          arquivo_tamanho_bytes: number
-          created_at: string
-          id: string
-          nota_id: string
-          user_id: string
-        }
-        Insert: {
-          adiantamento_id: string
-          arquivo_caminho: string
-          arquivo_mime_type: string
-          arquivo_nome: string
-          arquivo_tamanho_bytes: number
-          created_at?: string
-          id?: string
-          nota_id: string
-          user_id?: string
-        }
-        Update: {
-          adiantamento_id?: string
-          arquivo_caminho?: string
-          arquivo_mime_type?: string
-          arquivo_nome?: string
-          arquivo_tamanho_bytes?: number
-          created_at?: string
-          id?: string
-          nota_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "adiantamento_nota_documentos_adiantamento_id_fkey"
-            columns: ["adiantamento_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "adiantamento_nota_documentos_nota_id_fkey"
-            columns: ["nota_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamento_notas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      adiantamento_prestacao_arquivos: {
-        Row: {
-          adiantamento_id: string
-          arquivo_caminho: string
-          arquivo_mime_type: string
-          arquivo_nome: string
-          arquivo_tamanho_bytes: number
-          created_at: string
-          id: string
-          nota_id: string | null
-          tipo: string
-          user_id: string
-        }
-        Insert: {
-          adiantamento_id: string
-          arquivo_caminho: string
-          arquivo_mime_type?: string
-          arquivo_nome: string
-          arquivo_tamanho_bytes: number
-          created_at?: string
-          id?: string
-          nota_id?: string | null
-          tipo: string
-          user_id?: string
-        }
-        Update: {
-          adiantamento_id?: string
-          arquivo_caminho?: string
-          arquivo_mime_type?: string
-          arquivo_nome?: string
-          arquivo_tamanho_bytes?: number
-          created_at?: string
-          id?: string
-          nota_id?: string | null
-          tipo?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "adiantamento_prestacao_arquivos_adiantamento_id_fkey"
-            columns: ["adiantamento_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "adiantamento_prestacao_arquivos_nota_id_fkey"
-            columns: ["nota_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamento_notas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      adiantamento_notas: {
-        Row: {
-          adiantamento_id: string
-          arquivo_caminho: string | null
-          arquivo_mime_type: string | null
-          arquivo_nome: string | null
-          arquivo_tamanho_bytes: number | null
-          created_at: string
-          data_nota: string
-          descricao: string
-          fornecedor: string
-          justificativa: string
-          id: string
-          numero_nota: string
-          user_id: string
-          valor_despesa: number | null
-        }
-        Insert: {
-          adiantamento_id: string
-          arquivo_caminho?: string | null
-          arquivo_mime_type?: string | null
-          arquivo_nome?: string | null
-          arquivo_tamanho_bytes?: number | null
-          created_at?: string
-          data_nota: string
-          descricao: string
-          fornecedor: string
-          justificativa: string
-          id?: string
-          numero_nota: string
-          user_id?: string
-          valor_despesa?: number | null
-        }
-        Update: {
-          adiantamento_id?: string
-          arquivo_caminho?: string | null
-          arquivo_mime_type?: string | null
-          arquivo_nome?: string | null
-          arquivo_tamanho_bytes?: number | null
-          created_at?: string
-          data_nota?: string
-          descricao?: string
-          fornecedor?: string
-          id?: string
-          numero_nota?: string
-          user_id?: string
-          valor_despesa?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "adiantamento_notas_adiantamento_id_fkey"
-            columns: ["adiantamento_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamentos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      adiantamento_reaberturas: {
-        Row: {
-          adiantamento_id: string
-          created_at: string
-          finalizado_em_anterior: string
-          id: string
-          reaberto_em: string
-          reaberto_por: string
-        }
-        Insert: {
-          adiantamento_id: string
-          created_at?: string
-          finalizado_em_anterior: string
-          id?: string
-          reaberto_em?: string
-          reaberto_por: string
-        }
-        Update: {
-          adiantamento_id?: string
-          created_at?: string
-          finalizado_em_anterior?: string
-          id?: string
-          reaberto_em?: string
-          reaberto_por?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "adiantamento_reaberturas_adiantamento_id_fkey"
-            columns: ["adiantamento_id"]
-            isOneToOne: false
-            referencedRelation: "adiantamentos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      adiantamentos: {
-        Row: {
-          created_at: string
-          data_recebimento: string
-          data_vencimento: string
-          finalizado: boolean
-          finalizado_em: string | null
-          id: string
-          numero_empenho: string
-          periodo_aplicacao_dias: number
-          processo_1doc: string
-          setor_id: string
-          user_id: string
-          valor_recebido: number | null
-        }
-        Insert: {
-          created_at?: string
-          data_recebimento: string
-          data_vencimento: string
-          finalizado?: boolean
-          finalizado_em?: string | null
-          id?: string
-          numero_empenho: string
-          periodo_aplicacao_dias: number
-          processo_1doc: string
-          setor_id?: string
-          user_id?: string
-          valor_recebido?: number | null
-        }
-        Update: {
-          created_at?: string
-          data_recebimento?: string
-          data_vencimento?: string
-          finalizado?: boolean
-          finalizado_em?: string | null
-          id?: string
-          numero_empenho?: string
-          periodo_aplicacao_dias?: number
-          processo_1doc?: string
-          setor_id?: string
-          user_id?: string
-          valor_recebido?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "adiantamentos_setor_id_fkey"
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
@@ -767,10 +768,6 @@ export type Database = {
         Args: { p_adiantamento_id: string }
         Returns: Json
       }
-      reabrir_adiantamento: {
-        Args: { p_adiantamento_id: string }
-        Returns: Json
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -779,6 +776,10 @@ export type Database = {
         Returns: boolean
       }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
+      reabrir_adiantamento: {
+        Args: { p_adiantamento_id: string }
+        Returns: Json
+      }
       registrar_cpf_usuario: { Args: { p_cpf: string }; Returns: boolean }
       usuario_ativo: { Args: { p_user_id?: string }; Returns: boolean }
       usuario_pode_acessar_arquivo_anexo: {
