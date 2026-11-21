@@ -1398,6 +1398,47 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           </div>
         )}
 
+        <Dialog open={dialogArquivosPrestacao} onOpenChange={setDialogArquivosPrestacao}>
+          <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> Arquivos da prestação de contas</DialogTitle>
+              <DialogDescription>
+                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}. Todos os documentos finais ficam disponíveis para consulta e download.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {arquivosPrestacao.length === 0 ? (
+                <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda.</p>
+              ) : (
+                arquivosPrestacao.map((arquivo) => (
+                  <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <FileText className="h-5 w-5 shrink-0 text-primary" />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{arquivo.arquivo_nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {arquivo.tipo === "pacote_zip" ? "Pacote completo ZIP"
+                            : arquivo.tipo === "anexo_ii" ? "ANEXO II – Relatório de despesas"
+                            : arquivo.tipo === "deposito_saldo" ? "Depósito de saldo remanescente"
+                            : arquivo.tipo === "comprovante_devolucao" ? "Comprovante de transferência"
+                            : "Relatório individual da nota fiscal"}
+                          {" · "}{tamanhoArquivo(arquivo.arquivo_tamanho_bytes)}
+                        </div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => void baixarArquivoPrestacao(arquivo)}>
+                      <Download className="h-4 w-4" /> Baixar
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogArquivosPrestacao(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={!!notaExcluindo} onOpenChange={(aberto) => {
           if (!aberto && !excluindoNota) setNotaExcluindo(null);
         }}>
