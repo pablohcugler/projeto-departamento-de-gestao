@@ -149,23 +149,24 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     return null;
   }
 
-  function acessarModulo(destino: typeof aba, nomeModulo: string) {
+  function acessarModulo(destino: typeof aba, nomeModulo: string): boolean {
     const modulo = moduloDaAba(destino);
     if (!modulo) {
       setAba(destino);
-      return;
+      return true;
     }
     if (!permissoesCarregadas && !adminQ.data) {
       toast.error(permissoesModulosUsuarioQ.isError
         ? "Não foi possível consultar as permissões do seu setor. Tente atualizar a página ou procure o administrador."
         : "Aguarde a verificação das permissões do seu setor.");
-      return;
+      return false;
     }
     if (!moduloPermitido(modulo)) {
       toast.error("Seu setor não possui permissão para acessar o módulo " + nomeModulo + ".");
-      return;
+      return false;
     }
     setAba(destino);
+    return true;
   }
 
   // Restaura a última tela e os filtros deste usuário após F5/recarregamento.
@@ -218,17 +219,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     }
   }, [adminQ.isSuccess, adminQ.data, aba]);
 
+  const moduloAtual = moduloDaAba(aba);
+  const abaAtualSemPermissao = !!moduloAtual && permissoesCarregadas && !adminQ.data && !moduloPermitido(moduloAtual);
+
   // Impede que uma tela sem permissão seja restaurada do armazenamento local
   // ou aberta por navegação interna. Os módulos continuam visíveis no painel inicial.
   useEffect(() => {
-    const modulo = moduloDaAba(aba);
-    if (!modulo || !permissoesCarregadas || adminQ.data) return;
-    if (!moduloPermitido(modulo)) {
-      setAba("inicio");
-      setSelecionada(null);
-      toast.error("Seu setor não possui permissão para acessar este módulo.");
-    }
-  }, [aba, permissoesCarregadas, adminQ.data, permissoesModulosUsuarioQ.data]);
+    if (!abaAtualSemPermissao) return;
+    setAba("inicio");
+    setSelecionada(null);
+    toast.error("Seu setor não possui permissão para acessar este módulo.");
+  }, [abaAtualSemPermissao]);
 
   const integracaoBllQ = useQuery({
     queryKey: ["configuracao-sistema", "integracao_bll"],
@@ -621,10 +622,10 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   <DropdownMenuContent align="start" className="w-52">
                     <DropdownMenuLabel>Exibir Atas de Registro</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
+                    <DropdownMenuItem onSelect={() => { if (!acessarModulo("atas", "Atas de Registro de Preços")) return; setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
                       {filtroSituacao === "Vigentes" ? "✓ " : ""}Vigentes
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
+                    <DropdownMenuItem onSelect={() => { if (!acessarModulo("atas", "Atas de Registro de Preços")) return; setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
                       {filtroSituacao === "Em andamento" ? "✓ " : ""}Em andamento
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -670,13 +671,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <ConfigTv menuTrigger />
                 <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Novidades da versão · v{VERSAO_SISTEMA}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => {
-                  if (usuarioProntoAtendimento) {
-                    toast.error("O setor Pronto Atendimento tem permissão apenas para o módulo Adiantamentos.");
-                    return;
-                  }
-                  setRelatoriosAberto(true);
-                }}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
@@ -693,7 +688,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </header>
 
       <main className="app-main mx-auto w-full max-w-none py-6 sm:py-9">
-        {usuarioProntoAtendimento && aba !== "inicio" && aba !== "adiantamentos" ? (
+        {abaAtualSemPermissao ? (
           <section className="mx-auto flex min-h-[55vh] max-w-2xl flex-col items-center justify-center text-center">
             <div className="w-full rounded-3xl border border-destructive/20 bg-card p-8 shadow-sm sm:p-12">
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-destructive/10 text-destructive">
@@ -701,12 +696,9 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               </div>
               <h2 className="mt-5 text-2xl font-semibold">Acesso restrito ao setor</h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                O setor Pronto Atendimento tem permissão para acessar somente o módulo Adiantamentos. Os demais módulos permanecem visíveis no painel, mas não podem ser abertos por este perfil.
+                A lotação atual não possui permissão para acessar este módulo. Os módulos disponíveis são configurados pelo administrador em Gestão do sistema.
               </p>
-              <Button className="mt-6" onClick={() => acessarModulo("adiantamentos", "Adiantamentos")}>
-                <Wallet className="h-4 w-4" /> Acessar Adiantamentos
-              </Button>
-              <Button variant="ghost" className="mt-2" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
+              <Button className="mt-6" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
             </div>
           </section>
         ) : aba === "inicio" ? (
@@ -781,7 +773,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
               <button
                 type="button"
-                onClick={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("todas"); setBusca(""); }}
+                onClick={() => { if (!acessarModulo("atas", "Atas de Registro de Preços")) return; setSelecionada(null); setFiltroSituacao("todas"); setBusca(""); }}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-teal-200/20 bg-gradient-to-br from-[#063b46] via-[#075c63] to-[#0b897e] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2"
                 aria-label="Abrir painel de Atas de Registro de Preços e pedidos"
               >
@@ -855,7 +847,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-amber-50/80">Painel para gestão e acompanhamento de adiantamentos.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("adiantamentos") ? "Acessar módulo" : "Sem permissão de acesso"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
