@@ -532,13 +532,6 @@ export function Administracao() {
               </Button>
             </div>
 
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-              <div className="font-semibold">Isolamento dos adiantamentos</div>
-              <p className="mt-1 text-muted-foreground">
-                Independentemente das permissões dos outros módulos, cada setor consulta e gerencia somente os adiantamentos vinculados à sua própria lotação. Apenas administradores têm visão geral.
-              </p>
-            </div>
-
             {setoresQ.isLoading || permissoesModulosQ.isLoading ? (
               <div className="rounded-xl border p-6 text-sm text-muted-foreground">Carregando setores e permissões...</div>
             ) : setoresQ.isError || permissoesModulosQ.isError ? (
