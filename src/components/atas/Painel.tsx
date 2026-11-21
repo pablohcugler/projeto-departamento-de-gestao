@@ -127,7 +127,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
   function acessarModulo(destino: typeof aba, nomeModulo: string) {
     if (usuarioProntoAtendimento && destino !== "inicio" && destino !== "adiantamentos") {
-      toast.error("Acesso não autorizado. O setor Pronto Atendimento tem permissão apenas para o módulo Adiantamentos.");
+      toast.error("Acesso ao módulo " + nomeModulo + " não autorizado. O setor Pronto Atendimento tem permissão apenas para Adiantamentos.");
       return;
     }
     setAba(destino);
@@ -633,7 +633,13 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <ConfigTv menuTrigger />
                 <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Novidades da versão · v{VERSAO_SISTEMA}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => {
+                  if (usuarioProntoAtendimento) {
+                    toast.error("O setor Pronto Atendimento tem permissão apenas para o módulo Adiantamentos.");
+                    return;
+                  }
+                  setRelatoriosAberto(true);
+                }}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
@@ -660,7 +666,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 O setor Pronto Atendimento tem permissão para acessar somente o módulo Adiantamentos. Os demais módulos permanecem visíveis no painel, mas não podem ser abertos por este perfil.
               </p>
-              <Button className="mt-6" onClick={() => setAba("adiantamentos")}>
+              <Button className="mt-6" onClick={() => acessarModulo("adiantamentos", "Adiantamentos")}>
                 <Wallet className="h-4 w-4" /> Acessar Adiantamentos
               </Button>
               <Button variant="ghost" className="mt-2" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
