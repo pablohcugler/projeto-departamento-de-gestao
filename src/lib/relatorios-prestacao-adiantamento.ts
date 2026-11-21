@@ -119,7 +119,7 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
   const valoresLinha = (item: LinhaAnexoII) => [
     String(item.numero),
     dateBR(item.data_nota),
-    "NOTA FISCAL Nº " + item.numero_nota,
+    String(item.numero_nota ?? ""),
     item.fornecedor,
     item.descricao,
     brl(item.valor_despesa),
