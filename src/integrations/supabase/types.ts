@@ -666,6 +666,48 @@ export type Database = {
           },
         ]
       }
+      setor_permissoes_modulos: {
+        Row: {
+          id: string
+          setor_id: string
+          modulo: string
+          permitido: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setor_id: string
+          modulo: string
+          permitido?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setor_id?: string
+          modulo?: string
+          permitido?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setor_permissoes_modulos_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setor_permissoes_modulos_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       setores: {
         Row: {
           acesso_global: boolean
@@ -782,6 +824,14 @@ export type Database = {
       }
       registrar_cpf_usuario: { Args: { p_cpf: string }; Returns: boolean }
       usuario_ativo: { Args: { p_user_id?: string }; Returns: boolean }
+      usuario_pode_acessar_modulo: {
+        Args: { p_modulo: string }
+        Returns: boolean
+      }
+      usuario_pode_acessar_adiantamento: {
+        Args: { p_adiantamento_id: string }
+        Returns: boolean
+      }
       usuario_pode_acessar_arquivo_anexo: {
         Args: { p_caminho: string }
         Returns: boolean
