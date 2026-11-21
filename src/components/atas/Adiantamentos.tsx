@@ -693,7 +693,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       const comprovante = arquivosAtuais.find((item) => item.tipo === "comprovante_devolucao");
 
       if (arquivosAtuais.some((item) => item.tipo === "pacote_zip")) {
-        toast.info("A prestação de contas já foi finalizada. Use o botão Visualizar arquivos da prestação de contas para consultar os documentos.");
+        await arquivosPrestacaoQ.refetch();
+        setDialogArquivosPrestacao(true);
+        toast.info("A prestação de contas já foi finalizada. Os arquivos estão disponíveis para download.");
         return;
       }
 
@@ -898,11 +900,23 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         }
       }
 
-      const ordemZip = [
-        ...entries.filter((item) => item.name.startsWith("ANEXO II")),
-        ...entries.filter((item) => item.name.startsWith("DEPOSITO")),
-        ...entries.filter((item) => !item.name.startsWith("ANEXO II") && !item.name.startsWith("DEPOSITO")),
-      ];
+      const ordemTipoZip = (name: string) => {
+        if (name.toUpperCase().startsWith("ANEXO II")) return 0;
+        if (name.toUpperCase().startsWith("DEPOSITO")) return 1;
+        if (/^\d+\s*-/.test(name)) return 2;
+        return 3;
+      };
+      const ordemZip = [...entries].sort((a, b) => {
+        const categoriaA = ordemTipoZip(a.name);
+        const categoriaB = ordemTipoZip(b.name);
+        if (categoriaA !== categoriaB) return categoriaA - categoriaB;
+        if (categoriaA === 2) {
+          const sequenciaA = Number(a.name.match(/^(\d+)\s*-/)?.[1] ?? 0);
+          const sequenciaB = Number(b.name.match(/^(\d+)\s*-/)?.[1] ?? 0);
+          return sequenciaA - sequenciaB;
+        }
+        return a.name.localeCompare(b.name, "pt-BR");
+      });
       const zipBytes = criarArquivoZip(ordemZip);
       const zipName = "PRESTACAO DE CONTAS - PROCESSO " + nomeProcesso + ".zip";
       const zipPath = "adiantamento/" + processoGeracao.id + "/prestacao/" + geracaoId + "/" + zipName;
@@ -922,8 +936,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       const { error: metadataError } = await supabase.from("adiantamento_prestacao_arquivos").insert(registros);
       if (metadataError) throw new Error("Os arquivos foram preparados, mas não foi possível registrar a etapa final da prestação: " + metadataError.message);
 
-      toast.success("Prestação de contas finalizada. Os documentos e o ZIP estão disponíveis no botão Visualizar arquivos da prestação de contas.");
+      toast.success("Prestação de contas finalizada. Os arquivos estão prontos para download.");
       await arquivosPrestacaoQ.refetch();
+      setDialogArquivosPrestacao(true);
     } catch (error) {
       if (caminhosEnviados.length) {
         const { error: cleanupError } = await supabase.storage.from("anexos").remove(caminhosEnviados);
@@ -1332,8 +1347,8 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         const ordemB = ordemTipoArquivo[tipoB] ?? 99;
         if (ordemA !== ordemB) return ordemA - ordemB;
         if (tipoA === "relatorio_nota" && tipoB === "relatorio_nota") {
-          const sequenciaA = Number(a.arquivo_nome.match(/^(\\d+)/)?.[1] ?? 0);
-          const sequenciaB = Number(b.arquivo_nome.match(/^(\\d+)/)?.[1] ?? 0);
+          const sequenciaA = Number(a.arquivo_nome.match(/^(\d+)\s*-/)?.[1] ?? 0);
+          const sequenciaB = Number(b.arquivo_nome.match(/^(\d+)\s*-/)?.[1] ?? 0);
           return sequenciaA - sequenciaB;
         }
         return a.arquivo_nome.localeCompare(b.arquivo_nome, "pt-BR");
