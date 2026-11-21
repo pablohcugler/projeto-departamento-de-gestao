@@ -270,6 +270,60 @@ export type Database = {
           },
         ]
       }
+      adiantamento_prestacao_arquivos: {
+        Row: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at: string
+          id: string
+          nota_id: string | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          adiantamento_id: string
+          arquivo_caminho: string
+          arquivo_mime_type?: string
+          arquivo_nome: string
+          arquivo_tamanho_bytes: number
+          created_at?: string
+          id?: string
+          nota_id?: string | null
+          tipo: string
+          user_id?: string
+        }
+        Update: {
+          adiantamento_id?: string
+          arquivo_caminho?: string
+          arquivo_mime_type?: string
+          arquivo_nome?: string
+          arquivo_tamanho_bytes?: number
+          created_at?: string
+          id?: string
+          nota_id?: string | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamento_prestacao_arquivos_adiantamento_id_fkey"
+            columns: ["adiantamento_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adiantamento_prestacao_arquivos_nota_id_fkey"
+            columns: ["nota_id"]
+            isOneToOne: false
+            referencedRelation: "adiantamento_notas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       adiantamento_notas: {
         Row: {
           adiantamento_id: string
