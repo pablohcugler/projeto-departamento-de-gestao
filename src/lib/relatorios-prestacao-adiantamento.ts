@@ -95,84 +95,277 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const pageCapacity = 7;
+
+  // Larguras e títulos alinhados ao modelo Excel oficial do ANEXO II.
+  const columns = [
+    { label: "Nº", width: 30, align: "center" as const },
+    { label: "DATA DA\nEMISSÃO", width: 68, align: "center" as const },
+    { label: "ESPECIFICAÇÃO /\nDOCUMENTO", width: 84, align: "center" as const },
+    { label: "FORNECEDOR", width: 112, align: "left" as const },
+    { label: "DISCRIMINAÇÃO\nDA DESPESA", width: 112, align: "left" as const },
+    { label: "VALOR (R$)", width: 70, align: "right" as const },
+  ];
+  const tableX = 72;
+  const tableW = columns.reduce((sum, col) => sum + col.width, 0);
+  const headerH = 42;
+  const rowFontSize = 8;
+  const rowLineHeight = 10.5;
+  const rowPadding = 14;
+  const summaryReserve = 128;
+  const headerColor = rgb(0.12, 0.27, 0.43);
+  const gridColor = rgb(0.75, 0.80, 0.85);
+  const alternateFill = rgb(0.96, 0.975, 0.985);
+
+  const valoresLinha = (item: LinhaAnexoII) => [
+    String(item.numero),
+    dateBR(item.data_nota),
+    "NOTA FISCAL Nº " + item.numero_nota,
+    item.fornecedor,
+    item.descricao,
+    brl(item.valor_despesa),
+  ];
+
+  const alturaLinha = (item: LinhaAnexoII) => {
+    const values = valoresLinha(item);
+    const maxLines = Math.max(...values.map((value, index) =>
+      wrap(value, regular, rowFontSize, (columns[index]?.width ?? 0) - 12).length
+    ));
+    return Math.max(36, maxLines * rowLineHeight + rowPadding);
+  };
+
+  // Paginação por altura real do conteúdo: evita cortar ou omitir despesas longas.
   const chunks: LinhaAnexoII[][] = [];
-  for (let i = 0; i < data.despesas.length; i += pageCapacity) chunks.push(data.despesas.slice(i, i + pageCapacity));
+  let chunkAtual: LinhaAnexoII[] = [];
+  let alturaAtual = 0;
+  for (const despesa of data.despesas) {
+    const topTabela = chunks.length === 0 ? 574 : 680;
+    const alturaDisponivel = topTabela - headerH - 95 - summaryReserve;
+    const altura = alturaLinha(despesa);
+    if (chunkAtual.length > 0 && alturaAtual + altura > alturaDisponivel) {
+      chunks.push(chunkAtual);
+      chunkAtual = [];
+      alturaAtual = 0;
+    }
+    chunkAtual.push(despesa);
+    alturaAtual += altura;
+  }
+  if (chunkAtual.length > 0) chunks.push(chunkAtual);
   if (!chunks.length) chunks.push([]);
+
   const totalPages = chunks.length;
-  let total = 0;
-  data.despesas.forEach((d) => { total += d.valor_despesa; });
+  const total = data.despesas.reduce((sum, despesa) => sum + (Number(despesa.valor_despesa) || 0), 0);
 
   for (let pageIndex = 0; pageIndex < chunks.length; pageIndex++) {
     const page = pdf.addPage([W, H]);
     await drawHeader(page, pageIndex + 1, totalPages, regular, bold);
+
     if (pageIndex === 0) {
       centered(page, "ANEXO II", 724, bold, 13);
       centered(page, "RELATÓRIO DE DESPESAS", 705, bold, 12);
       centered(page, "PRESTAÇÃO DE CONTAS DE ADIANTAMENTO", 688, bold, 10);
       centered(page, "SECRETARIA MUNICIPAL DE SAÚDE", 672, bold, 9);
-      page.drawText(`EMPENHO Nº: ${data.numero_empenho}`, { x: 72, y: 635, size: 9, font: bold, color: DARK });
-      page.drawText(`PROCESSO Nº: ${data.processo_1doc}`, { x: 72, y: 618, size: 9, font: bold, color: DARK });
-      page.drawText(`RECEBIDO EM: ${dateBR(data.data_recebimento)}`, { x: 72, y: 601, size: 9, font: bold, color: DARK });
-      page.drawText(`VENCIMENTO: ${dateBR(data.data_vencimento)}`, { x: 330, y: 601, size: 9, font: bold, color: DARK });
+      page.drawText("EMPENHO Nº: " + data.numero_empenho, { x: 72, y: 635, size: 9, font: bold, color: DARK });
+      page.drawText("PROCESSO Nº: " + data.processo_1doc, { x: 72, y: 618, size: 9, font: bold, color: DARK });
+      page.drawText("RECEBIDO EM: " + dateBR(data.data_recebimento), { x: 72, y: 601, size: 9, font: bold, color: DARK });
+      const vencimento = "VENCIMENTO: " + dateBR(data.data_vencimento);
+      page.drawText(vencimento, {
+        x: tableX + tableW - bold.widthOfTextAtSize(vencimento, 9),
+        y: 601,
+        size: 9,
+        font: bold,
+        color: DARK,
+      });
     } else {
-      page.drawText("ANEXO II – RELATÓRIO DE DESPESAS (continuação)", { x: 72, y: 724, size: 10, font: bold, color: DARK });
-      page.drawText(`PROCESSO Nº: ${data.processo_1doc}  |  EMPENHO Nº: ${data.numero_empenho}`, { x: 72, y: 706, size: 8.5, font: regular, color: DARK });
+      page.drawText("ANEXO II - RELATÓRIO DE DESPESAS (continuação)", { x: 72, y: 724, size: 10, font: bold, color: DARK });
+      page.drawText("PROCESSO Nº: " + data.processo_1doc + "  |  EMPENHO Nº: " + data.numero_empenho, {
+        x: 72, y: 706, size: 8.5, font: regular, color: DARK,
+      });
     }
 
-    const columns = [
-      { label: "Nº", width: 24 },
-      { label: "DATA DA EMISSÃO\nDOC", width: 66 },
-      { label: "ESPEC./DOCTO.\n(NF, recibo etc.)", width: 76 },
-      { label: "FORNECEDOR", width: 118 },
-      { label: "DISCRIMINAÇÃO", width: 112 },
-      { label: "VALOR R$", width: 80 },
-    ];
-    const tableX = 72;
-    const tableW = columns.reduce((sum, col) => sum + col.width, 0);
     let y = pageIndex === 0 ? 574 : 680;
-    let x = tableX;
-    const headerH = 32;
-    page.drawRectangle({ x: tableX, y: y - headerH, width: tableW, height: headerH, color: rgb(0.89, 0.92, 0.94), borderColor: DARK, borderWidth: 0.6 });
-    columns.forEach((col) => {
-      const lines = col.label.split("\n");
-      lines.forEach((line, i) => page.drawText(line, { x: x + 3, y: y - 13 - i * 9, size: 6.6, font: bold, color: DARK }));
-      x += col.width;
+    const headerBottom = y - headerH;
+    page.drawRectangle({
+      x: tableX,
+      y: headerBottom,
+      width: tableW,
+      height: headerH,
+      color: headerColor,
+      borderColor: headerColor,
+      borderWidth: 0.8,
     });
-    y -= headerH;
-    for (const item of chunks[pageIndex] ?? []) {
-      const values = [String(item.numero), dateBR(item.data_nota), "NOTA FISCAL Nº " + item.numero_nota, item.fornecedor, item.descricao, brl(item.valor_despesa)];
-      const heights = values.map((v, i) => wrap(v, regular, 7, (columns[i]?.width ?? 0) - 8).length * 9 + 8);
-      const rowH = Math.max(27, ...heights);
-      if (y - rowH < 95) break;
-      x = tableX;
-      page.drawRectangle({ x: tableX, y: y - rowH, width: tableW, height: rowH, borderColor: rgb(0.72, 0.76, 0.79), borderWidth: 0.35 });
-      values.forEach((value, i) => {
-        drawCellText(page, value, x, y, columns[i]?.width ?? 0, regular, 7, 9);
-        x += columns[i]?.width ?? 0;
+
+    let headerX = tableX;
+    columns.forEach((column) => {
+      const lines = column.label.split("\n");
+      const lineHeight = 10;
+      const blockHeight = lines.length * lineHeight;
+      let baseline = y - (headerH - blockHeight) / 2 - 7.2;
+      lines.forEach((line) => {
+        const textWidth = bold.widthOfTextAtSize(line, 7.2);
+        page.drawText(line, {
+          x: headerX + (column.width - textWidth) / 2,
+          y: baseline,
+          size: 7.2,
+          font: bold,
+          color: rgb(1, 1, 1),
+        });
+        baseline -= lineHeight;
       });
-      y -= rowH;
+      headerX += column.width;
+    });
+
+    // Divisórias verticais do cabeçalho.
+    let boundaryX = tableX;
+    for (let index = 0; index < columns.length - 1; index++) {
+      boundaryX += columns[index]!.width;
+      page.drawLine({
+        start: { x: boundaryX, y },
+        end: { x: boundaryX, y: headerBottom },
+        thickness: 0.65,
+        color: rgb(0.72, 0.79, 0.86),
+      });
     }
+
+    y = headerBottom;
+    const linhas = chunks[pageIndex] ?? [];
+    for (let rowIndex = 0; rowIndex < linhas.length; rowIndex++) {
+      const item = linhas[rowIndex]!;
+      const values = valoresLinha(item);
+      const rowH = alturaLinha(item);
+      const rowBottom = y - rowH;
+      if (rowBottom < 95) {
+        throw new Error("O ANEXO II excedeu a área útil da página. Reduza a extensão de uma descrição ou fornecedor.");
+      }
+
+      page.drawRectangle({
+        x: tableX,
+        y: rowBottom,
+        width: tableW,
+        height: rowH,
+        color: rowIndex % 2 === 0 ? rgb(1, 1, 1) : alternateFill,
+        borderColor: gridColor,
+        borderWidth: 0.55,
+      });
+
+      let cellX = tableX;
+      values.forEach((value, columnIndex) => {
+        const column = columns[columnIndex]!;
+        const lines = wrap(value, regular, rowFontSize, column.width - 12);
+        const blockHeight = lines.length * rowLineHeight;
+        let baseline = y - (rowH - blockHeight) / 2 - rowFontSize;
+        lines.forEach((line) => {
+          const textWidth = regular.widthOfTextAtSize(line, rowFontSize);
+          let textX = cellX + 6;
+          if (column.align === "center") {
+            textX = cellX + (column.width - textWidth) / 2;
+          } else if (column.align === "right") {
+            textX = cellX + column.width - 7 - textWidth;
+          }
+          page.drawText(line, {
+            x: textX,
+            y: baseline,
+            size: rowFontSize,
+            font: regular,
+            color: DARK,
+          });
+          baseline -= rowLineHeight;
+        });
+        cellX += column.width;
+      });
+
+      // Divisórias internas para leitura por coluna, mantendo a tabela leve.
+      boundaryX = tableX;
+      for (let index = 0; index < columns.length - 1; index++) {
+        boundaryX += columns[index]!.width;
+        page.drawLine({
+          start: { x: boundaryX, y },
+          end: { x: boundaryX, y: rowBottom },
+          thickness: 0.4,
+          color: gridColor,
+        });
+      }
+      y = rowBottom;
+    }
+
+    // Total das despesas integrado à tabela, com a coluna de valor alinhada à direita.
+    const totalRowH = 28;
+    const totalBottom = y - totalRowH;
     if (pageIndex === chunks.length - 1) {
-      y -= 18;
-      // Resumo final seguindo os campos do modelo Excel ANEXO II.
+      page.drawRectangle({
+        x: tableX,
+        y: totalBottom,
+        width: tableW,
+        height: totalRowH,
+        color: rgb(0.91, 0.94, 0.97),
+        borderColor: gridColor,
+        borderWidth: 0.65,
+      });
+      const label = "TOTAL DAS DESPESAS";
+      const labelWidth = bold.widthOfTextAtSize(label, 8.5);
+      page.drawText(label, {
+        x: tableX + tableW - columns[5]!.width - 12 - labelWidth,
+        y: totalBottom + 9,
+        size: 8.5,
+        font: bold,
+        color: DARK,
+      });
+      const totalText = brl(total);
+      page.drawText(totalText, {
+        x: tableX + tableW - 7 - bold.widthOfTextAtSize(totalText, 8.5),
+        y: totalBottom + 9,
+        size: 8.5,
+        font: bold,
+        color: DARK,
+      });
+      const amountBoundary = tableX + tableW - columns[5]!.width;
+      page.drawLine({
+        start: { x: amountBoundary, y },
+        end: { x: amountBoundary, y: totalBottom },
+        thickness: 0.55,
+        color: gridColor,
+      });
+      y = totalBottom - 14;
+
+      // Quadro-resumo alinhado e com cores discretas, seguindo o Excel de referência.
       const devolucao = Math.max(0, Math.round((data.valor_recebido - total) * 100) / 100);
       const complementacao = Math.max(0, Math.round((total - data.valor_recebido) * 100) / 100);
-      const summary = [
-        ["VALOR DA DESPESA EXCEDENTE", brl(total), rgb(0.98, 0.91, 0.87)],
-        ["VALOR DO ADIANTAMENTO RECEBIDO", brl(data.valor_recebido), rgb(0.88, 0.94, 0.86)],
-        ["VALOR DE REEMBOLSO / SALDO A DEVOLVER", brl(devolucao), rgb(0.87, 0.92, 0.97)],
-        ["COMPLEMENTAÇÃO", complementacao > 0 ? brl(complementacao) : "—", rgb(0.99, 0.95, 0.82)],
+      const summaryRows = [
+        { label: "VALOR DA DESPESA EXCEDENTE", value: brl(total), fill: rgb(0.98, 0.93, 0.90) },
+        { label: "VALOR DO ADIANTAMENTO RECEBIDO", value: brl(data.valor_recebido), fill: rgb(0.91, 0.96, 0.89) },
+        { label: "VALOR DE REEMBOLSO / SALDO A DEVOLVER", value: brl(devolucao), fill: rgb(0.90, 0.94, 0.98) },
+        { label: "COMPLEMENTAÇÃO", value: complementacao > 0 ? brl(complementacao) : "-", fill: rgb(0.99, 0.97, 0.89) },
       ];
-      summary.forEach(([label, value, fill]) => {
-        page.drawRectangle({ x: 72, y: y - 16, width: 472, height: 19, color: fill as ReturnType<typeof rgb>, borderColor: DARK, borderWidth: 0.5 });
-        page.drawText(label as string, { x: 78, y: y - 11, size: 7.3, font: bold, color: DARK });
-        const valorTexto = value as string;
-        page.drawText(valorTexto, { x: 438 - bold.widthOfTextAtSize(valorTexto, 8), y: y - 11, size: 8, font: bold, color: DARK });
-        y -= 19;
+      const summaryH = 20;
+      summaryRows.forEach((row) => {
+        page.drawRectangle({
+          x: tableX,
+          y: y - summaryH,
+          width: tableW,
+          height: summaryH,
+          color: row.fill,
+          borderColor: gridColor,
+          borderWidth: 0.45,
+        });
+        page.drawText(row.label, {
+          x: tableX + 8,
+          y: y - 13.2,
+          size: 7.8,
+          font: bold,
+          color: DARK,
+        });
+        const valueWidth = bold.widthOfTextAtSize(row.value, 8.2);
+        page.drawText(row.value, {
+          x: tableX + tableW - 9 - valueWidth,
+          y: y - 13.2,
+          size: 8.2,
+          font: bold,
+          color: DARK,
+        });
+        y -= summaryH;
       });
     }
   }
+
   pdf.setTitle("ANEXO II - RELATÓRIO DE DESPESAS");
   return pdf.save();
 }
