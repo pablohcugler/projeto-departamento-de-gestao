@@ -974,11 +974,15 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
       // Exclui o comprovante (já anexado como página do depósito) e ZIPs anteriores.
       // Assim, até um ZIP antigo gerado antes desta correção é reconstruído corretamente.
-      const arquivos = (arquivosAtualizados ?? []).filter(
-        (arquivo) =>
-          String(arquivo.tipo ?? "").trim().toLowerCase() !== "comprovante_devolucao"
-          && String(arquivo.tipo ?? "").trim().toLowerCase() !== "pacote_zip",
-      );
+      const arquivos = (arquivosAtualizados ?? []).filter((arquivo) => {
+        const tipo = String(arquivo.tipo ?? "").trim().toLowerCase();
+        const nome = String(arquivo.arquivo_nome ?? "").trim().toLowerCase();
+        const mime = String(arquivo.arquivo_mime_type ?? "").trim().toLowerCase();
+        const ehComprovante = tipo === "comprovante_devolucao";
+        const ehZip = tipo === "pacote_zip" || nome.endsWith(".zip")
+          || mime === "application/zip" || mime === "application/x-zip-compressed";
+        return !ehComprovante && !ehZip;
+      });
       if (!arquivos.length) {
         toast.info("Ainda não há relatórios ou documentos finais disponíveis para download.");
         return;
@@ -1346,19 +1350,25 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     // será apresentado como arquivo avulso na janela de prestação de contas.
     const ehComprovanteDevolucao = (arquivo: ArquivoPrestacao) =>
       String(arquivo.tipo ?? "").trim().toLowerCase() === "comprovante_devolucao";
+    const ehArquivoZipPrestacao = (arquivo: ArquivoPrestacao) => {
+      const tipo = String(arquivo.tipo ?? "").trim().toLowerCase();
+      const nome = String(arquivo.arquivo_nome ?? "").trim().toLowerCase();
+      const mime = String(arquivo.arquivo_mime_type ?? "").trim().toLowerCase();
+      return tipo === "pacote_zip"
+        || nome.endsWith(".zip")
+        || mime === "application/zip"
+        || mime === "application/x-zip-compressed";
+    };
     // Na janela de consulta, mostrar primeiro o ANEXO II, depois o depósito (se houver)
-    // e por último os relatórios individuais em ordem numérica. O ZIP é gerado sob demanda
-    // pelo botão "Baixar todos" e não aparece como uma linha adicional na lista.
+    // e por último os relatórios individuais em ordem numérica. Qualquer ZIP é ocultado,
+    // independentemente do tipo que tenha sido gravado no metadado.
     const ordemTipoArquivo: Record<string, number> = {
       anexo_ii: 0,
       deposito_saldo: 1,
       relatorio_nota: 2,
     };
     const arquivosPrestacaoVisiveis = arquivosPrestacao
-      .filter((arquivo) => {
-        const tipo = String(arquivo.tipo ?? "").trim().toLowerCase();
-        return tipo !== "comprovante_devolucao" && tipo !== "pacote_zip";
-      })
+      .filter((arquivo) => !ehComprovanteDevolucao(arquivo) && !ehArquivoZipPrestacao(arquivo))
       .sort((a, b) => {
         const tipoA = String(a.tipo ?? "").trim().toLowerCase();
         const tipoB = String(b.tipo ?? "").trim().toLowerCase();
@@ -1713,7 +1723,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               ) : arquivosPrestacaoVisiveis.length === 0 ? (
                 <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda. Após a confirmação, os relatórios iniciais e o ANEXO II serão listados aqui. O depósito e o ZIP completo serão incluídos após anexar o comprovante, quando houver saldo a devolver.</p>
               ) : (
-                arquivosPrestacaoVisiveis.map((arquivo) => (
+                arquivosPrestacaoVisiveis
+                  .filter((arquivo) => !ehComprovanteDevolucao(arquivo) && !ehArquivoZipPrestacao(arquivo))
+                  .map((arquivo) => (
                   <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <FileText className="h-5 w-5 shrink-0 text-primary" />
