@@ -76,7 +76,7 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  IF p_mode NOT IN ('check', 'failure', 'success')
+  IF p_mode IS NULL OR p_mode NOT IN ('check', 'failure', 'success')
      OR p_keys IS NULL
      OR cardinality(p_keys) < 1
      OR cardinality(p_keys) > 2
