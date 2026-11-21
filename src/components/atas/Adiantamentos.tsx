@@ -955,22 +955,17 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     try {
       const { data: arquivosAtualizados, error } = await arquivosPrestacaoQ.refetch();
       if (error) throw error;
-      const arquivos = arquivosAtualizados ?? [];
+
+      // Exclui o comprovante (já anexado como página do depósito) e ZIPs anteriores.
+      // Assim, até um ZIP antigo gerado antes desta correção é reconstruído corretamente.
+      const arquivos = (arquivosAtualizados ?? []).filter(
+        (arquivo) => arquivo.tipo !== "comprovante_devolucao" && arquivo.tipo !== "pacote_zip",
+      );
       if (!arquivos.length) {
-        toast.info("Ainda não há arquivos registrados nesta prestação de contas.");
+        toast.info("Ainda não há relatórios ou documentos finais disponíveis para download.");
         return;
       }
 
-      // Quando o pacote final já existe, ele é a forma mais simples e completa
-      // de baixar todos os documentos em um único arquivo.
-      const pacote = arquivos.find((arquivo) => arquivo.tipo === "pacote_zip");
-      if (pacote) {
-        await baixarArquivoPrestacao(pacote);
-        return;
-      }
-
-      // Antes da devolução ser comprovada, permite baixar em conjunto os PDFs
-      // iniciais e todos os comprovantes/arquivos que já estejam registrados.
       const entradas: Array<{ name: string; bytes: Uint8Array }> = [];
       for (const arquivo of arquivos) {
         const { data: signed, error: signedError } = await supabase.storage
@@ -986,6 +981,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           bytes: new Uint8Array(await resposta.arrayBuffer()),
         });
       }
+
       const zip = criarArquivoZip(entradas);
       const blob = new Blob([zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.byteLength) as ArrayBuffer], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
@@ -996,13 +992,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-      toast.success("Download de todos os arquivos iniciado.");
+      toast.success("Download iniciado. O comprovante está incorporado ao PDF de depósito e não foi incluído separadamente.");
     } catch (erro) {
       console.error("Erro ao baixar todos os arquivos da prestação:", erro);
       toast.error(erro instanceof Error ? erro.message : "Não foi possível baixar todos os arquivos.");
     }
   }
-
   async function confirmarFinalizacao() {
     if (!processoSelecionado || finalizando) return;
     // Confere previamente se todos os anexos podem ser incorporados aos PDFs,
@@ -1310,6 +1305,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   if (processoSelecionado) {
     const notas = notasQ.data ?? [];
     const arquivosPrestacao = arquivosPrestacaoQ.data ?? [];
+    // O comprovante permanece no armazenamento para compor a segunda página do PDF de depósito,
+    // mas não deve aparecer como documento independente na lista de downloads.
+    const arquivosPrestacaoVisiveis = arquivosPrestacao.filter((arquivo) => arquivo.tipo !== "comprovante_devolucao");
     const comprovanteSalvo = arquivosPrestacao.find((arquivo) => arquivo.tipo === "comprovante_devolucao");
     const prestacaoGerada = arquivosPrestacao.some((arquivo) => arquivo.tipo === "pacote_zip");
     const relatoriosIniciaisGerados = arquivosPrestacao.some((arquivo) => arquivo.tipo === "anexo_ii")
@@ -1626,12 +1624,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{arquivosPrestacao.length} arquivo(s) registrado(s)</span>
+              <span className="text-sm text-muted-foreground">{arquivosPrestacaoVisiveis.length} arquivo(s) para download</span>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => void arquivosPrestacaoQ.refetch()} disabled={arquivosPrestacaoQ.isFetching}>
                   <RefreshCw className="h-4 w-4" /> Atualizar lista
                 </Button>
-                <Button type="button" size="sm" onClick={() => void baixarTodosArquivosPrestacao()} disabled={arquivosPrestacao.length === 0}>
+                <Button type="button" size="sm" onClick={() => void baixarTodosArquivosPrestacao()} disabled={arquivosPrestacaoVisiveis.length === 0}>
                   <Download className="h-4 w-4" /> Baixar todos
                 </Button>
               </div>
@@ -1639,10 +1637,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <div className="space-y-2">
               {arquivosPrestacaoQ.isLoading ? (
                 <p className="rounded-lg border p-4 text-sm text-muted-foreground">Carregando arquivos da prestação de contas...</p>
-              ) : arquivosPrestacao.length === 0 ? (
+              ) : arquivosPrestacaoVisiveis.length === 0 ? (
                 <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda. Após a confirmação, os relatórios iniciais e o ANEXO II serão listados aqui. O depósito e o ZIP completo serão incluídos após anexar o comprovante, quando houver saldo a devolver.</p>
               ) : (
-                arquivosPrestacao.map((arquivo) => (
+                arquivosPrestacaoVisiveis.map((arquivo) => (
                   <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <FileText className="h-5 w-5 shrink-0 text-primary" />
@@ -1658,7 +1656,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         </div>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => void baixarArquivoPrestacao(arquivo)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void (arquivo.tipo === "pacote_zip" ? baixarTodosArquivosPrestacao() : baixarArquivoPrestacao(arquivo))}
+                    >
                       <Download className="h-4 w-4" /> Baixar
                     </Button>
                   </div>
