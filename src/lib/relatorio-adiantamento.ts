@@ -79,17 +79,14 @@ function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest:
   // Timbrado baseado no modelo institucional enviado: identificação da Saúde, brasão, faixas laterais e rodapé.
   const logoSaude = await page.doc.embedPng(bytesFromDataUrl(logoSaudeCajati));
   page.drawImage(logoSaude, { x: 22, y: 756, width: 150, height: 55 });
-  const prefeituraTitulo = "PREFEITURA DO MUNICÍPIO DE CAJATI";
-  const prefeituraFonte = 11;
-  const areaCabecalhoX = 180;
-  const areaCabecalhoLargura = 282;
-  const prefeituraLargura = bold.widthOfTextAtSize(prefeituraTitulo, prefeituraFonte);
-  page.drawText(prefeituraTitulo, {
-    x: areaCabecalhoX + (areaCabecalhoLargura - prefeituraLargura) / 2,
+  // Texto completo do cabeçalho, centralizado na área livre entre o logotipo e o brasão.
+  page.drawText("PREFEITURA DO MUNICÍPIO DE CAJATI", {
+    x: 178,
     y: 806,
-    size: prefeituraFonte,
+    size: 9.5,
     font: bold,
     color: DARK,
+    maxWidth: 284,
   });
   page.drawText("- ESTADO DE SÃO PAULO -", { x: 235, y: 787, size: 10, font: bold, color: DARK });
   page.drawText("SECRETARIA MUNICIPAL DE SAÚDE", { x: 205, y: 768, size: 11, font: bold, color: DARK });
