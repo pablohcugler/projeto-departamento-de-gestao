@@ -1402,7 +1402,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   <h3 className="font-semibold">Prestação de contas confirmada</h3>
                   <p className="text-sm text-muted-foreground">Não há saldo a devolver. Gere os relatórios e o arquivo ZIP para arquivamento.</p>
                 </div>
-                {!prestacaoGerada && (
+                {relatoriosIniciaisGerados && !prestacaoGerada && (
                   <Button onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
                     <FileText className="h-4 w-4" /> {gerandoPrestacao ? "Gerando arquivos..." : "Gerar prestação de contas"}
                   </Button>
@@ -1850,8 +1850,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
               {processoSelecionado.finalizado ? (
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                  <div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" /> Prestação de contas finalizada</div>
-                  <p className="mt-1 text-muted-foreground">Confirmação registrada em {processoSelecionado.finalizado_em ? new Date(processoSelecionado.finalizado_em).toLocaleString("pt-BR") : "data não informada"}.</p>
+                  <div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" /> Adiantamento finalizado</div>
+                  <p className="mt-1 text-muted-foreground">
+                    Confirmação registrada em {processoSelecionado.finalizado_em ? new Date(processoSelecionado.finalizado_em).toLocaleString("pt-BR") : "data não informada"}.
+                    {prestacaoGerada ? " Os documentos da prestação de contas foram gerados e registrados." : " A prestação de contas documental ainda não está concluída."}
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm">
