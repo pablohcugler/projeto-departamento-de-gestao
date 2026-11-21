@@ -959,7 +959,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       // Exclui o comprovante (já anexado como página do depósito) e ZIPs anteriores.
       // Assim, até um ZIP antigo gerado antes desta correção é reconstruído corretamente.
       const arquivos = (arquivosAtualizados ?? []).filter(
-        (arquivo) => arquivo.tipo !== "comprovante_devolucao" && arquivo.tipo !== "pacote_zip",
+        (arquivo) =>
+          String(arquivo.tipo ?? "").trim().toLowerCase() !== "comprovante_devolucao"
+          && String(arquivo.tipo ?? "").trim().toLowerCase() !== "pacote_zip",
       );
       if (!arquivos.length) {
         toast.info("Ainda não há relatórios ou documentos finais disponíveis para download.");
@@ -1305,10 +1307,12 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   if (processoSelecionado) {
     const notas = notasQ.data ?? [];
     const arquivosPrestacao = arquivosPrestacaoQ.data ?? [];
-    // O comprovante permanece no armazenamento para compor a segunda página do PDF de depósito,
-    // mas não deve aparecer como documento independente na lista de downloads.
-    const arquivosPrestacaoVisiveis = arquivosPrestacao.filter((arquivo) => arquivo.tipo !== "comprovante_devolucao");
-    const comprovanteSalvo = arquivosPrestacao.find((arquivo) => arquivo.tipo === "comprovante_devolucao");
+    // O comprovante fica armazenado para montar a página 2 do depósito, mas nunca
+    // será apresentado como arquivo avulso na janela de prestação de contas.
+    const ehComprovanteDevolucao = (arquivo: ArquivoPrestacao) =>
+      String(arquivo.tipo ?? "").trim().toLowerCase() === "comprovante_devolucao";
+    const arquivosPrestacaoVisiveis = arquivosPrestacao.filter((arquivo) => !ehComprovanteDevolucao(arquivo));
+    const comprovanteSalvo = arquivosPrestacao.find(ehComprovanteDevolucao);
     const prestacaoGerada = arquivosPrestacao.some((arquivo) => arquivo.tipo === "pacote_zip");
     const relatoriosIniciaisGerados = arquivosPrestacao.some((arquivo) => arquivo.tipo === "anexo_ii")
       && notas.every((nota) => arquivosPrestacao.some((arquivo) => arquivo.tipo === "relatorio_nota" && arquivo.nota_id === nota.id));
@@ -1620,7 +1624,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> Prestação de contas</DialogTitle>
               <DialogDescription>
-                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}. Consulte e baixe cada arquivo ou faça o download de todos em um único ZIP.
+                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}. O comprovante de devolução fica incorporado à segunda página do depósito e não é listado separadamente.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1640,7 +1644,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               ) : arquivosPrestacaoVisiveis.length === 0 ? (
                 <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda. Após a confirmação, os relatórios iniciais e o ANEXO II serão listados aqui. O depósito e o ZIP completo serão incluídos após anexar o comprovante, quando houver saldo a devolver.</p>
               ) : (
-                arquivosPrestacaoVisiveis.map((arquivo) => (
+                arquivosPrestacao
+                  .filter((arquivo) => !ehComprovanteDevolucao(arquivo))
+                  .map((arquivo) => (
                   <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <FileText className="h-5 w-5 shrink-0 text-primary" />
