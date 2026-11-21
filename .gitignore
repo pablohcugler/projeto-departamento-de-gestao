@@ -1,3 +1,8 @@
+# Environment secrets and local overrides
+.env.*
+!.env.example
+.dev.vars*
+
 # Logs
 logs
 *.log
