@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History, Mail, LockKeyhole } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History, Mail, LockKeyhole, KeyRound } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -77,6 +77,11 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [feedbackAberto, setFeedbackAberto] = useState(false);
   const [relatoriosAberto, setRelatoriosAberto] = useState(false);
   const [changelogAberto, setChangelogAberto] = useState(false);
+  const [trocarSenhaAberto, setTrocarSenhaAberto] = useState(false);
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
+  const [salvandoTrocaSenha, setSalvandoTrocaSenha] = useState(false);
   const adminQ = useQuery({
     queryKey: ["admin", userId],
     queryFn: async () => {
@@ -143,6 +148,48 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [filtroSituacaoContratos, setFiltroSituacaoContratos] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
+
+  async function confirmarTrocaSenha() {
+    if (salvandoTrocaSenha) return;
+    if (!senhaAtual) {
+      toast.error("Informe sua senha atual.");
+      return;
+    }
+    if (novaSenha.length < 8) {
+      toast.error("A nova senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (novaSenha !== confirmarNovaSenha) {
+      toast.error("A confirmação não corresponde à nova senha.");
+      return;
+    }
+    setSalvandoTrocaSenha(true);
+    try {
+      const { data: usuarioAtual, error: erroUsuario } = await supabase.auth.getUser();
+      if (erroUsuario || !usuarioAtual.user?.email) {
+        throw new Error("Não foi possível identificar sua conta. Entre novamente no sistema.");
+      }
+
+      const { error: erroValidacao } = await supabase.auth.signInWithPassword({
+        email: usuarioAtual.user.email,
+        password: senhaAtual,
+      });
+      if (erroValidacao) throw new Error("A senha atual está incorreta.");
+
+      const { error: erroAtualizacao } = await supabase.auth.updateUser({ password: novaSenha });
+      if (erroAtualizacao) throw erroAtualizacao;
+
+      toast.success("Senha alterada com sucesso.");
+      setSenhaAtual("");
+      setNovaSenha("");
+      setConfirmarNovaSenha("");
+      setTrocarSenhaAberto(false);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível alterar a senha.");
+    } finally {
+      setSalvandoTrocaSenha(false);
+    }
+  }
   function moduloDaAba(atual: typeof aba): string | null {
     if (atual === "pedidos") return "atas";
     if (["pca", "atas", "contratos", "oficios", "adiantamentos"].includes(atual)) return atual;
@@ -672,6 +719,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <DropdownMenuItem onSelect={() => setChangelogAberto(true)}><History className="h-4 w-4" /> Novidades da versão · v{VERSAO_SISTEMA}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setFeedbackAberto(true)}><MessageSquareText className="h-4 w-4" /> Enviar feedback</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setRelatoriosAberto(true)}><ChartNoAxesCombined className="h-4 w-4" /> Relatórios</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => {
+                  setSenhaAtual("");
+                  setNovaSenha("");
+                  setConfirmarNovaSenha("");
+                  setTrocarSenhaAberto(true);
+                }}>
+                  <KeyRound className="h-4 w-4" /> Trocar senha
+                </DropdownMenuItem>
                 {adminQ.data && <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setNovoUsuario(true)}><UserPlus className="h-4 w-4" /> Novo usuário</DropdownMenuItem>
@@ -1254,6 +1309,80 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </Dialog>
 
       <ChangelogDialog aberto={changelogAberto} onFechar={() => setChangelogAberto(false)} />
+      <Dialog
+        open={trocarSenhaAberto}
+        onOpenChange={(aberto) => {
+          setTrocarSenhaAberto(aberto);
+          if (!aberto) {
+            setSenhaAtual("");
+            setNovaSenha("");
+            setConfirmarNovaSenha("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" /> Trocar senha
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="senha-atual">Senha atual</Label>
+              <Input
+                id="senha-atual"
+                type="password"
+                autoComplete="current-password"
+                value={senhaAtual}
+                onChange={(e) => setSenhaAtual(e.target.value)}
+                disabled={salvandoTrocaSenha}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nova-senha">Nova senha (mín. 8 caracteres)</Label>
+              <Input
+                id="nova-senha"
+                type="password"
+                autoComplete="new-password"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                disabled={salvandoTrocaSenha}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmar-nova-senha">Confirmar nova senha</Label>
+              <Input
+                id="confirmar-nova-senha"
+                type="password"
+                autoComplete="new-password"
+                value={confirmarNovaSenha}
+                onChange={(e) => setConfirmarNovaSenha(e.target.value)}
+                disabled={salvandoTrocaSenha}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Para sua segurança, confirme sua senha atual antes de cadastrar a nova.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={salvandoTrocaSenha}
+              onClick={() => setTrocarSenhaAberto(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={salvandoTrocaSenha || !senhaAtual || !novaSenha || !confirmarNovaSenha}
+              onClick={() => void confirmarTrocaSenha()}
+            >
+              {salvandoTrocaSenha ? "Alterando..." : "Salvar nova senha"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={relatoriosAberto} onOpenChange={setRelatoriosAberto}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
