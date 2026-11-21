@@ -121,12 +121,12 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
     }
 
     const columns = [
-      { label: "Nº", width: 25 },
-      { label: "DATA", width: 56 },
-      { label: "Nº DOCUMENTO", width: 67 },
-      { label: "FORNECEDOR", width: 126 },
-      { label: "DISCRIMINAÇÃO", width: 125 },
-      { label: "VALOR R$", width: 68 },
+      { label: "Nº", width: 24 },
+      { label: "DATA DA EMISSÃO\nDOC", width: 66 },
+      { label: "ESPEC./DOCTO.\n(NF, recibo etc.)", width: 76 },
+      { label: "FORNECEDOR", width: 118 },
+      { label: "DISCRIMINAÇÃO", width: 112 },
+      { label: "VALOR R$", width: 80 },
     ];
     const tableX = 72;
     const tableW = columns.reduce((sum, col) => sum + col.width, 0);
@@ -141,7 +141,7 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
     });
     y -= headerH;
     for (const item of chunks[pageIndex]) {
-      const values = [String(item.numero), dateBR(item.data_nota), item.numero_nota, item.fornecedor, item.descricao, brl(item.valor_despesa)];
+      const values = [String(item.numero), dateBR(item.data_nota), "NOTA FISCAL Nº " + item.numero_nota, item.fornecedor, item.descricao, brl(item.valor_despesa)];
       const heights = values.map((v, i) => wrap(v, regular, 7, columns[i].width - 8).length * 9 + 8);
       const rowH = Math.max(27, ...heights);
       if (y - rowH < 95) break;
@@ -155,15 +155,21 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
     }
     if (pageIndex === chunks.length - 1) {
       y -= 18;
+      // Resumo final seguindo os campos do modelo Excel ANEXO II.
+      const devolucao = Math.max(0, Math.round((data.valor_recebido - total) * 100) / 100);
+      const complementacao = Math.max(0, Math.round((total - data.valor_recebido) * 100) / 100);
       const summary = [
-        ["VALOR DO ADIANTAMENTO RECEBIDO", brl(data.valor_recebido)],
-        ["TOTAL DAS DESPESAS", brl(total)],
-        ["SALDO A DEVOLVER", brl(Math.max(0, data.valor_recebido - total))],
+        ["VALOR DA DESPESA EXCEDENTE", brl(total), rgb(0.98, 0.91, 0.87)],
+        ["VALOR DO ADIANTAMENTO RECEBIDO", brl(data.valor_recebido), rgb(0.88, 0.94, 0.86)],
+        ["VALOR DE REEMBOLSO / SALDO A DEVOLVER", brl(devolucao), rgb(0.87, 0.92, 0.97)],
+        ["COMPLEMENTAÇÃO", complementacao > 0 ? brl(complementacao) : "—", rgb(0.99, 0.95, 0.82)],
       ];
-      summary.forEach(([label, value]) => {
-        page.drawText(label, { x: 72, y, size: 8, font: bold, color: DARK });
-        page.drawText(value, { x: 390, y, size: 9, font: bold, color: DARK });
-        y -= 18;
+      summary.forEach(([label, value, fill]) => {
+        page.drawRectangle({ x: 72, y: y - 16, width: 472, height: 19, color: fill as ReturnType<typeof rgb>, borderColor: DARK, borderWidth: 0.5 });
+        page.drawText(label as string, { x: 78, y: y - 11, size: 7.3, font: bold, color: DARK });
+        const valorTexto = value as string;
+        page.drawText(valorTexto, { x: 438 - bold.widthOfTextAtSize(valorTexto, 8), y: y - 11, size: 8, font: bold, color: DARK });
+        y -= 19;
       });
     }
   }
