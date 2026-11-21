@@ -75,7 +75,7 @@ function bytesFromDataUrl(dataUrl: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont) {
+async function drawShell(page: PDFPage, pageNumber: number, totalPages: number, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont): Promise<void> {
   // Timbrado baseado no modelo institucional enviado: identificação da Saúde, brasão, faixas laterais e rodapé.
   const logoSaude = await page.doc.embedPng(bytesFromDataUrl(logoSaudeCajati));
   page.drawImage(logoSaude, { x: 22, y: 756, width: 150, height: 55 });
@@ -127,9 +127,9 @@ function drawJustifiedParagraph(page: PDFPage, text: string, x: number, y: numbe
   });
 }
 
-function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont, totalPages: number) {
+async function addCoverPage(pdf: PDFDocument, data: DadosRelatorioAdiantamento, crest: PDFImage, bold: PDFFont, regular: PDFFont, italic: PDFFont, totalPages: number): Promise<void> {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
-  drawShell(page, 1, totalPages, crest, bold, regular, italic);
+  await drawShell(page, 1, totalPages, crest, bold, regular, italic);
 
   // O relatório individual apresenta somente os campos do modelo fornecido.
   // Metadados compactos e hierarquia visual mais próxima, conforme o modelo solicitado.
@@ -181,12 +181,12 @@ export async function gerarRelatorioAdiantamento(data: DadosRelatorioAdiantament
   const temNotaFiscal = parsedAnnexes.some((anexo) => anexo.categoria === "nota");
   const paginaNotaAusente = !temNotaFiscal ? 1 : 0;
   const totalPages = 1 + paginaNotaAusente + parsedAnnexes.reduce((sum, item) => sum + item.pages.length, 0);
-  addCoverPage(pdf, data, crest, bold, regular, italic, totalPages);
+  await addCoverPage(pdf, data, crest, bold, regular, italic, totalPages);
 
   let pageNumber = 2;
   if (paginaNotaAusente) {
     const page = pdf.addPage([PAGE_W, PAGE_H]);
-    drawShell(page, pageNumber, totalPages, crest, bold, regular, italic);
+    await drawShell(page, pageNumber, totalPages, crest, bold, regular, italic);
     page.drawText("ANEXO – NOTA FISCAL", { x: 72, y: 718, size: 11, font: bold, color: BLUE });
     page.drawText("Não foi anexado arquivo de nota fiscal a este cadastro.", { x: 72, y: 680, size: 10, font: regular, color: MUTED });
     pageNumber += 1;
@@ -195,7 +195,7 @@ export async function gerarRelatorioAdiantamento(data: DadosRelatorioAdiantament
   for (const anexo of parsedAnnexes) {
     for (const item of anexo.pages) {
       const page = pdf.addPage([PAGE_W, PAGE_H]);
-      drawShell(page, pageNumber, totalPages, crest, bold, regular, italic);
+      await drawShell(page, pageNumber, totalPages, crest, bold, regular, italic);
       page.drawText(anexo.categoria === "nota" ? "ANEXO – NOTA FISCAL" : "ANEXO – DOCUMENTO COMPLEMENTAR", {
         x: 72, y: 718, size: 11, font: bold, color: BLUE,
       });
