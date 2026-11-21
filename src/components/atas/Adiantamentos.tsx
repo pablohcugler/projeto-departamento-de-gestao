@@ -1312,7 +1312,32 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     // será apresentado como arquivo avulso na janela de prestação de contas.
     const ehComprovanteDevolucao = (arquivo: ArquivoPrestacao) =>
       String(arquivo.tipo ?? "").trim().toLowerCase() === "comprovante_devolucao";
-    const arquivosPrestacaoVisiveis = arquivosPrestacao.filter((arquivo) => !ehComprovanteDevolucao(arquivo));
+    // Na janela de consulta, mostrar primeiro o ANEXO II, depois o depósito (se houver)
+    // e por último os relatórios individuais em ordem numérica. O ZIP é gerado sob demanda
+    // pelo botão "Baixar todos" e não aparece como uma linha adicional na lista.
+    const ordemTipoArquivo: Record<string, number> = {
+      anexo_ii: 0,
+      deposito_saldo: 1,
+      relatorio_nota: 2,
+    };
+    const arquivosPrestacaoVisiveis = arquivosPrestacao
+      .filter((arquivo) => {
+        const tipo = String(arquivo.tipo ?? "").trim().toLowerCase();
+        return tipo !== "comprovante_devolucao" && tipo !== "pacote_zip";
+      })
+      .sort((a, b) => {
+        const tipoA = String(a.tipo ?? "").trim().toLowerCase();
+        const tipoB = String(b.tipo ?? "").trim().toLowerCase();
+        const ordemA = ordemTipoArquivo[tipoA] ?? 99;
+        const ordemB = ordemTipoArquivo[tipoB] ?? 99;
+        if (ordemA !== ordemB) return ordemA - ordemB;
+        if (tipoA === "relatorio_nota" && tipoB === "relatorio_nota") {
+          const sequenciaA = Number(a.arquivo_nome.match(/^(\\d+)/)?.[1] ?? 0);
+          const sequenciaB = Number(b.arquivo_nome.match(/^(\\d+)/)?.[1] ?? 0);
+          return sequenciaA - sequenciaB;
+        }
+        return a.arquivo_nome.localeCompare(b.arquivo_nome, "pt-BR");
+      });
     const comprovanteSalvo = arquivosPrestacao.find(ehComprovanteDevolucao);
     const prestacaoGerada = arquivosPrestacao.some((arquivo) => arquivo.tipo === "pacote_zip");
     const relatoriosIniciaisGerados = arquivosPrestacao.some((arquivo) => arquivo.tipo === "anexo_ii")
@@ -1654,9 +1679,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               ) : arquivosPrestacaoVisiveis.length === 0 ? (
                 <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda. Após a confirmação, os relatórios iniciais e o ANEXO II serão listados aqui. O depósito e o ZIP completo serão incluídos após anexar o comprovante, quando houver saldo a devolver.</p>
               ) : (
-                arquivosPrestacao
-                  .filter((arquivo) => !ehComprovanteDevolucao(arquivo))
-                  .map((arquivo) => (
+                arquivosPrestacaoVisiveis.map((arquivo) => (
                   <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <FileText className="h-5 w-5 shrink-0 text-primary" />
