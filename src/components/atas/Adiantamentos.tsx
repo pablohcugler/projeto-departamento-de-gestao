@@ -1117,6 +1117,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   if (processoSelecionado) {
     const notas = notasQ.data ?? [];
+    const arquivosPrestacao = arquivosPrestacaoQ.data ?? [];
+    const comprovanteSalvo = arquivosPrestacao.find((arquivo) => arquivo.tipo === "comprovante_devolucao");
+    const prestacaoGerada = arquivosPrestacao.some((arquivo) => arquivo.tipo === "pacote_zip");
     const valoresPendentes = notas.filter((nota) => nota.valor_despesa === null || nota.valor_despesa <= 0);
     const totalDespesas = notas.reduce((total, nota) => total + (Number(nota.valor_despesa) || 0), 0);
     const valorRecebidoAtual = processoSelecionado.valor_recebido;
@@ -1190,6 +1193,79 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Notas cadastradas</div><div className="mt-2 text-lg font-semibold tabular-nums">{notas.length}</div></div>
           <div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Valor recebido</div><div className="mt-2 text-lg font-semibold tabular-nums">{moedaBRL(processoSelecionado.valor_recebido)}</div></div>
         </div>
+
+        {processoSelecionado.finalizado && (
+          <div className="space-y-3 rounded-xl border bg-card p-4">
+            {valorDevolucao !== null && valorDevolucao > 0 ? (
+              <>
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                  <div>
+                    <h3 className="font-semibold">Devolução de saldo ao Fundo Municipal de Saúde</h3>
+                    <p className="mt-1 text-sm">Deverá ser devolvido o valor de <strong>{moedaBRL(valorDevolucao)}</strong> ao Fundo Municipal de Saúde.</p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3 text-sm">
+                  <div className="font-semibold">Dados para transferência</div>
+                  <div>Banco do Brasil</div>
+                  <div>Favorecido: Fundo Municipal de Saúde</div>
+                  <div>Agência: 4671-0</div>
+                  <div>Conta corrente: 9803-5</div>
+                </div>
+                {comprovanteSalvo ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> Comprovante anexado: {comprovanteSalvo.arquivo_nome}</span>
+                    {!prestacaoGerada && (
+                      <Button onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
+                        <FileText className="h-4 w-4" /> {gerandoPrestacao ? "Gerando arquivos..." : "Gerar prestação de contas"}
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Anexe a imagem ou PDF do comprovante de transferência. Esse documento é obrigatório para gerar o depósito de saldo remanescente e concluir os arquivos da prestação.</p>
+                    <input
+                      ref={inputComprovanteDevolucao}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                      onChange={(event) => setComprovanteDevolucao(event.target.files?.[0] ?? null)}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" onClick={() => inputComprovanteDevolucao.current?.click()} disabled={enviandoComprovante}>
+                        <Upload className="h-4 w-4" /> Selecionar comprovante
+                      </Button>
+                      {comprovanteDevolucao && <span className="text-sm text-muted-foreground">{comprovanteDevolucao.name}</span>}
+                      <Button type="button" onClick={() => void salvarComprovanteDevolucao()} disabled={!comprovanteDevolucao || enviandoComprovante}>
+                        {enviandoComprovante ? "Enviando..." : "Anexar comprovante"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold">Prestação de contas confirmada</h3>
+                  <p className="text-sm text-muted-foreground">Não há saldo a devolver. Gere os relatórios e o arquivo ZIP para arquivamento.</p>
+                </div>
+                {!prestacaoGerada && (
+                  <Button onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
+                    <FileText className="h-4 w-4" /> {gerandoPrestacao ? "Gerando arquivos..." : "Gerar prestação de contas"}
+                  </Button>
+                )}
+              </div>
+            )}
+            {prestacaoGerada && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <span className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-4 w-4 text-primary" /> Arquivos da prestação de contas disponíveis.</span>
+                <Button onClick={() => setDialogArquivosPrestacao(true)}>
+                  <Archive className="h-4 w-4" /> Arquivos da prestação de contas
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
