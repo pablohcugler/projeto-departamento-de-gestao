@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Anexos } from "./Anexos";
 import { brasaoMunicipio } from "@/lib/brasao";
-import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History, Mail } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, LogOut, UserPlus, FileUp, Pencil, Plus, Tags, Trash2, X, CircleUserRound, MessageSquareText, ClipboardList, ChartNoAxesCombined, Home, ArrowUpRight, FileCheck2, Construction, Wallet, History, Mail, LockKeyhole } from "lucide-react";
 import { Contratos } from "./Contratos";
 import { NovoUsuario } from "./NovoUsuario";
 import { ImportarItens } from "./ImportarItens";
@@ -84,6 +84,25 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       return !!data;
     },
   });
+  const setorUsuarioQ = useQuery({
+    queryKey: ["setor-usuario-painel", userId],
+    queryFn: async () => {
+      const { data: perfil, error: erroPerfil } = await supabase
+        .from("user_profiles")
+        .select("setor_id")
+        .eq("user_id", userId)
+        .single();
+      if (erroPerfil) throw erroPerfil;
+      const { data: setor, error: erroSetor } = await supabase
+        .from("setores")
+        .select("nome")
+        .eq("id", perfil.setor_id)
+        .single();
+      if (erroSetor) throw erroSetor;
+      return setor.nome;
+    },
+    staleTime: 60_000,
+  });
   const [aba, setAba] = useState<"inicio" | "pca" | "adiantamentos" | "oficios" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
@@ -104,6 +123,15 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [filtroSituacaoContratos, setFiltroSituacaoContratos] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
+  const usuarioProntoAtendimento = setorUsuarioQ.data?.trim().toLocaleLowerCase("pt-BR") === "pronto atendimento" && !adminQ.data;
+
+  function acessarModulo(destino: typeof aba, nomeModulo: string) {
+    if (usuarioProntoAtendimento && destino !== "inicio" && destino !== "adiantamentos") {
+      toast.error("Acesso não autorizado. O setor Pronto Atendimento tem permissão apenas para o módulo Adiantamentos.");
+      return;
+    }
+    setAba(destino);
+  }
 
   // Restaura a última tela e os filtros deste usuário após F5/recarregamento.
   useEffect(() => {
@@ -154,6 +182,16 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       setAba("inicio");
     }
   }, [adminQ.isSuccess, adminQ.data, aba]);
+
+  // Impede que uma tela restrita seja restaurada do armazenamento local ou aberta
+  // por navegação interna/direct state. Os cards permanecem visíveis no painel inicial.
+  useEffect(() => {
+    if (usuarioProntoAtendimento && aba !== "inicio" && aba !== "adiantamentos") {
+      setAba("inicio");
+      setSelecionada(null);
+      toast.error("Seu setor tem permissão de acesso somente ao módulo Adiantamentos.");
+    }
+  }, [usuarioProntoAtendimento, aba]);
 
   const integracaoBllQ = useQuery({
     queryKey: ["configuracao-sistema", "integracao_bll"],
@@ -546,10 +584,10 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                   <DropdownMenuContent align="start" className="w-52">
                     <DropdownMenuLabel>Exibir Atas de Registro</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
+                    <DropdownMenuItem onSelect={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("Vigentes"); setBusca(""); }}>
                       {filtroSituacao === "Vigentes" ? "✓ " : ""}Vigentes
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
+                    <DropdownMenuItem onSelect={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("Em andamento"); setBusca(""); }}>
                       {filtroSituacao === "Em andamento" ? "✓ " : ""}Em andamento
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -569,10 +607,10 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                 <DropdownMenuContent align="start" className="w-52">
                   <DropdownMenuLabel>Exibir Contratos</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Vigentes"); setBusca(""); }}>
+                  <DropdownMenuItem onSelect={() => { acessarModulo("contratos", "Contratos"); setSelecionada(null); setFiltroSituacaoContratos("Vigentes"); setBusca(""); }}>
                     {filtroSituacaoContratos === "Vigentes" ? "✓ " : ""}Vigentes
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => { setAba("contratos"); setSelecionada(null); setFiltroSituacaoContratos("Em andamento"); setBusca(""); }}>
+                  <DropdownMenuItem onSelect={() => { acessarModulo("contratos", "Contratos"); setSelecionada(null); setFiltroSituacaoContratos("Em andamento"); setBusca(""); }}>
                     {filtroSituacaoContratos === "Em andamento" ? "✓ " : ""}Em andamento
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -612,7 +650,23 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
       </header>
 
       <main className="app-main mx-auto w-full max-w-none py-6 sm:py-9">
-        {aba === "inicio" ? (
+        {usuarioProntoAtendimento && aba !== "inicio" && aba !== "adiantamentos" ? (
+          <section className="mx-auto flex min-h-[55vh] max-w-2xl flex-col items-center justify-center text-center">
+            <div className="w-full rounded-3xl border border-destructive/20 bg-card p-8 shadow-sm sm:p-12">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+                <LockKeyhole className="h-8 w-8" />
+              </div>
+              <h2 className="mt-5 text-2xl font-semibold">Acesso restrito ao setor</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                O setor Pronto Atendimento tem permissão para acessar somente o módulo Adiantamentos. Os demais módulos permanecem visíveis no painel, mas não podem ser abertos por este perfil.
+              </p>
+              <Button className="mt-6" onClick={() => setAba("adiantamentos")}>
+                <Wallet className="h-4 w-4" /> Acessar Adiantamentos
+              </Button>
+              <Button variant="ghost" className="mt-2" onClick={() => setAba("inicio")}>Voltar ao painel inicial</Button>
+            </div>
+          </section>
+        ) : aba === "inicio" ? (
           <section className="space-y-8">
             <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#062b36] via-[#07535a] to-[#0e766e] px-6 py-9 text-white shadow-xl sm:px-10 sm:py-12">
               <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10 bg-white/[0.035]" />
@@ -657,7 +711,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
               <button
                 type="button"
-                onClick={() => setAba("pca")}
+                onClick={() => acessarModulo("pca", "Plano de Contratações Anual")}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-indigo-200/15 bg-gradient-to-br from-[#232c50] via-[#343e6d] to-[#535a91] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2"
                 aria-label="Abrir painel do Plano de Contratações Anual"
               >
@@ -669,7 +723,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <ClipboardList className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">Em construção</span>
+                    <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">{usuarioProntoAtendimento ? "Acesso restrito" : "Em construção"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-100/70">PCA</div>
@@ -677,14 +731,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-indigo-50/75">Planejamento e organização das futuras contratações do Departamento.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Conhecer painel <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Conhecer painel"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => { setAba("atas"); setSelecionada(null); setFiltroSituacao("todas"); setBusca(""); }}
+                onClick={() => { if (usuarioProntoAtendimento) { acessarModulo("atas", "Atas de Registro de Preços"); return; } setAba("atas"); setSelecionada(null); setFiltroSituacao("todas"); setBusca(""); }}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-teal-200/20 bg-gradient-to-br from-[#063b46] via-[#075c63] to-[#0b897e] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2"
                 aria-label="Abrir painel de Atas de Registro de Preços e pedidos"
               >
@@ -696,7 +750,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <FileText className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">Módulo disponível</span>
+                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Módulo disponível"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-100/70">ARP</div>
@@ -704,14 +758,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-teal-50/80">Gerencie atas, fornecedores, itens, saldos, documentos e pedidos de fornecimento.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Acessar módulo"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => { setAba("contratos"); setSelecionada(null); setBusca(""); }}
+                onClick={() => { acessarModulo("contratos", "Contratos"); setSelecionada(null); setBusca(""); }}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-sky-200/20 bg-gradient-to-br from-[#153653] via-[#1e5579] to-[#287fa0] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
                 aria-label="Abrir painel de contratos"
               >
@@ -723,7 +777,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <FileCheck2 className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-sky-100/25 bg-sky-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-50">Módulo disponível</span>
+                    <span className="rounded-full border border-sky-100/25 bg-sky-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Módulo disponível"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-100/70">GESTÃO CONTRATUAL</div>
@@ -731,7 +785,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-sky-50/80">Acompanhe contratos, contratados, prazos de vigência, valores e documentos.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Acessar módulo <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Acessar módulo"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
@@ -765,7 +819,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
 
               <button
                 type="button"
-                onClick={() => setAba("oficios")}
+                onClick={() => acessarModulo("oficios", "Ofícios")}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-violet-200/20 bg-gradient-to-br from-[#30294e] via-[#514178] to-[#7565a6] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
                 aria-label="Abrir módulo Ofícios, em manutenção"
               >
@@ -777,7 +831,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <Mail className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">Em manutenção</span>
+                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Em manutenção"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100/70">GESTÃO DE DOCUMENTOS</div>
@@ -785,7 +839,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-violet-50/80">Acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público, Câmara.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    Em manutenção
+                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Em manutenção"}
                   </div>
                 </div>
               </button>
