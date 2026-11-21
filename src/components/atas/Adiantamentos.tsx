@@ -984,8 +984,27 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         return;
       }
 
+      const ordemTipoArquivoZip: Record<string, number> = {
+        anexo_ii: 0,
+        deposito_saldo: 1,
+        relatorio_nota: 2,
+      };
+      const arquivosOrdenados = [...arquivos].sort((a, b) => {
+        const tipoA = String(a.tipo ?? "").trim().toLowerCase();
+        const tipoB = String(b.tipo ?? "").trim().toLowerCase();
+        const ordemA = ordemTipoArquivoZip[tipoA] ?? 99;
+        const ordemB = ordemTipoArquivoZip[tipoB] ?? 99;
+        if (ordemA !== ordemB) return ordemA - ordemB;
+        if (tipoA === "relatorio_nota" && tipoB === "relatorio_nota") {
+          const sequenciaA = Number(a.arquivo_nome.match(/^(\d+)\s*-/)?.[1] ?? 0);
+          const sequenciaB = Number(b.arquivo_nome.match(/^(\d+)\s*-/)?.[1] ?? 0);
+          return sequenciaA - sequenciaB;
+        }
+        return a.arquivo_nome.localeCompare(b.arquivo_nome, "pt-BR");
+      });
+
       const entradas: Array<{ name: string; bytes: Uint8Array }> = [];
-      for (const arquivo of arquivos) {
+      for (const arquivo of arquivosOrdenados) {
         const { data: signed, error: signedError } = await supabase.storage
           .from("anexos")
           .createSignedUrl(arquivo.arquivo_caminho, 300);
