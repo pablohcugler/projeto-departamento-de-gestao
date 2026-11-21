@@ -1487,6 +1487,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                 void arquivosPrestacaoQ.refetch();
               }}
               aria-label="Abrir arquivos da prestação de contas"
+              data-testid="prestacao-contas-trigger"
             >
               <Archive className="h-4 w-4" /> Prestação de contas
             </Button>
