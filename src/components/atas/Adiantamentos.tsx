@@ -1492,8 +1492,18 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
               <>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                  <div>
-                    <h3 className="font-semibold">Devolução de saldo ao Fundo Municipal de Saúde</h3>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold">Devolução de saldo ao Fundo Municipal de Saúde</h3>
+                      {comprovanteSalvo && (
+                        <Badge
+                          variant="outline"
+                          className="inline-flex items-center gap-1 border-emerald-600/35 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> PAGO
+                        </Badge>
+                      )}
+                    </div>
                     <p className="mt-1 text-sm">Deverá ser devolvido o valor de <strong>{moedaBRL(valorDevolucao)}</strong> ao Fundo Municipal de Saúde.</p>
                   </div>
                 </div>
