@@ -71,7 +71,7 @@ async function createClients() {
   const auth = createClient(url, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  return { admin, auth, url, publicKey };
+  return { admin, auth, url, publicKey, secretKey };
 }
 
 export async function requireAdmin(req: Request, url: string, publicKey: string, clientFactory: typeof createClient = createClient) {
@@ -97,15 +97,40 @@ export async function requireAdmin(req: Request, url: string, publicKey: string,
   return { user: userData.user, token };
 }
 
+async function hmacHex(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function handleLoginCpf(
   action: Extract<Action, { action: "login-cpf" }>,
+  req: Request,
   admin: SupabaseClient,
   auth: SupabaseClient,
+  rateLimitSecret: string,
 ) {
   const cpf = digits(action.cpf);
   if (!validCpf(cpf) || !action.senha) {
-    return json({ error: "CPF ou senha inválidos." }, 400);
+    return json({ error: "CPF ou senha inválidos." }, 401);
   }
+
+  // HMAC evita armazenar CPF/IP em claro. Só confiamos no IP informado pela borda Cloudflare.
+  const keys = ["cpf:" + await hmacHex(rateLimitSecret, cpf)];
+  const clientIp = req.headers.get("cf-connecting-ip")?.trim();
+  if (clientIp && clientIp.length <= 64) keys.push("ip:" + await hmacHex(rateLimitSecret, clientIp));
+
+  const { data: bloqueado, error: limiteError } = await admin.rpc("login_cpf_rate_limit", { p_keys: keys, p_mode: "check" });
+  if (limiteError) {
+    console.error("Falha ao verificar limite de login por CPF:", limiteError.message);
+    return json({ error: "Serviço de autenticação temporariamente indisponível." }, 503);
+  }
+  if (bloqueado === true) return json({ error: "Muitas tentativas. Aguarde 15 minutos e tente novamente." }, 429);
+
+  const registrarFalha = async () => {
+    const { error } = await admin.rpc("login_cpf_rate_limit", { p_keys: keys, p_mode: "failure" });
+    if (error) console.error("Falha ao registrar tentativa de login:", error.message);
+  };
 
   const { data: perfil, error: perfilError } = await admin
     .from("user_profiles")
@@ -113,20 +138,25 @@ async function handleLoginCpf(
     .eq("cpf", cpf)
     .maybeSingle();
   if (perfilError || !perfil || perfil.suspenso) {
+    await registrarFalha();
     return json({ error: "CPF ou senha inválidos." }, 401);
   }
 
   const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(perfil.user_id);
   const email = authUser.user?.email;
-  if (authUserError || !email) return json({ error: "CPF ou senha inválidos." }, 401);
-
-  const { data: signedIn, error: signInError } = await auth.auth.signInWithPassword({
-    email,
-    password: action.senha,
-  });
-  if (signInError || !signedIn.session) {
+  if (authUserError || !email) {
+    await registrarFalha();
     return json({ error: "CPF ou senha inválidos." }, 401);
   }
+
+  const { data: signedIn, error: signInError } = await auth.auth.signInWithPassword({ email, password: action.senha });
+  if (signInError || !signedIn.session) {
+    await registrarFalha();
+    return json({ error: "CPF ou senha inválidos." }, 401);
+  }
+
+  const { error: resetError } = await admin.rpc("login_cpf_rate_limit", { p_keys: keys, p_mode: "success" });
+  if (resetError) console.error("Falha ao limpar tentativas de login após autenticação:", resetError.message);
   return json({
     session: {
       access_token: signedIn.session.access_token,
@@ -337,10 +367,10 @@ export async function handleRequest(req: Request) {
 
   try {
     const body = (await req.json()) as Action;
-    const { admin, auth, url, publicKey } = await createClients();
+    const { admin, auth, url, publicKey, secretKey } = await createClients();
 
     if (body?.action === "login-cpf") {
-      return await handleLoginCpf(body, admin, auth);
+      return await handleLoginCpf(body, req, admin, auth, secretKey);
     }
 
     const { user: solicitante } = await requireAdmin(req, url, publicKey);
