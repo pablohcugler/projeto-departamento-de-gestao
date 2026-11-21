@@ -1482,18 +1482,20 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <p className="text-sm text-muted-foreground">Cadastre as notas fiscais e os respectivos comprovantes das despesas deste adiantamento.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
-              onClick={() => {
-                setDialogArquivosPrestacao(true);
-                void arquivosPrestacaoQ.refetch();
-              }}
-              aria-label="Abrir arquivos da prestação de contas"
-              data-testid="prestacao-contas-trigger"
-            >
-              <Archive className="h-4 w-4" /> Prestação de contas
-            </Button>
+            {processoSelecionado.finalizado && (
+              <Button
+                type="button"
+                className="bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
+                onClick={() => {
+                  setDialogArquivosPrestacao(true);
+                  void arquivosPrestacaoQ.refetch();
+                }}
+                aria-label="Abrir arquivos da prestação de contas"
+                data-testid="prestacao-contas-trigger"
+              >
+                <Archive className="h-4 w-4" /> Prestação de contas
+              </Button>
+            )}
             <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
               <RefreshCw className="h-4 w-4" /> Atualizar notas
             </Button>
