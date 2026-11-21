@@ -1336,6 +1336,19 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
         {processoSelecionado.finalizado && (
           <div className="space-y-3 rounded-xl border bg-card p-4">
+            {!relatoriosIniciaisGerados && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold">Relatórios iniciais ainda não gerados</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gere agora o ANEXO II e os PDFs individuais de todas as notas. Se houver saldo a devolver, o depósito e o ZIP completo serão liberados após anexar o comprovante.
+                  </p>
+                </div>
+                <Button onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
+                  <FileText className="h-4 w-4" /> {gerandoPrestacao ? "Gerando relatórios..." : "Gerar ANEXO II e relatórios"}
+                </Button>
+              </div>
+            )}
             {valorDevolucao !== null && valorDevolucao > 0 ? (
               <>
                 <div className="flex items-start gap-2">
