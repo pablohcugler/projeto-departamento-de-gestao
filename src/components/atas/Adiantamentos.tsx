@@ -924,39 +924,47 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       valor_recebido?: number;
       valor_devolucao?: number;
     };
+    // Reconsulta o registro persistido para que a tela use o valor recebido e o
+    // status efetivamente gravados no banco, não uma cópia antiga do modal.
+    const { data: adiantamentoAtual, error: erroReconsulta } = await supabase
+      .from("adiantamentos")
+      .select("*")
+      .eq("id", processoSelecionado.id)
+      .single();
+    if (erroReconsulta) {
+      console.error("Não foi possível atualizar os dados do adiantamento após a confirmação:", erroReconsulta);
+    }
+
     const processoFinalizado: Adiantamento = {
       ...processoSelecionado,
+      ...(adiantamentoAtual ?? {}),
       finalizado: true,
-      finalizado_em: resultado.finalizado_em ?? new Date().toISOString(),
+      finalizado_em: adiantamentoAtual?.finalizado_em ?? resultado.finalizado_em ?? new Date().toISOString(),
     };
-    setProcessoSelecionado(processoFinalizado);
-    setDialogResumoAberto(false);
 
-    // Calcula o saldo com os dados recém-consultados, sem depender do formato
-    // retornado pela RPC. O cálculo é em centavos para evitar diferenças de ponto flutuante.
+    // Usa os dados recém-consultados e calcula em centavos. Não usa
+    // resultado.valor_devolucao da RPC, pois versões antigas da função podem
+    // devolver zero ou um campo desatualizado e pular a etapa de comprovante.
     const totalDespesasConfirmadas = (notasParaConferir.data ?? []).reduce(
       (total, nota) => total + Math.round((Number(nota.valor_despesa) || 0) * 100),
       0,
-    ) / 100;
-    const saldoCalculado = Math.round(
-      ((Number(processoSelecionado.valor_recebido) || 0) - totalDespesasConfirmadas) * 100,
-    ) / 100;
-    const valorDevolucaoRpc = resultado.valor_devolucao;
-    const saldoDevolucao = Math.max(0, valorDevolucaoRpc !== undefined && valorDevolucaoRpc !== null && Number.isFinite(Number(valorDevolucaoRpc))
-      ? Number(valorDevolucaoRpc)
-      : saldoCalculado);
+    );
+    const recebidoEmCentavos = Math.round((Number(processoFinalizado.valor_recebido) || 0) * 100);
+    const saldoDevolucao = Math.max(0, (recebidoEmCentavos - totalDespesasConfirmadas) / 100);
+
+    setProcessoSelecionado(processoFinalizado);
+    setDialogResumoAberto(false);
 
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["adiantamentos"] }),
       qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] }),
+      arquivosPrestacaoQ.refetch(),
     ]);
 
     if (saldoDevolucao > 0) {
-      toast.warning(`Adiantamento finalizado. Deverá ser devolvido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante de transferência para gerar o depósito e concluir a prestação de contas.`);
+      toast.warning(`Adiantamento finalizado. Etapa de devolução aberta: deverá ser transferido ${moedaBRL(saldoDevolucao)} ao Fundo Municipal de Saúde. Anexe o comprovante nesta tela para liberar a geração do depósito, do ANEXO II, dos relatórios individuais e do ZIP.`);
     } else {
       toast.success("Adiantamento confirmado. Iniciando automaticamente a geração dos PDFs e do arquivo ZIP.");
-      // Sem saldo a devolver, não há comprovante pendente: gera tudo neste fluxo
-      // e exibe o botão "Arquivos da prestação de contas" ao concluir.
       await gerarPrestacaoContas(processoFinalizado);
     }
   }
