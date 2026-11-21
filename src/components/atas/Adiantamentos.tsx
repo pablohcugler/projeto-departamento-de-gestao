@@ -949,6 +949,59 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
     link.remove();
   }
 
+  async function baixarTodosArquivosPrestacao() {
+    if (!processoSelecionado) return;
+    try {
+      const { data: arquivosAtualizados, error } = await arquivosPrestacaoQ.refetch();
+      if (error) throw error;
+      const arquivos = arquivosAtualizados ?? [];
+      if (!arquivos.length) {
+        toast.info("Ainda não há arquivos registrados nesta prestação de contas.");
+        return;
+      }
+
+      // Quando o pacote final já existe, ele é a forma mais simples e completa
+      // de baixar todos os documentos em um único arquivo.
+      const pacote = arquivos.find((arquivo) => arquivo.tipo === "pacote_zip");
+      if (pacote) {
+        await baixarArquivoPrestacao(pacote);
+        return;
+      }
+
+      // Antes da devolução ser comprovada, permite baixar em conjunto os PDFs
+      // iniciais e todos os comprovantes/arquivos que já estejam registrados.
+      const entradas: Array<{ name: string; bytes: Uint8Array }> = [];
+      for (const arquivo of arquivos) {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("anexos")
+          .createSignedUrl(arquivo.arquivo_caminho, 300);
+        if (signedError || !signed?.signedUrl) {
+          throw new Error('Não foi possível acessar "' + arquivo.arquivo_nome + '".');
+        }
+        const resposta = await fetch(signed.signedUrl);
+        if (!resposta.ok) throw new Error('Falha ao baixar "' + arquivo.arquivo_nome + '".');
+        entradas.push({
+          name: arquivo.arquivo_nome,
+          bytes: new Uint8Array(await resposta.arrayBuffer()),
+        });
+      }
+      const zip = criarArquivoZip(entradas);
+      const blob = new Blob([zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.byteLength) as ArrayBuffer], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "ARQUIVOS DA PRESTACAO DE CONTAS - PROCESSO " + nomeSeguroArquivo(processoSelecionado.processo_1doc) + ".zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      toast.success("Download de todos os arquivos iniciado.");
+    } catch (erro) {
+      console.error("Erro ao baixar todos os arquivos da prestação:", erro);
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível baixar todos os arquivos.");
+    }
+  }
+
   async function confirmarFinalizacao() {
     if (!processoSelecionado || finalizando) return;
     // Confere previamente se todos os anexos podem ser incorporados aos PDFs,
@@ -1426,6 +1479,18 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
             <p className="text-sm text-muted-foreground">Cadastre as notas fiscais e os respectivos comprovantes das despesas deste adiantamento.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {processoSelecionado.finalizado && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  void arquivosPrestacaoQ.refetch();
+                  setDialogArquivosPrestacao(true);
+                }}
+              >
+                <Archive className="h-4 w-4" /> Prestação de contas
+              </Button>
+            )}
             <Button variant="outline" onClick={() => void notasQ.refetch()} disabled={notasQ.isFetching}>
               <RefreshCw className="h-4 w-4" /> Atualizar notas
             </Button>
@@ -1554,14 +1619,27 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         <Dialog open={dialogArquivosPrestacao} onOpenChange={setDialogArquivosPrestacao}>
           <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> Arquivos da prestação de contas</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> Prestação de contas</DialogTitle>
               <DialogDescription>
-                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}. Todos os documentos finais ficam disponíveis para consulta e download.
+                Processo {processoSelecionado.processo_1doc} · Empenho nº {processoSelecionado.numero_empenho}. Consulte e baixe cada arquivo ou faça o download de todos em um único ZIP.
               </DialogDescription>
             </DialogHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm text-muted-foreground">{arquivosPrestacao.length} arquivo(s) registrado(s)</span>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => void arquivosPrestacaoQ.refetch()} disabled={arquivosPrestacaoQ.isFetching}>
+                  <RefreshCw className="h-4 w-4" /> Atualizar lista
+                </Button>
+                <Button type="button" size="sm" onClick={() => void baixarTodosArquivosPrestacao()} disabled={arquivosPrestacao.length === 0}>
+                  <Download className="h-4 w-4" /> Baixar todos
+                </Button>
+              </div>
+            </div>
             <div className="space-y-2">
-              {arquivosPrestacao.length === 0 ? (
-                <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda.</p>
+              {arquivosPrestacaoQ.isLoading ? (
+                <p className="rounded-lg border p-4 text-sm text-muted-foreground">Carregando arquivos da prestação de contas...</p>
+              ) : arquivosPrestacao.length === 0 ? (
+                <p className="rounded-lg border p-4 text-sm text-muted-foreground">Nenhum arquivo foi gerado ainda. Após a confirmação, os relatórios iniciais e o ANEXO II serão listados aqui. O depósito e o ZIP completo serão incluídos após anexar o comprovante, quando houver saldo a devolver.</p>
               ) : (
                 arquivosPrestacao.map((arquivo) => (
                   <div key={arquivo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
