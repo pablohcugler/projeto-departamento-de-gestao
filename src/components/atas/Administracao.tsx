@@ -47,6 +47,23 @@ type AtaAdmin = {
   pedidos_vinculados: number;
 };
 type AbaAdmin = "usuarios" | "backup" | "atas" | "sistema";
+type ModuloSetor = "pca" | "atas" | "contratos" | "oficios" | "adiantamentos";
+type PermissaoModuloSetor = {
+  id: string;
+  setor_id: string;
+  modulo: ModuloSetor;
+  permitido: boolean;
+  updated_at: string;
+  updated_by: string | null;
+};
+const MODULOS_SETOR: Array<{ id: ModuloSetor; nome: string; descricao: string }> = [
+  { id: "pca", nome: "Plano de Contratações Anual", descricao: "Planejamento anual de contratações" },
+  { id: "atas", nome: "Atas de Registro de Preços", descricao: "Atas, itens, saldos e pedidos" },
+  { id: "contratos", nome: "Contratos", descricao: "Gestão e acompanhamento contratual" },
+  { id: "oficios", nome: "Ofícios", descricao: "Gestão de documentos e ofícios" },
+  { id: "adiantamentos", nome: "Adiantamentos", descricao: "Cadastro e prestação de contas por setor" },
+];
+
 
 function formatarCpf(cpf: string | null) {
   if (!cpf) return "Pendente";
@@ -90,6 +107,42 @@ export function Administracao() {
     },
   });
   const setores = setoresQ.data ?? [];
+  const permissoesModulosQ = useQuery({
+    queryKey: ["permissoes-modulos-setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setor_permissoes_modulos")
+        .select("id, setor_id, modulo, permitido, updated_at, updated_by");
+      if (error) throw error;
+      return data as PermissaoModuloSetor[];
+    },
+    enabled: aba === "sistema",
+  });
+  const permissoesModulos = permissoesModulosQ.data ?? [];
+  const [salvandoPermissaoModulo, setSalvandoPermissaoModulo] = useState<string | null>(null);
+
+  async function atualizarPermissaoModulo(setorId: string, modulo: ModuloSetor, permitido: boolean) {
+    const chave = setorId + ":" + modulo;
+    if (salvandoPermissaoModulo) return;
+    setSalvandoPermissaoModulo(chave);
+    try {
+      const { error } = await supabase
+        .from("setor_permissoes_modulos")
+        .upsert({
+          setor_id: setorId,
+          modulo,
+          permitido,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "setor_id,modulo" });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["permissoes-modulos-setores"] });
+      toast.success("Permissão do setor atualizada.");
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível atualizar a permissão do módulo.");
+    } finally {
+      setSalvandoPermissaoModulo(null);
+    }
+  }
 
   const integracaoBllQ = useQuery({
     queryKey: ["configuracao-sistema", "integracao_bll"],
@@ -416,10 +469,10 @@ export function Administracao() {
       )}
 
       {aba === "sistema" && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold">Gestão do sistema</h3>
-            <p className="text-sm text-muted-foreground">Ative ou desative integrações utilizadas pelos módulos do sistema.</p>
+            <p className="text-sm text-muted-foreground">Configure integrações e os módulos disponíveis para cada setor/lotação.</p>
           </div>
 
           {integracaoBllQ.isLoading ? (
@@ -465,6 +518,84 @@ export function Administracao() {
               </div>
             </div>
           )}
+
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h4 className="text-base font-semibold">Permissões de módulos por setor/lotação</h4>
+                <p className="max-w-3xl text-sm text-muted-foreground">
+                  Marque os módulos que cada setor poderá acessar. As alterações são aplicadas às contas vinculadas àquela lotação.
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => void Promise.all([setoresQ.refetch(), permissoesModulosQ.refetch()])} disabled={setoresQ.isFetching || permissoesModulosQ.isFetching}>
+                <RefreshCw className="h-4 w-4" /> Atualizar permissões
+              </Button>
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+              <div className="font-semibold">Isolamento dos adiantamentos</div>
+              <p className="mt-1 text-muted-foreground">
+                Independentemente das permissões dos outros módulos, cada setor consulta e gerencia somente os adiantamentos vinculados à sua própria lotação. Apenas administradores têm visão geral.
+              </p>
+            </div>
+
+            {setoresQ.isLoading || permissoesModulosQ.isLoading ? (
+              <div className="rounded-xl border p-6 text-sm text-muted-foreground">Carregando setores e permissões...</div>
+            ) : setoresQ.isError || permissoesModulosQ.isError ? (
+              <div className="rounded-xl border border-destructive/30 p-5 text-sm text-destructive">
+                Não foi possível carregar a matriz de permissões. Verifique se a migração de permissões por setor foi aplicada.
+                <div className="mt-2 text-xs">
+                  {setoresQ.error instanceof Error ? setoresQ.error.message : permissoesModulosQ.error instanceof Error ? permissoesModulosQ.error.message : ""}
+                </div>
+              </div>
+            ) : setores.length === 0 ? (
+              <div className="rounded-xl border p-6 text-sm text-muted-foreground">Nenhum setor ativo foi encontrado.</div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {setores.map((setor) => {
+                  const permissoesDoSetor = permissoesModulos.filter((item) => item.setor_id === setor.id);
+                  const ativos = permissoesDoSetor.filter((item) => item.permitido).length;
+                  return (
+                    <div key={setor.id} className="rounded-xl border bg-card p-4 sm:p-5">
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h5 className="font-semibold">{setor.nome}</h5>
+                          <p className="text-xs text-muted-foreground">{ativos} de {MODULOS_SETOR.length} módulos liberados</p>
+                        </div>
+                        {setor.acesso_global && <Badge variant="secondary">Setor de gestão</Badge>}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {MODULOS_SETOR.map((modulo) => {
+                          const permissao = permissoesDoSetor.find((item) => item.modulo === modulo.id);
+                          const permitido = permissao?.permitido ?? false;
+                          const chave = setor.id + ":" + modulo.id;
+                          return (
+                            <label key={modulo.id} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40">
+                              <input
+                                type="checkbox"
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                                checked={permitido}
+                                disabled={!permissao || salvandoPermissaoModulo !== null}
+                                onChange={(event) => void atualizarPermissaoModulo(setor.id, modulo.id, event.target.checked)}
+                                aria-label={modulo.nome + " para " + setor.nome}
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-medium">{modulo.nome}</span>
+                                <span className="block text-xs text-muted-foreground">{modulo.descricao}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {permissoesDoSetor.length < MODULOS_SETOR.length && (
+                        <p className="mt-3 text-xs text-destructive">Há permissões ausentes para este setor. Atualize a migração no Supabase antes de configurar.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
