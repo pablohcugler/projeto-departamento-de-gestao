@@ -10,14 +10,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { gerarRelatorioAdiantamento, type AnexoRelatorio } from "@/lib/relatorio-adiantamento";
+import { gerarAnexoIIDespesas, gerarDepositoSaldoRemanescente } from "@/lib/relatorios-prestacao-adiantamento";
+import { criarArquivoZip } from "@/lib/zip";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X,
+  FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X, Download, Archive,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
 type NotaDespesa = Tables<"adiantamento_notas">;
 type DocumentoComplementar = Tables<"adiantamento_nota_documentos">;
+type ArquivoPrestacao = Tables<"adiantamento_prestacao_arquivos">;
 
 const LIMITE_ARQUIVO_BYTES = 15 * 1024 * 1024;
 const LIMITE_DOCUMENTOS_COMPLEMENTARES = 20;
@@ -125,6 +128,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const qc = useQueryClient();
   const inputArquivo = useRef<HTMLInputElement>(null);
   const inputDocumentosComplementares = useRef<HTMLInputElement>(null);
+  const inputComprovanteDevolucao = useRef<HTMLInputElement>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
@@ -158,6 +162,10 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [finalizando, setFinalizando] = useState(false);
   const [dialogReabrirAberto, setDialogReabrirAberto] = useState(false);
   const [reabrindo, setReabrindo] = useState(false);
+  const [comprovanteDevolucao, setComprovanteDevolucao] = useState<File | null>(null);
+  const [enviandoComprovante, setEnviandoComprovante] = useState(false);
+  const [gerandoPrestacao, setGerandoPrestacao] = useState(false);
+  const [dialogArquivosPrestacao, setDialogArquivosPrestacao] = useState(false);
 
   const [dialogEditarProcessoAberto, setDialogEditarProcessoAberto] = useState(false);
   const [salvandoEdicaoProcesso, setSalvandoEdicaoProcesso] = useState(false);
@@ -191,6 +199,21 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data as DocumentoComplementar[];
+    },
+  });
+
+  const arquivosPrestacaoQ = useQuery({
+    queryKey: ["adiantamento-prestacao-arquivos", processoSelecionado?.id],
+    enabled: !!processoSelecionado?.id,
+    queryFn: async () => {
+      if (!processoSelecionado?.id) return [];
+      const { data, error } = await supabase
+        .from("adiantamento_prestacao_arquivos")
+        .select("*")
+        .eq("adiantamento_id", processoSelecionado.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as ArquivoPrestacao[];
     },
   });
 
