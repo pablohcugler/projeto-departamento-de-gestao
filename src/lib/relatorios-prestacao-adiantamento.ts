@@ -95,7 +95,7 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const pageCapacity = 20;
+  const pageCapacity = 10;
   const chunks: LinhaAnexoII[][] = [];
   for (let i = 0; i < data.despesas.length; i += pageCapacity) chunks.push(data.despesas.slice(i, i + pageCapacity));
   if (!chunks.length) chunks.push([]);
