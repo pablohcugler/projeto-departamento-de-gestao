@@ -99,10 +99,30 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
         .eq("id", perfil.setor_id)
         .single();
       if (erroSetor) throw erroSetor;
-      return setor.nome;
+      return { id: perfil.setor_id, nome: setor.nome };
     },
     staleTime: 60_000,
   });
+  const permissoesModulosUsuarioQ = useQuery({
+    queryKey: ["permissoes-modulos-usuario", userId, setorUsuarioQ.data?.id],
+    queryFn: async () => {
+      if (!setorUsuarioQ.data?.id) return {};
+      const { data, error } = await supabase
+        .from("setor_permissoes_modulos")
+        .select("modulo, permitido")
+        .eq("setor_id", setorUsuarioQ.data.id);
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map((item) => [item.modulo, item.permitido])) as Record<string, boolean>;
+    },
+    enabled: !!setorUsuarioQ.data?.id,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
+  const permissoesCarregadas = adminQ.isSuccess && (adminQ.data === true || (setorUsuarioQ.isSuccess && permissoesModulosUsuarioQ.isSuccess));
+  function moduloPermitido(modulo: string) {
+    if (adminQ.data) return true;
+    return permissoesModulosUsuarioQ.data?.[modulo] === true;
+  }
   const [aba, setAba] = useState<"inicio" | "pca" | "adiantamentos" | "oficios" | "atas" | "contratos" | "pedidos" | "feedbacks" | "administracao">("inicio");
   const [navegacaoRestaurada, setNavegacaoRestaurada] = useState(false);
   const [selecionada, setSelecionada] = useState<string | null>(null);
@@ -123,11 +143,26 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
   const [filtroSituacao, setFiltroSituacao] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [filtroSituacaoContratos, setFiltroSituacaoContratos] = useState<"todas" | "Em andamento" | "Vigentes">("todas");
   const [busca, setBusca] = useState("");
-  const usuarioProntoAtendimento = setorUsuarioQ.data?.trim().toLocaleLowerCase("pt-BR") === "pronto atendimento" && !adminQ.data;
+  function moduloDaAba(atual: typeof aba): string | null {
+    if (atual === "pedidos") return "atas";
+    if (["pca", "atas", "contratos", "oficios", "adiantamentos"].includes(atual)) return atual;
+    return null;
+  }
 
   function acessarModulo(destino: typeof aba, nomeModulo: string) {
-    if (usuarioProntoAtendimento && destino !== "inicio" && destino !== "adiantamentos") {
-      toast.error("Acesso ao módulo " + nomeModulo + " não autorizado. O setor Pronto Atendimento tem permissão apenas para Adiantamentos.");
+    const modulo = moduloDaAba(destino);
+    if (!modulo) {
+      setAba(destino);
+      return;
+    }
+    if (!permissoesCarregadas && !adminQ.data) {
+      toast.error(permissoesModulosUsuarioQ.isError
+        ? "Não foi possível consultar as permissões do seu setor. Tente atualizar a página ou procure o administrador."
+        : "Aguarde a verificação das permissões do seu setor.");
+      return;
+    }
+    if (!moduloPermitido(modulo)) {
+      toast.error("Seu setor não possui permissão para acessar o módulo " + nomeModulo + ".");
       return;
     }
     setAba(destino);
@@ -183,15 +218,17 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
     }
   }, [adminQ.isSuccess, adminQ.data, aba]);
 
-  // Impede que uma tela restrita seja restaurada do armazenamento local ou aberta
-  // por navegação interna/direct state. Os cards permanecem visíveis no painel inicial.
+  // Impede que uma tela sem permissão seja restaurada do armazenamento local
+  // ou aberta por navegação interna. Os módulos continuam visíveis no painel inicial.
   useEffect(() => {
-    if (usuarioProntoAtendimento && aba !== "inicio" && aba !== "adiantamentos") {
+    const modulo = moduloDaAba(aba);
+    if (!modulo || !permissoesCarregadas || adminQ.data) return;
+    if (!moduloPermitido(modulo)) {
       setAba("inicio");
       setSelecionada(null);
-      toast.error("Seu setor tem permissão de acesso somente ao módulo Adiantamentos.");
+      toast.error("Seu setor não possui permissão para acessar este módulo.");
     }
-  }, [usuarioProntoAtendimento, aba]);
+  }, [aba, permissoesCarregadas, adminQ.data, permissoesModulosUsuarioQ.data]);
 
   const integracaoBllQ = useQuery({
     queryKey: ["configuracao-sistema", "integracao_bll"],
@@ -592,7 +629,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button size="sm" variant={aba === "pedidos" ? "secondary" : "ghost"} className={aba === "pedidos" ? "app-nav-active" : "app-nav-item"} onClick={() => { setAba("pedidos"); setSelecionada(null); }}>
+                <Button size="sm" variant={aba === "pedidos" ? "secondary" : "ghost"} className={aba === "pedidos" ? "app-nav-active" : "app-nav-item"} onClick={() => { acessarModulo("pedidos", "Pedidos"); setSelecionada(null); }}>
                   Pedidos
                 </Button>
               </>
@@ -729,7 +766,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <ClipboardList className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">{usuarioProntoAtendimento ? "Acesso restrito" : "Em construção"}</span>
+                    <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">{!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("pca") ? "Em construção" : "Acesso restrito"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-100/70">PCA</div>
@@ -737,7 +774,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-indigo-50/75">Planejamento e organização das futuras contratações do Departamento.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Conhecer painel"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("pca") ? "Conhecer painel" : "Sem permissão de acesso"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
@@ -756,7 +793,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <FileText className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Módulo disponível"}</span>
+                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">{!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("atas") ? "Módulo disponível" : "Acesso restrito"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-100/70">ARP</div>
@@ -764,7 +801,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-teal-50/80">Gerencie atas, fornecedores, itens, saldos, documentos e pedidos de fornecimento.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Acessar módulo"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("atas") ? "Acessar módulo" : "Sem permissão de acesso"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
@@ -783,7 +820,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <FileCheck2 className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-sky-100/25 bg-sky-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Módulo disponível"}</span>
+                    <span className="rounded-full border border-sky-100/25 bg-sky-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-50">{!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("contratos") ? "Módulo disponível" : "Acesso restrito"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-100/70">GESTÃO CONTRATUAL</div>
@@ -791,14 +828,14 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-sky-50/80">Acompanhe contratos, contratados, prazos de vigência, valores e documentos.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Acessar módulo"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    {!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("contratos") ? "Acessar módulo" : "Sem permissão de acesso"} <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => setAba("adiantamentos")}
+                onClick={() => acessarModulo("adiantamentos", "Adiantamentos")}
                 className="group relative isolate min-h-[265px] overflow-hidden rounded-2xl border border-amber-200/20 bg-gradient-to-br from-[#514022] via-[#80602d] to-[#ae8744] p-6 text-left text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
                 aria-label="Abrir painel de Adiantamentos"
               >
@@ -810,7 +847,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <Wallet className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">Módulo disponível</span>
+                    <span className="rounded-full border border-emerald-100/25 bg-emerald-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-50">{!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("adiantamentos") ? "Módulo disponível" : "Acesso restrito"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-100/70">ADIANTAMENTOS</div>
@@ -837,7 +874,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
                       <Mail className="h-6 w-6" />
                     </span>
-                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">{usuarioProntoAtendimento ? "Acesso restrito" : "Em manutenção"}</span>
+                    <span className="rounded-full border border-amber-100/25 bg-amber-200/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-50">{!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("oficios") ? "Em manutenção" : "Acesso restrito"}</span>
                   </div>
                   <div className="mt-8">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-100/70">GESTÃO DE DOCUMENTOS</div>
@@ -845,7 +882,7 @@ export function Painel({ nome, userId }: { nome?: string | null; userId: string 
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-violet-50/80">Acompanhamento de ofícios externos, Tribunal de Justiça, Ministério Público, Câmara.</p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/90">
-                    {usuarioProntoAtendimento ? "Sem permissão de acesso" : "Em manutenção"}
+                    {!permissoesCarregadas ? "Verificando acesso" : moduloPermitido("oficios") ? "Em manutenção" : "Sem permissão de acesso"}
                   </div>
                 </div>
               </button>
