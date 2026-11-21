@@ -127,9 +127,13 @@ async function handleLoginCpf(
   }
   if (bloqueado === true) return json({ error: "Muitas tentativas. Aguarde 15 minutos e tente novamente." }, 429);
 
-  const registrarFalha = async () => {
+  const registrarFalha = async (): Promise<boolean> => {
     const { error } = await admin.rpc("login_cpf_rate_limit", { p_keys: keys, p_mode: "failure" });
-    if (error) console.error("Falha ao registrar tentativa de login:", error.message);
+    if (error) {
+      console.error("Falha ao registrar tentativa de login:", error.message);
+      return false;
+    }
+    return true;
   };
 
   const { data: perfil, error: perfilError } = await admin
@@ -138,20 +142,20 @@ async function handleLoginCpf(
     .eq("cpf", cpf)
     .maybeSingle();
   if (perfilError || !perfil || perfil.suspenso) {
-    await registrarFalha();
+    if (!(await registrarFalha())) return json({ error: "Serviço de autenticação temporariamente indisponível." }, 503);
     return json({ error: "CPF ou senha inválidos." }, 401);
   }
 
   const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(perfil.user_id);
   const email = authUser.user?.email;
   if (authUserError || !email) {
-    await registrarFalha();
+    if (!(await registrarFalha())) return json({ error: "Serviço de autenticação temporariamente indisponível." }, 503);
     return json({ error: "CPF ou senha inválidos." }, 401);
   }
 
   const { data: signedIn, error: signInError } = await auth.auth.signInWithPassword({ email, password: action.senha });
   if (signInError || !signedIn.session) {
-    await registrarFalha();
+    if (!(await registrarFalha())) return json({ error: "Serviço de autenticação temporariamente indisponível." }, 503);
     return json({ error: "CPF ou senha inválidos." }, 401);
   }
 
