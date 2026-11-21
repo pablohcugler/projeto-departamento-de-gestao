@@ -699,13 +699,6 @@ export type Database = {
             referencedRelation: "setores"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "setor_permissoes_modulos_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       setores: {
