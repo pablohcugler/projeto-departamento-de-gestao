@@ -884,6 +884,30 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   async function confirmarFinalizacao() {
     if (!processoSelecionado || finalizando) return;
+    // Confere previamente se todos os anexos podem ser incorporados aos PDFs,
+    // evitando bloquear o processo com arquivos Word/Excel/PowerPoint não conversíveis no navegador.
+    const [notasParaConferir, docsParaConferir] = await Promise.all([notasQ.refetch(), documentosQ.refetch()]);
+    if (notasParaConferir.error || docsParaConferir.error) {
+      toast.error("Não foi possível conferir os anexos das notas antes da finalização.");
+      return;
+    }
+    const anexosParaConferir = [
+      ...(notasParaConferir.data ?? []).filter((nota) => nota.arquivo_caminho).map((nota) => ({
+        nome: nota.arquivo_nome ?? "nota fiscal",
+        mime: nota.arquivo_mime_type ?? "",
+      })),
+      ...(docsParaConferir.data ?? []).map((doc) => ({ nome: doc.arquivo_nome, mime: doc.arquivo_mime_type })),
+    ];
+    const anexosNaoConversiveis = anexosParaConferir.filter((arquivo) => {
+      const ext = arquivo.nome.split(".").pop()?.toLowerCase() ?? "";
+      const mime = arquivo.mime.toLowerCase();
+      return !(mime === "application/pdf" || mime.startsWith("image/") || ["pdf", "jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif"].includes(ext));
+    });
+    if (anexosNaoConversiveis.length > 0) {
+      toast.error(`Converta os seguintes documentos para PDF ou imagem antes de finalizar: ${anexosNaoConversiveis.map((item) => item.nome).join(", ")}.`);
+      return;
+    }
+
     setFinalizando(true);
     const { data, error } = await supabase.rpc("finalizar_adiantamento", {
       p_adiantamento_id: processoSelecionado.id,
