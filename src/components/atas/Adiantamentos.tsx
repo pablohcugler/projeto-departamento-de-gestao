@@ -863,11 +863,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       // mantém o comprovante obrigatório antes de produzir o depósito e o ZIP.
       if (saldo > 0 && !comprovante) {
         toast.warning(
-          "ANEXO II e relatórios individuais gerados. Deverá ser devolvido " + moedaBRL(saldo) +
-          " ao Fundo Municipal de Saúde. Anexe o comprovante para gerar o depósito de saldo remanescente e o ZIP completo."
+          "Adiantamento finalizado. Deverá ser devolvido " + moedaBRL(saldo) +
+          " ao Fundo Municipal de Saúde. Confira os dados bancários e anexe o comprovante na seção de devolução desta tela."
         );
         await arquivosPrestacaoQ.refetch();
-        setDialogArquivosPrestacao(true);
+        // Não abrir a janela de arquivos nesta etapa. O usuário deve permanecer
+        // na tela do processo para visualizar o aviso, os dados bancários e
+        // o botão de anexar o comprovante. A janela de arquivos será aberta
+        // somente pelo botão "Prestação de contas" ou após gerar o ZIP final.
         return;
       }
 
