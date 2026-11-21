@@ -56,11 +56,31 @@ export function NovoUsuario({ aberto, onFechar }: { aberto: boolean; onFechar: (
           <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Senha inicial (mín. 8 caracteres)</Label><Input type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Setor de lotação *</Label>
-            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={setorId} onChange={(e) => setSetorId(e.target.value)}>
-              <option value="">Selecione o setor...</option>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Setor de lotação *</Label>
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void setoresQ.refetch()} disabled={setoresQ.isFetching}>
+                {setoresQ.isFetching ? "Atualizando..." : "Atualizar setores"}
+              </Button>
+            </div>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={setorId}
+              onChange={(e) => setSetorId(e.target.value)}
+              disabled={setoresQ.isLoading || setoresQ.isError}
+            >
+              <option value="">{setoresQ.isLoading ? "Carregando setores..." : "Selecione o setor..."}</option>
               {setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.acesso_global ? setor.nome + " — Acesso geral" : "↳ " + setor.nome}</option>)}
             </select>
+            {setoresQ.isError ? (
+              <p className="text-xs text-destructive">
+                Não foi possível carregar os setores: {setoresQ.error instanceof Error ? setoresQ.error.message : "erro desconhecido"}. Atualize a lista ou verifique as permissões no Supabase.
+              </p>
+            ) : !setoresQ.isLoading && !setores.some((setor) => setor.nome.trim().toLocaleLowerCase("pt-BR") === "pronto atendimento") ? (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                O setor Pronto Atendimento ainda não consta no banco. Execute a migração 202611210005_garantir_setor_pronto_atendimento.sql no Supabase e clique em Atualizar setores.
+              </p>
+            ) : null}
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Também é administrador
