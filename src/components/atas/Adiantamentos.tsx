@@ -1422,32 +1422,17 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                   <div>Agência: 4671-0</div>
                   <div>Conta corrente: 9803-5</div>
                 </div>
-                {comprovanteSalvo ? (
+                {comprovanteSalvo && !prestacaoGerada ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                     <span className="flex min-w-0 items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                      <span>
-                        Comprovante anexado: <strong>{comprovanteSalvo.arquivo_nome}</strong>
-                        {prestacaoGerada && <span className="block text-xs text-muted-foreground">Prestação de contas finalizada.</span>}
-                      </span>
+                      <span>Comprovante anexado: <strong>{comprovanteSalvo.arquivo_nome}</strong></span>
                     </span>
-                    {prestacaoGerada ? (
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          setDialogArquivosPrestacao(true);
-                          void arquivosPrestacaoQ.refetch();
-                        }}
-                      >
-                        <Archive className="h-4 w-4" /> Visualizar arquivos da prestação de contas
-                      </Button>
-                    ) : (
-                      <Button type="button" onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
-                        <CheckCircle2 className="h-4 w-4" /> {gerandoPrestacao ? "Finalizando..." : "Finalizar prestação de contas"}
-                      </Button>
-                    )}
+                    <Button type="button" onClick={() => void gerarPrestacaoContas()} disabled={gerandoPrestacao}>
+                      <CheckCircle2 className="h-4 w-4" /> {gerandoPrestacao ? "Finalizando..." : "Finalizar prestação de contas"}
+                    </Button>
                   </div>
-                ) : (
+                ) : !comprovanteSalvo ? (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Anexe a imagem ou PDF do comprovante de transferência. Depois de anexar, o botão Finalizar ficará disponível para gerar o depósito de saldo remanescente e o ZIP completo.</p>
                     <input
@@ -1470,7 +1455,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                       </Button>
                     </div>
                   </div>
-                )}
+                ) : null}
               </>
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3">
