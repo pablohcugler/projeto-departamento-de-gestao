@@ -238,4 +238,142 @@ $$;
 REVOKE ALL ON FUNCTION public.usuario_pode_acessar_referencia(text, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.usuario_pode_acessar_referencia(text, uuid) TO authenticated;
 
+
+-- RPC privilegiado de atualização de saldo também precisa respeitar a permissão do módulo Atas.
+CREATE OR REPLACE FUNCTION public.atualizar_saldos_ata(
+  p_ata_id uuid,
+  p_data_relatorio date,
+  p_saldos jsonb
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_atualizados integer := 0;
+  v_setor_id uuid;
+BEGIN
+  IF auth.uid() IS NULL
+     OR NOT public.usuario_ativo(auth.uid())
+     OR NOT public.is_team_member(auth.uid())
+     OR NOT public.usuario_pode_acessar_modulo('atas') THEN
+    RAISE EXCEPTION 'Usuário sem permissão para atualizar saldo da ata.';
+  END IF;
+
+  SELECT a.setor_id INTO v_setor_id
+  FROM public.atas a
+  WHERE a.id = p_ata_id;
+
+  IF v_setor_id IS NULL OR NOT public.usuario_pode_acessar_setor(v_setor_id) THEN
+    RAISE EXCEPTION 'Você não tem acesso ao setor desta ata.';
+  END IF;
+
+  IF p_data_relatorio IS NULL
+     OR p_data_relatorio <> (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN
+    RAISE EXCEPTION 'O relatório precisa ter a data de hoje.';
+  END IF;
+
+  IF jsonb_typeof(p_saldos) <> 'array' THEN
+    RAISE EXCEPTION 'Lista de saldos inválida.';
+  END IF;
+
+  UPDATE public.ata_itens AS ai
+  SET saldo_disponivel = s.saldo,
+      saldo_atualizado_em = p_data_relatorio
+  FROM jsonb_to_recordset(p_saldos) AS s(item_id uuid, saldo numeric)
+  WHERE ai.id = s.item_id
+    AND ai.ata_id = p_ata_id
+    AND s.saldo >= 0;
+
+  GET DIAGNOSTICS v_atualizados = ROW_COUNT;
+  RETURN v_atualizados;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.atualizar_saldos_ata(uuid, date, jsonb) TO authenticated;
+
+-- A reabertura é uma operação SECURITY DEFINER; valida a permissão de Adiantamentos
+-- e a lotação exata para impedir que o setor reabra processos de outro setor.
+CREATE OR REPLACE FUNCTION public.reabrir_adiantamento(
+  p_adiantamento_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_adiantamento public.adiantamentos%ROWTYPE;
+  v_reaberto_em timestamptz := now();
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.usuario_ativo(auth.uid()) THEN
+    RAISE EXCEPTION 'Usuário não autenticado ou sem acesso ativo.';
+  END IF;
+
+  SELECT *
+    INTO v_adiantamento
+  FROM public.adiantamentos
+  WHERE id = p_adiantamento_id
+  FOR UPDATE;
+
+  IF NOT FOUND
+     OR NOT public.usuario_pode_acessar_adiantamento(p_adiantamento_id) THEN
+    RAISE EXCEPTION 'Adiantamento não encontrado ou sem permissão de acesso.';
+  END IF;
+
+  IF v_adiantamento.finalizado IS NOT TRUE THEN
+    RAISE EXCEPTION 'Este adiantamento não está finalizado.';
+  END IF;
+
+  IF v_adiantamento.finalizado_em IS NULL THEN
+    RAISE EXCEPTION 'Não foi localizada a data da finalização anterior. Solicite suporte antes de reabrir.';
+  END IF;
+
+  INSERT INTO public.adiantamento_reaberturas (
+    adiantamento_id,
+    finalizado_em_anterior,
+    reaberto_em,
+    reaberto_por
+  )
+  VALUES (
+    v_adiantamento.id,
+    v_adiantamento.finalizado_em,
+    v_reaberto_em,
+    auth.uid()
+  );
+
+  PERFORM set_config('app.reabrir_adiantamento', '1', true);
+
+  UPDATE public.adiantamentos
+  SET finalizado = false,
+      finalizado_em = NULL
+  WHERE id = p_adiantamento_id;
+
+  PERFORM set_config('app.reabrir_adiantamento', '', true);
+
+  RETURN jsonb_build_object(
+    'adiantamento_id', p_adiantamento_id,
+    'finalizado', false,
+    'reaberto_em', v_reaberto_em,
+    'finalizacao_anterior', v_adiantamento.finalizado_em
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    PERFORM set_config('app.reabrir_adiantamento', '', true);
+    RAISE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.reabrir_adiantamento(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reabrir_adiantamento(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.reabrir_adiantamento(uuid) TO authenticated;
+
+-- O histórico de reabertura também respeita a lotação exata do adiantamento.
+DROP POLICY IF EXISTS "strict sector adiantamento reopen history" ON public.adiantamento_reaberturas;
+CREATE POLICY "strict sector adiantamento reopen history"
+ON public.adiantamento_reaberturas AS RESTRICTIVE
+FOR SELECT TO authenticated
+USING (public.usuario_pode_acessar_adiantamento(adiantamento_id));
+
 COMMIT;
