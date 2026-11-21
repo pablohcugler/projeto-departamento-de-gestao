@@ -14,7 +14,7 @@ import { gerarAnexoIIDespesas, gerarDepositoSaldoRemanescente } from "@/lib/rela
 import { criarArquivoZip } from "@/lib/zip";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileText, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X, Download, Archive,
+  FileText, FileImage, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X, Download, Archive,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -43,8 +43,8 @@ function dataBR(data: string): string {
 }
 
 function diferencaDias(dataFinal: string, dataInicial: string): number {
-  const [anoFinal, mesFinal, diaFinal] = dataFinal.split("-").map(Number);
-  const [anoInicial, mesInicial, diaInicial] = dataInicial.split("-").map(Number);
+  const [anoFinal = 0, mesFinal = 1, diaFinal = 1] = dataFinal.split("-").map(Number);
+  const [anoInicial = 0, mesInicial = 1, diaInicial = 1] = dataInicial.split("-").map(Number);
   const finalUtc = Date.UTC(anoFinal, mesFinal - 1, diaFinal);
   const inicialUtc = Date.UTC(anoInicial, mesInicial - 1, diaInicial);
   return Math.round((finalUtc - inicialUtc) / 86_400_000);
@@ -791,6 +791,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
         for (let index = 0; index < notasAtuais.length; index++) {
           const nota = notasAtuais[index];
+          if (!nota) continue;
           const anexos: AnexoRelatorio[] = [];
           if (nota.arquivo_caminho && nota.arquivo_nome) {
             anexos.push(await baixarAnexo(nota.arquivo_caminho, nota.arquivo_nome, nota.arquivo_mime_type ?? "", "nota"));

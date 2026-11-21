@@ -140,16 +140,16 @@ export async function gerarAnexoIIDespesas(data: DadosAnexoII): Promise<Uint8Arr
       x += col.width;
     });
     y -= headerH;
-    for (const item of chunks[pageIndex]) {
+    for (const item of chunks[pageIndex] ?? []) {
       const values = [String(item.numero), dateBR(item.data_nota), "NOTA FISCAL Nº " + item.numero_nota, item.fornecedor, item.descricao, brl(item.valor_despesa)];
-      const heights = values.map((v, i) => wrap(v, regular, 7, columns[i].width - 8).length * 9 + 8);
+      const heights = values.map((v, i) => wrap(v, regular, 7, (columns[i]?.width ?? 0) - 8).length * 9 + 8);
       const rowH = Math.max(27, ...heights);
       if (y - rowH < 95) break;
       x = tableX;
       page.drawRectangle({ x: tableX, y: y - rowH, width: tableW, height: rowH, borderColor: rgb(0.72, 0.76, 0.79), borderWidth: 0.35 });
       values.forEach((value, i) => {
-        drawCellText(page, value, x, y, columns[i].width, regular, 7, 9);
-        x += columns[i].width;
+        drawCellText(page, value, x, y, columns[i]?.width ?? 0, regular, 7, 9);
+        x += columns[i]?.width ?? 0;
       });
       y -= rowH;
     }
@@ -230,14 +230,14 @@ export async function gerarDepositoSaldoRemanescente(
   first.drawText("Comprovante de transferência anexado na página seguinte.", { x: 72, y: 420, size: 9, font: regular, color: MUTED });
 
   if (comprovantePdfPages.length) {
-    comprovantePdfPages.forEach((embedded, index) => {
+    for (const [index, embedded] of comprovantePdfPages.entries()) {
       const page = pdf.addPage([W, H]);
       await drawPageHeader(page, index + 2, totalPages);
       const scale = Math.min(490 / embedded.width, 660 / embedded.height);
       const width = embedded.width * scale;
       const height = embedded.height * scale;
       page.drawPage(embedded, { x: 72 + (490 - width) / 2, y: 80 + (660 - height) / 2, width, height });
-    });
+    }
   } else if (comprovanteImage) {
     const page = pdf.addPage([W, H]);
     await drawPageHeader(page, 2, totalPages);

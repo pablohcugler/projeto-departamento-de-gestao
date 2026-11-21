@@ -1,4 +1,4 @@
-export const VERSAO_SISTEMA = "1.0.15";
+export const VERSAO_SISTEMA = "1.0.16";
 
 export type NotaVersao = {
   versao: string;
@@ -9,6 +9,16 @@ export type NotaVersao = {
 };
 
 export const HISTORICO_ATUALIZACOES: NotaVersao[] = [
+  {
+    versao: "1.0.16",
+    data: "21/11/2026",
+    titulo: "Botão Prestação de contas restaurado",
+    descricao: "Corrige um erro interno que impedia a tela de adiantamentos de carregar e fazia o botão Prestação de contas desaparecer.",
+    itens: [
+      "A tela de detalhes do adiantamento volta a abrir normalmente.",
+      "O botão Prestação de contas volta a aparecer junto às notas de despesas.",
+    ],
+  },
   {
     versao: "1.0.15",
     data: "20/11/2026",
