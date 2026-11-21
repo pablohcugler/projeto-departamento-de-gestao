@@ -14,7 +14,7 @@ import { gerarAnexoIIDespesas, gerarDepositoSaldoRemanescente } from "@/lib/rela
 import { criarArquivoZip } from "@/lib/zip";
 import {
   AlertTriangle, ArrowLeft, Calculator, CalendarClock, CheckCircle2, CircleDollarSign,
-  FileText, FileImage, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X, Download, Archive,
+  FileText, FileImage, Files, Paperclip, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Trash2, Upload, Wallet, X, Download, Archive, Eye, EyeOff,
 } from "lucide-react";
 
 type Adiantamento = Tables<"adiantamentos">;
@@ -132,6 +132,7 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
   const [processoSelecionado, setProcessoSelecionado] = useState<Adiantamento | null>(null);
 
   const [processo1Doc, setProcesso1Doc] = useState("");
@@ -247,14 +248,26 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const hojeLocal = dataHojeLocal();
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
-    if (!termo) return lista;
-    return lista.filter((item) =>
-      [item.processo_1doc, item.numero_empenho, dataBR(item.data_recebimento), dataBR(item.data_vencimento)]
-        .join(" ")
-        .toLocaleLowerCase("pt-BR")
-        .includes(termo),
-    );
-  }, [lista, busca]);
+    const correspondentes = lista.filter((item) => {
+      const correspondeBusca = !termo || [
+        item.processo_1doc,
+        item.numero_empenho,
+        dataBR(item.data_recebimento),
+        dataBR(item.data_vencimento),
+      ].join(" ").toLocaleLowerCase("pt-BR").includes(termo);
+      const correspondeStatus = mostrarEncerrados || !item.finalizado;
+      return correspondeBusca && correspondeStatus;
+    });
+
+    // Processos em execução sempre vêm primeiro. Dentro de cada grupo,
+    // mantém a ordenação por data de vencimento.
+    return [...correspondentes].sort((a, b) => {
+      const statusA = a.finalizado ? 1 : 0;
+      const statusB = b.finalizado ? 1 : 0;
+      if (statusA !== statusB) return statusA - statusB;
+      return a.data_vencimento.localeCompare(b.data_vencimento);
+    });
+  }, [lista, busca, mostrarEncerrados]);
 
   const dias = Number(periodoAplicacao);
   const dataVencimento = somarDias(dataRecebimento, dias);
@@ -2186,9 +2199,23 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" placeholder="Buscar por processo 1Doc ou número do empenho..." />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" placeholder="Buscar por processo 1Doc ou número do empenho..." />
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={mostrarEncerrados ? "default" : "outline"}
+          aria-pressed={mostrarEncerrados}
+          onClick={() => setMostrarEncerrados((atual) => !atual)}
+          className={mostrarEncerrados ? "" : "border-red-600/30 text-red-700 hover:bg-red-600/5 dark:text-red-400"}
+        >
+          {mostrarEncerrados ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {mostrarEncerrados ? "Ocultar adiantamentos encerrados" : "Visualizar adiantamentos encerrados"}
+          {mostrarEncerrados && <Badge variant="secondary" className="ml-1">{lista.filter((item) => item.finalizado).length}</Badge>}
+        </Button>
       </div>
 
       {consulta.isLoading ? (
