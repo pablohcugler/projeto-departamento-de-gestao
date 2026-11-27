@@ -130,6 +130,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const inputAnexoPosterior = useRef<HTMLInputElement>(null);
   const [notaParaAnexar, setNotaParaAnexar] = useState<NotaDespesa | null>(null);
   const [anexandoNotaId, setAnexandoNotaId] = useState<string | null>(null);
+  const inputDocumentosPosteriores = useRef<HTMLInputElement>(null);
+  const [notaParaDocumentos, setNotaParaDocumentos] = useState<NotaDespesa | null>(null);
+  const [anexandoDocumentosNotaId, setAnexandoDocumentosNotaId] = useState<string | null>(null);
   const inputDocumentosComplementares = useRef<HTMLInputElement>(null);
   const inputComprovanteDevolucao = useRef<HTMLInputElement>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -399,6 +402,89 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   function removerDocumentoComplementar(indice: number) {
     setArquivosComplementares((atuais) => atuais.filter((_, i) => i !== indice));
+  }
+
+  async function anexarDocumentosComplementaresPosteriores(files: FileList | null) {
+    const nota = notaParaDocumentos;
+    if (!files?.length || !nota || !processoSelecionado || processoSelecionado.finalizado || anexandoDocumentosNotaId) return;
+
+    const selecionados = Array.from(files);
+    const existentes = documentosPorNota.get(nota.id) ?? [];
+    if (existentes.length + selecionados.length > LIMITE_DOCUMENTOS_COMPLEMENTARES) {
+      toast.error(`É permitido anexar até ${LIMITE_DOCUMENTOS_COMPLEMENTARES} documentos complementares por nota. Já existem ${existentes.length}.`);
+      if (inputDocumentosPosteriores.current) inputDocumentosPosteriores.current.value = "";
+      return;
+    }
+
+    const tamanhoAtual = existentes.reduce((total, documento) => total + documento.arquivo_tamanho_bytes, 0);
+    const tamanhoNovo = selecionados.reduce((total, arquivo) => total + arquivo.size, 0);
+    if (tamanhoAtual + tamanhoNovo > LIMITE_TOTAL_COMPLEMENTARES_BYTES) {
+      toast.error("O conjunto de documentos complementares não pode ultrapassar 100 MB por nota.");
+      if (inputDocumentosPosteriores.current) inputDocumentosPosteriores.current.value = "";
+      return;
+    }
+
+    for (const arquivo of selecionados) {
+      const erro = validarDocumentoComplementar(arquivo);
+      if (erro) {
+        toast.error(`${arquivo.name}: ${erro}`);
+        if (inputDocumentosPosteriores.current) inputDocumentosPosteriores.current.value = "";
+        return;
+      }
+    }
+
+    setAnexandoDocumentosNotaId(nota.id);
+    const caminhosEnviados: string[] = [];
+    try {
+      const documentosInserir: Array<{
+        id: string;
+        adiantamento_id: string;
+        nota_id: string;
+        arquivo_nome: string;
+        arquivo_caminho: string;
+        arquivo_mime_type: string;
+        arquivo_tamanho_bytes: number;
+      }> = [];
+
+      for (const arquivo of selecionados) {
+        const documentoId = crypto.randomUUID();
+        const nomeSeguro = arquivo.name.normalize("NFD").replace(/[^\w.\-]+/g, "_");
+        const caminho = `adiantamento/${processoSelecionado.id}/${nota.id}/complementares/${documentoId}_${nomeSeguro}`;
+        const mime = arquivo.type || "application/octet-stream";
+        const { error } = await supabase.storage.from("anexos").upload(caminho, arquivo, {
+          contentType: mime,
+          upsert: false,
+        });
+        if (error) throw new Error(`Falha ao enviar "${arquivo.name}": ${error.message}`);
+        caminhosEnviados.push(caminho);
+        documentosInserir.push({
+          id: documentoId,
+          adiantamento_id: processoSelecionado.id,
+          nota_id: nota.id,
+          arquivo_nome: arquivo.name,
+          arquivo_caminho: caminho,
+          arquivo_mime_type: mime,
+          arquivo_tamanho_bytes: arquivo.size,
+        });
+      }
+
+      const { error } = await supabase.from("adiantamento_nota_documentos").insert(documentosInserir);
+      if (error) throw new Error("Os arquivos foram enviados, mas não foi possível registrar os documentos: " + error.message);
+
+      toast.success(`${selecionados.length} documento(s) complementar(es) anexado(s) à nota nº ${nota.numero_nota}.`);
+      await qc.invalidateQueries({ queryKey: ["adiantamento-nota-documentos", processoSelecionado.id] });
+    } catch (erro) {
+      if (caminhosEnviados.length > 0) {
+        const { error } = await supabase.storage.from("anexos").remove(caminhosEnviados);
+        if (error) console.error("Falha ao limpar documentos complementares após erro:", error);
+      }
+      console.error("Erro ao anexar documentos complementares:", erro);
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível anexar os documentos complementares.");
+    } finally {
+      setAnexandoDocumentosNotaId(null);
+      setNotaParaDocumentos(null);
+      if (inputDocumentosPosteriores.current) inputDocumentosPosteriores.current.value = "";
+    }
   }
 
   async function anexarArquivoPosterior(file?: File) {
@@ -1690,6 +1776,14 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border bg-card">
+            <input
+              ref={inputDocumentosPosteriores}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,image/*"
+              onChange={(event) => void anexarDocumentosComplementaresPosteriores(event.target.files)}
+            />
             <ol className="divide-y" aria-label="Notas de despesas em ordem cronológica">
               {notas.map((nota, indice) => {
                 const docsDaNota = documentosPorNota.get(nota.id) ?? [];
@@ -1747,8 +1841,9 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         {anexandoNotaId === nota.id ? "Enviando..." : nota.arquivo_caminho ? "Substituir comprovante" : "Anexar nota fiscal/cupom"}
                       </Button>
                     )}
-                    {docsDaNota.length > 0 && (
-                      <div className="mt-1.5 space-y-1 rounded-lg bg-muted/30 p-2">
+                    <div className="mt-1.5 space-y-1">
+                      {docsDaNota.length > 0 && (
+                        <div className="space-y-1 rounded-lg bg-muted/30 p-2">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                           <Files className="h-3.5 w-3.5" /> Documentos complementares ({docsDaNota.length})
                         </div>
@@ -1767,8 +1862,25 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                             </li>
                           ))}
                         </ul>
-                      </div>
-                    )}
+                        </div>
+                      )}
+                      {!processoSelecionado.finalizado && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            setNotaParaDocumentos(nota);
+                            inputDocumentosPosteriores.current?.click();
+                          }}
+                          disabled={anexandoDocumentosNotaId !== null}
+                        >
+                          <Upload className="mr-1 h-3 w-3" />
+                          {anexandoDocumentosNotaId === nota.id ? "Enviando documentos..." : "Adicionar documentos complementares"}
+                        </Button>
+                      )}
+                    </div>
                     {documentosQ.isError && (
                       <p className="text-xs text-destructive">Não foi possível carregar os documentos complementares.</p>
                     )}
