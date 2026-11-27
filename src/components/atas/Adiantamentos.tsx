@@ -127,6 +127,9 @@ function validarDocumentoComplementar(file: File): string | null {
 export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
   const qc = useQueryClient();
   const inputArquivo = useRef<HTMLInputElement>(null);
+  const inputAnexoPosterior = useRef<HTMLInputElement>(null);
+  const [notaParaAnexar, setNotaParaAnexar] = useState<NotaDespesa | null>(null);
+  const [anexandoNotaId, setAnexandoNotaId] = useState<string | null>(null);
   const inputDocumentosComplementares = useRef<HTMLInputElement>(null);
   const inputComprovanteDevolucao = useRef<HTMLInputElement>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -396,6 +399,60 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
 
   function removerDocumentoComplementar(indice: number) {
     setArquivosComplementares((atuais) => atuais.filter((_, i) => i !== indice));
+  }
+
+  async function anexarArquivoPosterior(file?: File) {
+    const nota = notaParaAnexar;
+    if (!file || !nota || !processoSelecionado || processoSelecionado.finalizado || anexandoNotaId) return;
+    const erroArquivo = validarArquivo(file);
+    if (erroArquivo) {
+      toast.error(erroArquivo);
+      if (inputAnexoPosterior.current) inputAnexoPosterior.current.value = "";
+      return;
+    }
+
+    setAnexandoNotaId(nota.id);
+    const nomeSeguro = file.name.normalize("NFD").replace(/[^\\w.\\-]+/g, "_");
+    const caminho = `adiantamento/${processoSelecionado.id}/${nota.id}/${Date.now()}_${nomeSeguro}`;
+    const mime = file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
+    const { error: erroUpload } = await supabase.storage.from("anexos").upload(caminho, file, {
+      contentType: mime,
+      upsert: false,
+    });
+    if (erroUpload) {
+      setAnexandoNotaId(null);
+      toast.error("Não foi possível enviar o arquivo: " + erroUpload.message);
+      return;
+    }
+
+    const { error: erroAtualizacao } = await supabase
+      .from("adiantamento_notas")
+      .update({
+        arquivo_nome: file.name,
+        arquivo_caminho: caminho,
+        arquivo_mime_type: mime,
+        arquivo_tamanho_bytes: file.size,
+      })
+      .eq("id", nota.id)
+      .eq("adiantamento_id", processoSelecionado.id);
+
+    if (erroAtualizacao) {
+      await supabase.storage.from("anexos").remove([caminho]);
+      setAnexandoNotaId(null);
+      toast.error("O arquivo foi enviado, mas não foi possível vinculá-lo à nota: " + erroAtualizacao.message);
+      return;
+    }
+
+    if (nota.arquivo_caminho) {
+      const { error: erroRemocao } = await supabase.storage.from("anexos").remove([nota.arquivo_caminho]);
+      if (erroRemocao) console.error("O novo arquivo foi salvo, mas o anterior não pôde ser removido:", erroRemocao);
+    }
+
+    setAnexandoNotaId(null);
+    setNotaParaAnexar(null);
+    if (inputAnexoPosterior.current) inputAnexoPosterior.current.value = "";
+    toast.success("Nota fiscal/cupom anexado à despesa.");
+    await qc.invalidateQueries({ queryKey: ["adiantamento-notas", processoSelecionado.id] });
   }
 
   async function salvarNota(e: FormEvent<HTMLFormElement>) {
@@ -1061,6 +1118,11 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
       toast.error("Não foi possível conferir os anexos das notas antes da finalização.");
       return;
     }
+    const notasSemComprovante = (notasParaConferir.data ?? []).filter((nota) => !nota.arquivo_caminho);
+    if (notasSemComprovante.length > 0) {
+      toast.error(`Não é possível encerrar o adiantamento. Anexe a nota fiscal ou o cupom de: ${notasSemComprovante.map((nota) => `nota nº ${nota.numero_nota} — ${nota.fornecedor}`).join("; ")}.`);
+      return;
+    }
     const anexosParaConferir = [
       ...(notasParaConferir.data ?? []).filter((nota) => nota.arquivo_caminho).map((nota) => ({
         nome: nota.arquivo_nome ?? "nota fiscal",
@@ -1654,13 +1716,36 @@ export function Adiantamentos({ onVoltar }: { onVoltar: () => void }) {
                         </Button>
                       )}
                     </div>
+                    <input
+                      ref={inputAnexoPosterior}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif,application/pdf,image/*"
+                      onChange={(event) => void anexarArquivoPosterior(event.target.files?.[0])}
+                    />
                     {nota.arquivo_nome ? (
                       <button type="button" className="inline-flex max-w-full items-center gap-1.5 text-xs text-primary hover:underline" onClick={() => void abrirArquivo(nota.arquivo_caminho!)}>
                         <Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{nota.arquivo_nome}</span>
                         {nota.arquivo_tamanho_bytes ? <span className="shrink-0 text-xs text-muted-foreground">({tamanhoArquivo(nota.arquivo_tamanho_bytes)})</span> : null}
                       </button>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3.5 w-3.5" /> Sem arquivo anexado</span>
+                      <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400"><Paperclip className="h-3.5 w-3.5" /> Comprovante pendente</span>
+                    )}
+                    {!processoSelecionado.finalizado && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-1 h-7 px-2 text-[11px]"
+                        onClick={() => {
+                          setNotaParaAnexar(nota);
+                          inputAnexoPosterior.current?.click();
+                        }}
+                        disabled={anexandoNotaId !== null}
+                      >
+                        <Upload className="mr-1 h-3 w-3" />
+                        {anexandoNotaId === nota.id ? "Enviando..." : nota.arquivo_caminho ? "Substituir comprovante" : "Anexar nota fiscal/cupom"}
+                      </Button>
                     )}
                     {docsDaNota.length > 0 && (
                       <div className="mt-1.5 space-y-1 rounded-lg bg-muted/30 p-2">
